@@ -91,7 +91,11 @@ export class PanelManager {
     for (const session of this.sessions.values()) {
       if (session.documentUri.toString() !== document.uri.toString()) { continue; }
       const block = locateById(document.getText(), session.blockId);
-      if (!block) { continue; }
+      if (!block) {
+        const msg: HostToWebview = { type: 'blockRemoved' };
+        session.panel.webview.postMessage(msg);
+        continue;
+      }
       if (sameMermaidSource(block.source, session.lastWebviewSource)) { continue; }
       const msg: HostToWebview = { type: 'externalUpdate', source: block.source, version: session.version };
       session.panel.webview.postMessage(msg);

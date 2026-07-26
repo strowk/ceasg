@@ -6,9 +6,24 @@ const api = acquireVsCodeApi();
 const root = document.getElementById('app') as HTMLElement;
 
 let mounted = false;
+let removed = false;
 let view: { applyExternal(s: string): void } | null = null;
+
+function showRemovedBanner(): void {
+  const banner = document.createElement('div');
+  banner.className = 'ceasg-banner';
+  banner.textContent = 'This diagram block was removed from the document.';
+  root.insertBefore(banner, root.firstChild);
+}
+
 window.addEventListener('message', (ev: MessageEvent<HostToWebview>) => {
   const msg = ev.data;
+  if (msg.type === 'blockRemoved') {
+    removed = true;
+    showRemovedBanner();
+    return;
+  }
+  if (removed) { return; }
   if (msg.type === 'init' && !mounted) {
     mounted = true;
     if (msg.mode === 'wysiwyg') {

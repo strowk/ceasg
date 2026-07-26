@@ -40,8 +40,14 @@ export function mountPreview(root: HTMLElement, api: VsCodeApi): void {
     }, 150);
   });
 
+  let previewRemoved = false;
   window.addEventListener('message', (ev: MessageEvent<HostToWebview>) => {
     const msg = ev.data;
+    if (msg.type === 'blockRemoved') {
+      previewRemoved = true;
+      return;
+    }
+    if (previewRemoved) { return; }
     if (msg.type === 'init' || msg.type === 'externalUpdate') {
       applyingExternal = true;
       srcEl.value = msg.source;

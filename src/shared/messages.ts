@@ -2,10 +2,11 @@ export type PaneMode = 'wysiwyg' | 'preview';
 
 export interface InitMessage { type: 'init'; mode: PaneMode; source: string; version: number; }
 export interface ExternalUpdateMessage { type: 'externalUpdate'; source: string; version: number; }
+export interface BlockRemovedMessage { type: 'blockRemoved'; }
 export interface UpdateMessage { type: 'update'; source: string; version: number; }
 export interface ReadyMessage { type: 'ready'; }
 
-export type HostToWebview = InitMessage | ExternalUpdateMessage;
+export type HostToWebview = InitMessage | ExternalUpdateMessage | BlockRemovedMessage;
 export type WebviewToHost = UpdateMessage | ReadyMessage;
 
 export function isUpdateMessage(m: unknown): m is UpdateMessage {

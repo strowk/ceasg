@@ -221,5 +221,16 @@ export class WysiwygEditor {
     }, 150);
   }
 
-  applyExternal(source: string): void { this.init(source); }
+  applyExternal(source: string): void {
+    try {
+      this.init(source);
+    } catch {
+      // Keep current model on failure — do not sync back to host
+      const toast = document.createElement('div');
+      toast.className = 'ceasg-toast';
+      toast.textContent = 'Invalid diagram source — editor not updated.';
+      this.root.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3000);
+    }
+  }
 }
