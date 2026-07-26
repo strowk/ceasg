@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, NodeShape, nextNodeId } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -174,7 +174,14 @@ export class WysiwygEditor {
   deleteSelected(): void {
     if (this.selection === null || this.selection.multi.size === 0) { return; }
     const ids = [...this.selection.multi];
-    this.mutate((m) => { for (const id of ids) { removeNode(m, id); } }, { commit: true });
+    this.mutate((m) => {
+      for (const id of ids) {
+        // A selected id is either a node or an edge; removeNode also drops edges
+        // touching the node, so an already-removed edge id is a safe no-op.
+        if (m.nodes.some((n) => n.id === id)) { removeNode(m, id); }
+        else { removeEdge(m, id); }
+      }
+    }, { commit: true });
     this.selection.clear();
     this.onSelectionChange();
   }
