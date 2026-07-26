@@ -1,7 +1,9 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
+import { Overlay } from './overlay';
+import { SelectionState, PointerController } from './pointer';
 
 export class WysiwygEditor {
   private model: DiagramModel = mermaidToModel('flowchart TB\n').model;
@@ -13,6 +15,9 @@ export class WysiwygEditor {
   private canvasHost: HTMLElement;
   private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
   viewport: Viewport | null = null;
+  overlay: Overlay | null = null;
+  selection: SelectionState | null = null;
+  controller: PointerController | null = null;
 
   constructor(private readonly root: HTMLElement, private readonly api: VsCodeApi) {
     this.root.innerHTML = '<div class="ceasg-wysiwyg"><div class="ceasg-canvas" id="canvas"></div></div>';
@@ -24,6 +29,15 @@ export class WysiwygEditor {
     layoutMissing(this.model);
     this.history = [cloneModel(this.model)];
     this.historyIndex = 0;
+
+    // Construct selection state and controller once, before first repaint
+    this.selection = new SelectionState();
+    this.controller = new PointerController(
+      this,
+      this.selection,
+      () => this.drawSelection(),
+    );
+
     this.repaint();
     this.viewport?.fit(this.model);
   }
@@ -37,6 +51,22 @@ export class WysiwygEditor {
     this.canvasHost.innerHTML = '';
     this.canvasHost.appendChild(svg);
     this.viewport = new Viewport(svg, this.canvasHost);
+
+    // Overlay is recreated fresh on each repaint (after svg is in DOM)
+    this.overlay = new Overlay(svg);
+    this.drawSelection();
+    if (this.controller) { this.controller.attach(svg); }
+  }
+
+  drawSelection(): void {
+    if (!this.overlay || !this.selection) { return; }
+    for (const id of this.selection.multi) {
+      const n = this.model.nodes.find((nn) => nn.id === id);
+      if (!n) { continue; }
+      const w = n.w ?? estimateNodeSize(n).w;
+      const h = n.h ?? estimateNodeSize(n).h;
+      this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
+    }
   }
 
   mutate(fn: (m: DiagramModel) => void, opts: { commit?: boolean } = {}): void {
