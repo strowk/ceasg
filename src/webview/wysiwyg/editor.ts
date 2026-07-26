@@ -131,7 +131,13 @@ export class WysiwygEditor {
   mutate(fn: (m: DiagramModel) => void, opts: { commit?: boolean } = {}): void {
     fn(this.model);
     this.repaint();
-    if (this.panel && this.selection) { this.panel.refresh(this.selection); }
+    if (this.panel && this.selection) {
+      // Don't rebuild the panel while the user is typing in one of its fields —
+      // refreshing destroys the focused input and the next keystroke is lost.
+      const active = document.activeElement;
+      const inField = !!active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
+      if (!inField) { this.panel.refresh(this.selection); }
+    }
     if (opts.commit) { this.commit(); }
   }
 
