@@ -102,7 +102,7 @@ export class WysiwygEditor {
       const p = this.viewport!.screenToSvg(e.clientX, e.clientY);
       const node = nodeAtPoint(this.model, p.x, p.y);
       if (node) {
-        openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label }, (text) => {
+        openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label, w: node.w ?? estimateNodeSize(node).w, h: node.h ?? estimateNodeSize(node).h }, (text) => {
           this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
         });
         return;

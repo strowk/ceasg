@@ -2,7 +2,7 @@ import { Viewport } from './viewport';
 
 /** Open an in-place textarea over a canvas point (node center or edge-label midpoint). */
 export function openLabelEditor(
-  host: HTMLElement, viewport: Viewport, at: { x: number; y: number; text: string }, onCommit: (text: string) => void,
+  host: HTMLElement, viewport: Viewport, at: { x: number; y: number; text: string; w?: number; h?: number }, onCommit: (text: string) => void,
 ): void {
   const ta = document.createElement('textarea');
   ta.className = 'ceasg-label-editor';
@@ -15,10 +15,14 @@ export function openLabelEditor(
     return { sx: rect.left + (x - p.x) * scale, sy: rect.top + (y - p.y) * scale };
   };
   const { sx, sy } = svgToScreen(at.x, at.y);
+  // Match the node's on-screen size, with the previous default as a minimum floor.
+  const w = Math.max(120, (at.w ?? 0) * scale);
+  const h = Math.max(28, (at.h ?? 0) * scale);
   ta.style.position = 'fixed';
-  ta.style.left = `${sx - 60}px`;
-  ta.style.top = `${sy - 14}px`;
-  ta.style.width = '120px';
+  ta.style.left = `${sx - w / 2}px`;
+  ta.style.top = `${sy - h / 2}px`;
+  ta.style.width = `${w}px`;
+  ta.style.height = `${h}px`;
   document.body.appendChild(ta);
   ta.focus(); ta.select();
 
