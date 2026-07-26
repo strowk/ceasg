@@ -1,9 +1,18 @@
 {
   "name": "ceasg",
+  "publisher": "ceasg",
   "displayName": "ceasg — Visual Mermaid Editor",
   "description": "Edit Mermaid diagrams visually from a CodeLens in your markdown — drag/drop flowchart WYSIWYG plus live preview for all diagram types.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/strowk/ceasg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/strowk/ceasg/issues"
+  },
+  "homepage": "https://github.com/strowk/ceasg#readme",
   "engines": {
     "vscode": "^1.103.0"
   },
