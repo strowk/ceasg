@@ -6,6 +6,7 @@ import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
 import { nodeAtPoint } from './hitTest';
 import { openLabelEditor } from './labelEditor';
+import { Toolbar } from './toolbar';
 
 export class WysiwygEditor {
   private model: DiagramModel = mermaidToModel('flowchart TB\n').model;
@@ -17,13 +18,14 @@ export class WysiwygEditor {
   private canvasHost: HTMLElement;
   private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
   private keyboardAttached = false;
+  private toolbarBuilt = false;
   viewport: Viewport | null = null;
   overlay: Overlay | null = null;
   selection: SelectionState | null = null;
   controller: PointerController | null = null;
 
   constructor(private readonly root: HTMLElement, private readonly api: VsCodeApi) {
-    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div class="ceasg-canvas" id="canvas"></div></div>';
+    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-canvas" id="canvas"></div></div>';
     this.canvasHost = this.root.querySelector('#canvas') as HTMLElement;
   }
 
@@ -40,6 +42,13 @@ export class WysiwygEditor {
       this.selection,
       () => this.drawSelection(),
     );
+
+    // Build toolbar once per editor instance; guard against re-creation on applyExternal→init
+    if (!this.toolbarBuilt) {
+      this.toolbarBuilt = true;
+      const toolbarHost = this.root.querySelector('#toolbar') as HTMLElement;
+      new Toolbar(toolbarHost, this);
+    }
 
     this.repaint();
     this.viewport?.fit(this.model);
