@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, createShapeElements, estimateNodeSize } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, createShapeElements, estimateNodeSize, resolveNodeStyle } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -16,13 +16,16 @@ function sizeOf(n: DiagramNode): { w: number; h: number } {
   return { w: n.w ?? estimateNodeSize(n).w, h: n.h ?? estimateNodeSize(n).h };
 }
 
-function renderNode(node: DiagramNode): SVGGElement {
+function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   const g = el('g');
   g.setAttribute('class', 'ceasg-node');
   g.setAttribute('data-node-id', node.id);
   const { w, h } = sizeOf(node);
+  const style = resolveNodeStyle(model, node);
   for (const shapeEl of createShapeElements(node.shape, node.x, node.y, w, h)) {
     shapeEl.classList.add('ceasg-shape');
+    if (style?.fillColor) { shapeEl.setAttribute('fill', style.fillColor); }
+    if (style?.strokeColor) { shapeEl.setAttribute('stroke', style.strokeColor); }
     g.appendChild(shapeEl);
   }
   const lines = node.label.split('\n');
@@ -32,6 +35,7 @@ function renderNode(node: DiagramNode): SVGGElement {
   text.setAttribute('y', String(node.y));
   text.setAttribute('text-anchor', 'middle');
   text.setAttribute('dominant-baseline', 'central');
+  if (style?.textColor) { text.setAttribute('fill', style.textColor); }
   const lineH = 16;
   lines.forEach((line, i) => {
     const tspan = el('tspan');
@@ -123,7 +127,7 @@ export function renderDiagram(model: DiagramModel): { svg: SVGSVGElement; refs: 
     if (g) { edgeLayer.appendChild(g); refs.edgeEls.set(edge.id, g); }
   }
   for (const node of model.nodes) {
-    const g = renderNode(node);
+    const g = renderNode(node, model);
     nodeLayer.appendChild(g);
     refs.nodeEls.set(node.id, g);
   }

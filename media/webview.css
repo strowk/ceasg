@@ -23,3 +23,17 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-tb-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 2px 8px; cursor: pointer; }
 .ceasg-tb-btn:hover { background: var(--vscode-button-hoverBackground); }
 .ceasg-tb-select { background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); border: 1px solid var(--vscode-dropdown-border); }
+.ceasg-body { display: flex; flex: 1; overflow: hidden; }
+.ceasg-body .ceasg-canvas { flex: 1; overflow: hidden; }
+.ceasg-panel { width: 220px; min-width: 180px; overflow-y: auto; border-left: 1px solid var(--vscode-panel-border); background: var(--vscode-sideBar-background); padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; }
+.ceasg-panel-head { font-weight: 600; font-size: 12px; color: var(--vscode-foreground); padding-bottom: 4px; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 4px; }
+.ceasg-panel-hint { font-size: 11px; color: var(--vscode-descriptionForeground); padding: 4px 0; }
+.ceasg-panel-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; color: var(--vscode-foreground); }
+.ceasg-panel-row span { flex: 1; }
+.ceasg-panel-row input[type="text"], .ceasg-panel-row select { flex: 1.5; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); font-size: 12px; padding: 2px 4px; }
+.ceasg-panel-row input[type="color"] { width: 36px; height: 22px; border: 1px solid var(--vscode-input-border); background: none; cursor: pointer; }
+.ceasg-panel-row input[type="checkbox"] { cursor: pointer; }
+.ceasg-panel-actions { display: flex; gap: 4px; margin-top: 8px; }
+.ceasg-panel-actions button { flex: 1; font-size: 12px; padding: 3px 0; cursor: pointer; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; }
+.ceasg-panel-actions button:hover { background: var(--vscode-button-hoverBackground); }
+.ceasg-panel-actions .ceasg-danger { background: var(--vscode-errorForeground); color: #fff; }

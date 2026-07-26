@@ -7,6 +7,7 @@ import { SelectionState, PointerController } from './pointer';
 import { nodeAtPoint } from './hitTest';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
+import { PropertiesPanel } from './properties';
 
 export class WysiwygEditor {
   private model: DiagramModel = mermaidToModel('flowchart TB\n').model;
@@ -19,13 +20,15 @@ export class WysiwygEditor {
   private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
   private keyboardAttached = false;
   private toolbarBuilt = false;
+  private panelBuilt = false;
+  private panel: PropertiesPanel | null = null;
   viewport: Viewport | null = null;
   overlay: Overlay | null = null;
   selection: SelectionState | null = null;
   controller: PointerController | null = null;
 
   constructor(private readonly root: HTMLElement, private readonly api: VsCodeApi) {
-    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-canvas" id="canvas"></div></div>';
+    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-body"><div class="ceasg-canvas" id="canvas"></div><div id="panel"></div></div></div>';
     this.canvasHost = this.root.querySelector('#canvas') as HTMLElement;
   }
 
@@ -48,6 +51,13 @@ export class WysiwygEditor {
       this.toolbarBuilt = true;
       const toolbarHost = this.root.querySelector('#toolbar') as HTMLElement;
       new Toolbar(toolbarHost, this);
+    }
+
+    // Build panel once per editor instance; guard against re-creation on applyExternal→init
+    if (!this.panelBuilt) {
+      this.panelBuilt = true;
+      const panelHost = this.root.querySelector('#panel') as HTMLElement;
+      this.panel = new PropertiesPanel(panelHost, this);
     }
 
     this.repaint();
@@ -95,6 +105,7 @@ export class WysiwygEditor {
   mutate(fn: (m: DiagramModel) => void, opts: { commit?: boolean } = {}): void {
     fn(this.model);
     this.repaint();
+    if (this.panel && this.selection) { this.panel.refresh(this.selection); }
     if (opts.commit) { this.commit(); }
   }
 
@@ -172,6 +183,7 @@ export class WysiwygEditor {
 
   private onSelectionChange(): void {
     this.drawSelection();
+    if (this.panel && this.selection) { this.panel.refresh(this.selection); }
   }
 
   serialize(): string { return modelToMermaid(this.model, { includePositions: true }); }

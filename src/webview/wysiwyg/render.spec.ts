@@ -18,4 +18,11 @@ describe('renderDiagram', () => {
     const { svg } = renderDiagram(model);
     expect(svg.textContent).toContain('Start');
   });
+  it('applies node fill color from style', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[X]\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0; model.nodes[0].style = { fillColor: '#ff0000' };
+    const { refs } = renderDiagram(model);
+    const shape = refs.nodeEls.get('A')!.querySelector('.ceasg-shape')!;
+    expect(shape.getAttribute('fill')).toBe('#ff0000');
+  });
 });
