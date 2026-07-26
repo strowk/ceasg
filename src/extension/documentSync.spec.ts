@@ -35,4 +35,7 @@ describe('sameMermaidSource', () => {
   it('detects real differences', () => {
     expect(sameMermaidSource('graph TD\n', 'graph LR\n')).toBe(false);
   });
+  it('treats trailing-newline-only differences as equal (webview serialize vs written block)', () => {
+    expect(sameMermaidSource('graph TD\n  A-->B', 'graph TD\n  A-->B\n')).toBe(true);
+  });
 });

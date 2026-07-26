@@ -84,11 +84,13 @@ export class WysiwygEditor {
   }
 
   repaint(): void {
+    const prevTransform = this.viewport ? this.viewport.getTransform() : null;
     const { svg, refs } = renderDiagram(this.model);
     this.refs = refs;
     this.canvasHost.innerHTML = '';
     this.canvasHost.appendChild(svg);
     this.viewport = new Viewport(svg, this.canvasHost);
+    if (prevTransform) { this.viewport.setTransform(prevTransform); }
 
     // Overlay is recreated fresh on each repaint (after svg is in DOM)
     this.overlay = new Overlay(svg);

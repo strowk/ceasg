@@ -18,5 +18,6 @@ export function computeInnerEdit(
 }
 
 export function sameMermaidSource(a: string, b: string): boolean {
-  return a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+  const norm = (s: string): string => s.replace(/\r\n/g, '\n').replace(/\n+$/, '');
+  return norm(a) === norm(b);
 }

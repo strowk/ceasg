@@ -58,6 +58,12 @@ export class Viewport {
     const rect = this.host.getBoundingClientRect();
     return { x: this.vbX + (px - rect.left) / this.zoom, y: this.vbY + (py - rect.top) / this.zoom };
   }
+  getTransform(): { zoom: number; vbX: number; vbY: number } {
+    return { zoom: this.zoom, vbX: this.vbX, vbY: this.vbY };
+  }
+  setTransform(t: { zoom: number; vbX: number; vbY: number }): void {
+    this.zoom = t.zoom; this.vbX = t.vbX; this.vbY = t.vbY; this.apply();
+  }
   reset(): void { this.zoom = 1; this.apply(); }
   get scale(): number { return this.zoom; }
 }
