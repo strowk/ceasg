@@ -4,6 +4,8 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
+import { nodeAtPoint } from './hitTest';
+import { openLabelEditor } from './labelEditor';
 
 export class WysiwygEditor {
   private model: DiagramModel = mermaidToModel('flowchart TB\n').model;
@@ -58,6 +60,15 @@ export class WysiwygEditor {
     this.overlay = new Overlay(svg);
     this.drawSelection();
     if (this.controller) { this.controller.attach(svg); }
+
+    svg.addEventListener('dblclick', (e) => {
+      const p = this.viewport!.screenToSvg(e.clientX, e.clientY);
+      const node = nodeAtPoint(this.model, p.x, p.y);
+      if (!node) { return; }
+      openLabelEditor(this.canvasHost, this.viewport!, node, (text) => {
+        this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
+      });
+    });
   }
 
   drawSelection(): void {
