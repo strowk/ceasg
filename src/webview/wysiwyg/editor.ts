@@ -50,7 +50,7 @@ export class WysiwygEditor {
     this.controller = new PointerController(
       this,
       this.selection,
-      () => this.drawSelection(),
+      () => this.refreshSelection(),
     );
 
     // Build toolbar once per editor instance; guard against re-creation on applyExternal→init
@@ -133,6 +133,12 @@ export class WysiwygEditor {
     this.repaint();
     if (this.panel && this.selection) { this.panel.refresh(this.selection); }
     if (opts.commit) { this.commit(); }
+  }
+
+  /** Single source of truth for a selection change: redraw the outline AND refresh the inspector. */
+  refreshSelection(): void {
+    this.drawSelection();
+    if (this.panel && this.selection) { this.panel.refresh(this.selection); }
   }
 
   commit(): void { this.scheduleHistory(); this.scheduleSync(); }
