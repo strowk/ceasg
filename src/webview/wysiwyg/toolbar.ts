@@ -1,5 +1,6 @@
 import { autoLayout, nextNodeId, DIRECTIONS, Direction } from '../../core';
 import type { WysiwygEditor } from './editor';
+import { ShapePalette } from './palette';
 
 export class Toolbar {
   constructor(private readonly host: HTMLElement, private readonly editor: WysiwygEditor) { this.build(); }
@@ -17,6 +18,11 @@ export class Toolbar {
     bar.appendChild(this.btn('↶', 'Undo (Ctrl+Z)', () => this.editor.undo()));
     bar.appendChild(this.btn('↷', 'Redo (Ctrl+Shift+Z)', () => this.editor.redo()));
     bar.appendChild(this.btn('＋', 'Add node', () => this.addNode()));
+
+    const shapesBtn = this.btn('⬡', 'Shapes', () => {});
+    const palette = new ShapePalette(this.editor, shapesBtn);
+    shapesBtn.addEventListener('click', () => palette.toggle());
+    bar.appendChild(shapesBtn);
     bar.appendChild(this.btn('⌫', 'Delete selected', () => this.editor.deleteSelected()));
     bar.appendChild(this.btn('⤢', 'Auto layout', () => this.autoLayout()));
 

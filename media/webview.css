@@ -37,3 +37,7 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-panel-actions button { flex: 1; font-size: 12px; padding: 3px 0; cursor: pointer; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; }
 .ceasg-panel-actions button:hover { background: var(--vscode-button-hoverBackground); }
 .ceasg-panel-actions .ceasg-danger { background: var(--vscode-errorForeground); color: #fff; }
+.ceasg-palette { position: fixed; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); }
+.ceasg-palette-item { background: var(--vscode-button-secondaryBackground); border: none; padding: 4px; cursor: grab; }
+.ceasg-palette-item:hover { background: var(--vscode-button-hoverBackground); }
+.mermaid-flow-shape-icon { width: 36px; height: 24px; }

@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, NodeShape, nextNodeId } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -30,6 +30,13 @@ export class WysiwygEditor {
   constructor(private readonly root: HTMLElement, private readonly api: VsCodeApi) {
     this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-body"><div class="ceasg-canvas" id="canvas"></div><div id="panel"></div></div></div>';
     this.canvasHost = this.root.querySelector('#canvas') as HTMLElement;
+
+    this.canvasHost.addEventListener('dragover', (e) => { e.preventDefault(); });
+    this.canvasHost.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const shape = e.dataTransfer?.getData('text/ceasg-shape');
+      if (shape) { this.addNodeOfShape(shape as NodeShape, e.clientX, e.clientY); }
+    });
   }
 
   init(source: string): void {
@@ -67,6 +74,14 @@ export class WysiwygEditor {
 
   getModel(): DiagramModel { return this.model; }
   getRefs(): RenderRefs { return this.refs; }
+
+  addNodeOfShape(shape: NodeShape, clientX: number, clientY: number): void {
+    this.mutate((m) => {
+      const id = nextNodeId(m);
+      const p = this.viewport?.screenToSvg(clientX, clientY) ?? { x: 100, y: 100 };
+      m.nodes.push({ id, label: id, shape, x: p.x, y: p.y });
+    }, { commit: true });
+  }
 
   repaint(): void {
     const { svg, refs } = renderDiagram(this.model);
