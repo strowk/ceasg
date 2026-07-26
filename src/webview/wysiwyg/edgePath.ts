@@ -19,7 +19,15 @@ export function nodeBorderPoint(node: DiagramNode, towardX: number, towardY: num
 export function edgePathD(from: DiagramNode, to: DiagramNode, dir: Direction, offset = 0): string {
   const a = nodeBorderPoint(from, to.x, to.y);
   const b = nodeBorderPoint(to, from.x, from.y);
-  const horizontal = dir === 'LR' || dir === 'RL';
+  // Approach axis follows the actual geometry of this edge, so the arrowhead
+  // points the natural way (down when the target is below, right when it's to the
+  // right, etc.) even after nodes are dragged around. Fall back to the diagram's
+  // global flow direction only when the two nodes are perfectly diagonal.
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const horizontal = Math.abs(dx) === Math.abs(dy)
+    ? (dir === 'LR' || dir === 'RL')
+    : Math.abs(dx) > Math.abs(dy);
   // perpendicular offset for parallel-edge separation
   const nx = horizontal ? 0 : offset;
   const ny = horizontal ? offset : 0;
