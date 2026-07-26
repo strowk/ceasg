@@ -1,5 +1,5 @@
 import { estimateNodeSize, newEdgeId } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorAtPoint } from './hitTest';
+import { nodeAtPoint, nodesInRect, anchorAtPoint, edgeAtPoint } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 
@@ -97,6 +97,13 @@ export class PointerController {
       else if (!this.selection.has(node.id)) { this.selection.select(node.id); }
       this.dragIds = this.selection.multi.size > 0 ? [...this.selection.multi] : [node.id];
       this.dragging = true;
+      this.onSelectionChange();
+      return;
+    }
+    // edge hit-test
+    const edgeId = edgeAtPoint(model, p.x, p.y, 6 / this.editor.viewport!.scale);
+    if (edgeId !== undefined) {
+      this.selection.select(edgeId);
       this.onSelectionChange();
       return;
     }
