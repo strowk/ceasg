@@ -26,6 +26,15 @@ export class Toolbar {
     bar.appendChild(this.btn('⌫', 'Delete selected', () => this.editor.deleteSelected()));
     bar.appendChild(this.btn('⤢', 'Auto layout', () => this.autoLayout()));
 
+    const connectBtn = this.btn('⇝', 'Connect mode', () => {
+      const c = this.editor.controller;
+      if (c) {
+        c.mode = c.mode === 'connect' ? 'select' : 'connect';
+        connectBtn.classList.toggle('is-active', c.mode === 'connect');
+      }
+    });
+    bar.appendChild(connectBtn);
+
     const dir = document.createElement('select');
     dir.className = 'ceasg-tb-select';
     for (const d of DIRECTIONS) { const o = document.createElement('option'); o.value = d; o.textContent = d; dir.appendChild(o); }

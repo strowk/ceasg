@@ -17,11 +17,13 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-edge-thick .ceasg-edge-line { stroke-width: 3; }
 .ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
 .ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
+.ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
 .ceasg-arrowhead { fill: var(--vscode-foreground); }
 .ceasg-label-editor { position: fixed; z-index: 10; font-family: var(--vscode-editor-font-family); background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); border: 1px solid var(--vscode-focusBorder); padding: 2px; font-size: 14px; }
 .ceasg-toolbar { display: flex; gap: 4px; padding: 4px; border-bottom: 1px solid var(--vscode-panel-border); }
 .ceasg-tb-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 2px 8px; cursor: pointer; }
 .ceasg-tb-btn:hover { background: var(--vscode-button-hoverBackground); }
+.ceasg-tb-btn.is-active { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
 .ceasg-tb-select { background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); border: 1px solid var(--vscode-dropdown-border); }
 .ceasg-body { display: flex; flex: 1; overflow: hidden; }
 .ceasg-body .ceasg-canvas { flex: 1; overflow: hidden; }

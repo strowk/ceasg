@@ -108,12 +108,21 @@ export class WysiwygEditor {
   drawSelection(): void {
     if (!this.overlay || !this.selection) { return; }
     this.overlay.clear();
+    // Remove any previously applied edge-selected class from all edge elements
+    for (const [, g] of this.refs.edgeEls) {
+      g.classList.remove('ceasg-edge-selected');
+    }
     for (const id of this.selection.multi) {
       const n = this.model.nodes.find((nn) => nn.id === id);
-      if (!n) { continue; }
-      const w = n.w ?? estimateNodeSize(n).w;
-      const h = n.h ?? estimateNodeSize(n).h;
-      this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
+      if (n) {
+        const w = n.w ?? estimateNodeSize(n).w;
+        const h = n.h ?? estimateNodeSize(n).h;
+        this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
+      } else {
+        // Check if the selected id is an edge
+        const edgeEl = this.refs.edgeEls.get(id);
+        if (edgeEl) { edgeEl.classList.add('ceasg-edge-selected'); }
+      }
     }
   }
 

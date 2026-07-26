@@ -25,6 +25,8 @@ export class PointerController {
   private marqueeStart: { x: number; y: number } | null = null;
   private connectFrom: string | null = null;
   private connectFromPt: { x: number; y: number } | null = null;
+  /** true when connectFrom is set via click-click mode (waiting for second click), not anchor-drag */
+  private connectClickWaiting = false;
   private panning = false;
   private spaceDown = false;
   private capturedPointerId: number | null = null;
@@ -66,29 +68,62 @@ export class PointerController {
 
     if (this.spaceDown || e.button === 1) { this.panning = true; return; }
 
+    // Anchor-drag connect (select mode) — drag from an anchor to another node
     const anchor = anchorAtPoint(model, p.x, p.y, 10 / this.editor.viewport!.scale);
-    if (anchor || this.mode === 'connect') {
-      const nodeId = anchor ? anchor.id : nodeAtPoint(model, p.x, p.y)?.id ?? null;
-      if (nodeId) {
-        this.connectFrom = nodeId;
-        const node = model.nodes.find((n) => n.id === nodeId)!;
-        if (anchor) {
-          const w = node.w ?? estimateNodeSize(node).w;
-          const h = node.h ?? estimateNodeSize(node).h;
-          const bx = node.x - w / 2;
-          const by = node.y - h / 2;
-          const anchorPts: Record<string, { x: number; y: number }> = {
-            N: { x: node.x, y: by },
-            S: { x: node.x, y: by + h },
-            E: { x: bx + w, y: node.y },
-            W: { x: bx, y: node.y },
-          };
-          this.connectFromPt = anchorPts[anchor.dir];
+    if (anchor) {
+      const nodeId = anchor.id;
+      const node = model.nodes.find((n) => n.id === nodeId)!;
+      this.connectFrom = nodeId;
+      const w = node.w ?? estimateNodeSize(node).w;
+      const h = node.h ?? estimateNodeSize(node).h;
+      const bx = node.x - w / 2;
+      const by = node.y - h / 2;
+      const anchorPts: Record<string, { x: number; y: number }> = {
+        N: { x: node.x, y: by },
+        S: { x: node.x, y: by + h },
+        E: { x: bx + w, y: node.y },
+        W: { x: bx, y: node.y },
+      };
+      this.connectFromPt = anchorPts[anchor.dir];
+      return;
+    }
+
+    // Click-click connect mode
+    if (this.mode === 'connect') {
+      const clickedNode = nodeAtPoint(model, p.x, p.y);
+      if (clickedNode) {
+        if (!this.connectFrom) {
+          // First click: set source node, wait for second click
+          this.connectFrom = clickedNode.id;
+          this.connectFromPt = { x: clickedNode.x, y: clickedNode.y };
+          this.connectClickWaiting = true;
+          this.editor.repaint();
+          return;
+        } else if (clickedNode.id !== this.connectFrom) {
+          // Second click on a different node: create edge
+          const from = this.connectFrom;
+          this.connectFrom = null;
+          this.connectFromPt = null;
+          this.connectClickWaiting = false;
+          this.editor.mutate((m) => {
+            m.edges.push({ id: newEdgeId(), from, to: clickedNode.id, label: '', kind: 'arrow' });
+          }, { commit: true });
+          return;
         } else {
-          this.connectFromPt = { x: node.x, y: node.y };
+          // Clicked same source again: cancel
+          this.connectFrom = null;
+          this.connectFromPt = null;
+          this.connectClickWaiting = false;
+          this.editor.repaint();
+          return;
         }
-        return;
       }
+      // Clicked background in connect mode: cancel, do NOT start marquee
+      this.connectFrom = null;
+      this.connectFromPt = null;
+      this.connectClickWaiting = false;
+      this.editor.repaint();
+      return;
     }
 
     const node = nodeAtPoint(model, p.x, p.y);
@@ -157,7 +192,8 @@ export class PointerController {
       this.panning = false; this.down = null;
     } else if (this.dragging) {
       this.dragging = false; this.editor.commit(); this.down = null;
-    } else if (this.connectFrom) {
+    } else if (this.connectFrom && !this.connectClickWaiting) {
+      // Anchor-drag connect: pointer released on a target node creates the edge
       const target = nodeAtPoint(this.editor.getModel(), p.x, p.y);
       if (target && target.id !== this.connectFrom) {
         const from = this.connectFrom;
