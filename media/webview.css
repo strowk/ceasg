@@ -19,6 +19,10 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
 .ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
 .ceasg-arrowhead { fill: var(--vscode-foreground); }
+.ceasg-overlay { pointer-events: none; }
+.ceasg-sel { fill: none; stroke: var(--vscode-focusBorder); stroke-width: 1.5; stroke-dasharray: 4 2; }
+.ceasg-marquee { fill: var(--vscode-focusBorder); fill-opacity: 0.08; stroke: var(--vscode-focusBorder); stroke-width: 1; stroke-dasharray: 4 2; }
+.ceasg-ghost { fill: none; stroke: var(--vscode-focusBorder); stroke-width: 1.5; stroke-dasharray: 4 2; }
 .ceasg-label-editor { position: fixed; z-index: 10; font-family: var(--vscode-editor-font-family); background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); border: 1px solid var(--vscode-focusBorder); padding: 2px; font-size: 14px; }
 .ceasg-toolbar { display: flex; gap: 4px; padding: 4px; border-bottom: 1px solid var(--vscode-panel-border); }
 .ceasg-tb-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 2px 8px; cursor: pointer; }
