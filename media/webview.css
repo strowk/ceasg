@@ -16,6 +16,7 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-edge-dotted .ceasg-edge-line { stroke-dasharray: 5 5; }
 .ceasg-edge-thick .ceasg-edge-line { stroke-width: 3; }
 .ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
+.ceasg-edge-label-bg { fill: var(--vscode-editor-background); }
 .ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
 .ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
 .ceasg-arrowhead { fill: var(--vscode-foreground); }

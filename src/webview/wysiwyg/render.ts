@@ -1,7 +1,8 @@
-import { DiagramModel, DiagramNode, DiagramEdge, createShapeElements, estimateNodeSize, resolveNodeStyle } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, createShapeElements, estimateNodeSize, resolveNodeStyle, measureTextWidth } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const EDGE_LABEL_FONT = '12px "trebuchet ms", verdana, arial, sans-serif';
 
 export interface RenderRefs {
   nodeEls: Map<string, SVGGElement>;
@@ -74,6 +75,18 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
 
   if (edge.label) {
     const mid = bezierMidpoint(d);
+    // Background rect so the label reads clearly over the edge line. Sized from
+    // measured text width (getBBox isn't available on a detached SVG at build time).
+    const boxW = measureTextWidth(edge.label, EDGE_LABEL_FONT) + 8;
+    const boxH = 18;
+    const bg = el('rect');
+    bg.setAttribute('class', 'ceasg-edge-label-bg');
+    bg.setAttribute('x', String(mid.x - boxW / 2));
+    bg.setAttribute('y', String(mid.y - boxH / 2));
+    bg.setAttribute('width', String(boxW));
+    bg.setAttribute('height', String(boxH));
+    bg.setAttribute('rx', '2');
+    g.appendChild(bg);
     const label = el('text');
     label.setAttribute('class', 'ceasg-edge-label');
     label.setAttribute('x', String(mid.x));

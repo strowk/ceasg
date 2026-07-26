@@ -1,20 +1,20 @@
-import { DiagramNode } from '../../core';
 import { Viewport } from './viewport';
 
+/** Open an in-place textarea over a canvas point (node center or edge-label midpoint). */
 export function openLabelEditor(
-  host: HTMLElement, viewport: Viewport, node: DiagramNode, onCommit: (text: string) => void,
+  host: HTMLElement, viewport: Viewport, at: { x: number; y: number; text: string }, onCommit: (text: string) => void,
 ): void {
   const ta = document.createElement('textarea');
   ta.className = 'ceasg-label-editor';
-  ta.value = node.label;
+  ta.value = at.text;
   const rect = host.getBoundingClientRect();
-  // node center in screen space
+  // canvas point in screen space
   const scale = viewport.scale;
   const svgToScreen = (x: number, y: number) => {
     const p = viewport.screenToSvg(rect.left, rect.top);
     return { sx: rect.left + (x - p.x) * scale, sy: rect.top + (y - p.y) * scale };
   };
-  const { sx, sy } = svgToScreen(node.x, node.y);
+  const { sx, sy } = svgToScreen(at.x, at.y);
   ta.style.position = 'fixed';
   ta.style.left = `${sx - 60}px`;
   ta.style.top = `${sy - 14}px`;

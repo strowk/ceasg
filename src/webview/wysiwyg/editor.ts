@@ -4,7 +4,8 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint } from './hitTest';
+import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
@@ -100,9 +101,25 @@ export class WysiwygEditor {
     svg.addEventListener('dblclick', (e) => {
       const p = this.viewport!.screenToSvg(e.clientX, e.clientY);
       const node = nodeAtPoint(this.model, p.x, p.y);
-      if (!node) { return; }
-      openLabelEditor(this.canvasHost, this.viewport!, node, (text) => {
-        this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
+      if (node) {
+        openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label }, (text) => {
+          this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
+        });
+        return;
+      }
+      // Double-click the edge line (or its label) to edit the edge label in place.
+      const edgeId = edgeAtPoint(this.model, p.x, p.y, 10 / this.viewport!.scale);
+      if (edgeId === undefined) { return; }
+      const edge = this.model.edges.find((ed) => ed.id === edgeId);
+      const from = edge && this.model.nodes.find((n) => n.id === edge.from);
+      const to = edge && this.model.nodes.find((n) => n.id === edge.to);
+      if (!edge || !from || !to) { return; }
+      const d = edge.from === edge.to
+        ? selfLoopPathD(from, this.model.direction)
+        : edgePathD(from, to, this.model.direction);
+      const mid = bezierMidpoint(d);
+      openLabelEditor(this.canvasHost, this.viewport!, { x: mid.x, y: mid.y, text: edge.label }, (text) => {
+        this.mutate((m) => { const ed = m.edges.find((e2) => e2.id === edgeId); if (ed) { ed.label = text; } }, { commit: true });
       });
     });
   }

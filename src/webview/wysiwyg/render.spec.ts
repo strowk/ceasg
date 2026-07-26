@@ -18,6 +18,13 @@ describe('renderDiagram', () => {
     const { svg } = renderDiagram(model);
     expect(svg.textContent).toContain('Start');
   });
+  it('draws a background rect behind edge labels', () => {
+    const { model } = mermaidToModel('flowchart LR\nA -->|hi| B\n');
+    model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
+    const { svg } = renderDiagram(model);
+    expect(svg.querySelector('.ceasg-edge-label-bg')).toBeTruthy();
+    expect(svg.textContent).toContain('hi');
+  });
   it('applies node fill color from style', () => {
     const { model } = mermaidToModel('flowchart LR\nA[X]\n');
     model.nodes[0].x = 0; model.nodes[0].y = 0; model.nodes[0].style = { fillColor: '#ff0000' };
