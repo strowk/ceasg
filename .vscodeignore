@@ -16,6 +16,7 @@ pnpm-lock.yaml
 sample.md
 media/webview.css
 media/icon.svg
+media/demo.gif
 .vscodeignore
 .superpowers/**
 *.vsix

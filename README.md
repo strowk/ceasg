@@ -2,6 +2,8 @@
 
 A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on any `mermaid` code block in Markdown, and the editor opens in a pane beside your text. Edit flowcharts with an intuitive drag-and-drop canvas, or preview other Mermaid diagram types with live rendering.
 
+![ceasg demo](media/demo.gif)
+
 ## Features
 
 - **CodeLens integration** — "Mermaid: Open Visual Editor" appears above every `mermaid` block in Markdown.
