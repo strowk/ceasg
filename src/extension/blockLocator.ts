@@ -1,3 +1,5 @@
+import { PaneMode } from '../shared/messages';
+
 export interface MermaidBlock {
   id: string | null;
   fenceStart: number;
@@ -5,6 +7,10 @@ export interface MermaidBlock {
   innerEnd: number;
   source: string;
   type: string;
+}
+
+export function modeForType(type: string): PaneMode {
+  return type === 'flowchart' ? 'wysiwyg' : 'preview';
 }
 
 const FENCE_OPEN = /^[ \t]*```mermaid[ \t\r]*$/;

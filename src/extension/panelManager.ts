@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { HostToWebview, WebviewToHost, isUpdateMessage, isReadyMessage, PaneMode } from '../shared/messages';
-import { findMermaidBlocks } from './blockLocator';
+import { HostToWebview, WebviewToHost, isUpdateMessage, isReadyMessage } from '../shared/messages';
+import { findMermaidBlocks, modeForType } from './blockLocator';
 import { ensureBlockId } from './blockText';
 import { computeInnerEdit, locateById, sameMermaidSource } from './documentSync';
 import { getWebviewHtml } from './webviewHtml';
@@ -20,8 +20,6 @@ function randomId(): string {
   for (let i = 0; i < 8; i++) { id += chars.charAt(Math.floor(Math.random() * chars.length)); }
   return id;
 }
-
-function modeForBlock(type: string): PaneMode { return type === 'flowchart' ? 'wysiwyg' : 'preview'; }
 
 export class PanelManager {
   private sessions = new Map<string, Session>();
@@ -53,7 +51,7 @@ export class PanelManager {
 
     const current = locateById((await vscode.workspace.openTextDocument(documentUri)).getText(), blockId);
     const source = current ? current.source : block.source;
-    const mode = modeForBlock(block.type);
+    const mode = modeForType(block.type);
 
     const panel = vscode.window.createWebviewPanel(
       'ceasgEditor', 'Mermaid Editor', vscode.ViewColumn.Beside,
