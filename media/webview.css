@@ -6,3 +6,15 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
   font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size);
   background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); }
 .ceasg-err { color: var(--vscode-errorForeground); white-space: pre-wrap; }
+.ceasg-wysiwyg { height: 100vh; display: flex; flex-direction: column; }
+.ceasg-canvas { flex: 1; overflow: hidden; background: var(--vscode-editor-background); }
+.ceasg-canvas-svg { width: 100%; height: 100%; }
+.ceasg-shape { fill: var(--vscode-editorWidget-background); stroke: var(--vscode-foreground); stroke-width: 1.5; }
+.ceasg-label { fill: var(--vscode-foreground); font: 14px var(--vscode-font-family); }
+.ceasg-edge-line { stroke: var(--vscode-foreground); stroke-width: 1.5; }
+.ceasg-edge-hit { stroke: transparent; stroke-width: 12; fill: none; }
+.ceasg-edge-dotted .ceasg-edge-line { stroke-dasharray: 5 5; }
+.ceasg-edge-thick .ceasg-edge-line { stroke-width: 3; }
+.ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
+.ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
+.ceasg-arrowhead { fill: var(--vscode-foreground); }

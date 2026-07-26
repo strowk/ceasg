@@ -21,8 +21,7 @@ function randomId(): string {
   return id;
 }
 
-// Phase 5 replaces this with modeForType(type). Phase 0 forces preview for every block.
-function modeForBlock(_type: string): PaneMode { return 'preview'; }
+function modeForBlock(type: string): PaneMode { return type === 'flowchart' ? 'wysiwyg' : 'preview'; }
 
 export class PanelManager {
   private sessions = new Map<string, Session>();
