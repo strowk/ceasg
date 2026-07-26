@@ -4,7 +4,7 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints } from './hitTest';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
@@ -124,6 +124,15 @@ export class WysiwygEditor {
         // Check if the selected id is an edge
         const edgeEl = this.refs.edgeEls.get(id);
         if (edgeEl) { edgeEl.classList.add('ceasg-edge-selected'); }
+      }
+    }
+    // Connection handles: four circles on the single selected node. Drag from one
+    // to another node to create an edge (see PointerController.onDown).
+    if (this.selection.single) {
+      const n = this.model.nodes.find((nn) => nn.id === this.selection!.single);
+      if (n) {
+        const r = 5 / (this.viewport?.scale ?? 1);
+        for (const a of nodeAnchorPoints(n)) { this.overlay.handle(a.x, a.y, r); }
       }
     }
   }

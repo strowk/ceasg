@@ -53,21 +53,25 @@ export function edgeAtPoint(model: DiagramModel, x: number, y: number, tol: numb
   return undefined;
 }
 
-export function anchorAtPoint(
-  model: DiagramModel, x: number, y: number, tolerance: number,
-): { id: string; dir: 'N' | 'S' | 'E' | 'W' } | undefined {
-  for (let i = model.nodes.length - 1; i >= 0; i--) {
-    const n = model.nodes[i];
-    const b = box(n);
-    const anchors: Array<{ dir: 'N' | 'S' | 'E' | 'W'; ax: number; ay: number }> = [
-      { dir: 'N', ax: n.x, ay: b.y },
-      { dir: 'S', ax: n.x, ay: b.y + b.h },
-      { dir: 'E', ax: b.x + b.w, ay: n.y },
-      { dir: 'W', ax: b.x, ay: n.y },
-    ];
-    for (const a of anchors) {
-      if (Math.abs(x - a.ax) <= tolerance && Math.abs(y - a.ay) <= tolerance) { return { id: n.id, dir: a.dir }; }
-    }
+/** The four connection-handle points (edge midpoints) of a single node. */
+export function nodeAnchorPoints(
+  node: DiagramNode,
+): Array<{ dir: 'N' | 'S' | 'E' | 'W'; x: number; y: number }> {
+  const b = box(node);
+  return [
+    { dir: 'N', x: node.x, y: b.y },
+    { dir: 'S', x: node.x, y: b.y + b.h },
+    { dir: 'E', x: b.x + b.w, y: node.y },
+    { dir: 'W', x: b.x, y: node.y },
+  ];
+}
+
+/** Which of a single node's connection handles (if any) is within `tol` of (x, y). */
+export function anchorForNode(
+  node: DiagramNode, x: number, y: number, tol: number,
+): 'N' | 'S' | 'E' | 'W' | undefined {
+  for (const a of nodeAnchorPoints(node)) {
+    if (Math.abs(x - a.x) <= tol && Math.abs(y - a.y) <= tol) { return a.dir; }
   }
   return undefined;
 }

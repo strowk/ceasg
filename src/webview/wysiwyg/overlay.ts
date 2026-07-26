@@ -16,6 +16,13 @@ export class Overlay {
     this.g.appendChild(r);
   }
   marquee(x: number, y: number, w: number, h: number): void { this.outline(x, y, w, h, 'ceasg-marquee'); }
+  handle(cx: number, cy: number, r: number): void {
+    const c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
+    c.setAttribute('r', String(r));
+    c.setAttribute('class', 'ceasg-handle');
+    this.g.appendChild(c);
+  }
   ghostLine(x1: number, y1: number, x2: number, y2: number): void {
     const l = document.createElementNS(SVG_NS, 'line');
     l.setAttribute('x1', String(x1)); l.setAttribute('y1', String(y1));

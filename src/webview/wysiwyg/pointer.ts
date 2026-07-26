@@ -1,5 +1,5 @@
-import { estimateNodeSize, newEdgeId } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorAtPoint, edgeAtPoint } from './hitTest';
+import { newEdgeId } from '../../core';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 
@@ -68,24 +68,20 @@ export class PointerController {
 
     if (this.spaceDown || e.button === 1) { this.panning = true; return; }
 
-    // Anchor-drag connect (select mode) — drag from an anchor to another node
-    const anchor = anchorAtPoint(model, p.x, p.y, 10 / this.editor.viewport!.scale);
-    if (anchor) {
-      const nodeId = anchor.id;
-      const node = model.nodes.find((n) => n.id === nodeId)!;
-      this.connectFrom = nodeId;
-      const w = node.w ?? estimateNodeSize(node).w;
-      const h = node.h ?? estimateNodeSize(node).h;
-      const bx = node.x - w / 2;
-      const by = node.y - h / 2;
-      const anchorPts: Record<string, { x: number; y: number }> = {
-        N: { x: node.x, y: by },
-        S: { x: node.x, y: by + h },
-        E: { x: bx + w, y: node.y },
-        W: { x: bx, y: node.y },
-      };
-      this.connectFromPt = anchorPts[anchor.dir];
-      return;
+    // Connection handles: drag from one of the selected node's four circles to
+    // another node to create an edge. Handles only exist on the selected node,
+    // so nearby unselected nodes never hijack a click.
+    if (this.mode !== 'connect' && this.selection.single) {
+      const selNode = model.nodes.find((n) => n.id === this.selection.single);
+      if (selNode) {
+        const dir = anchorForNode(selNode, p.x, p.y, 9 / this.editor.viewport!.scale);
+        if (dir) {
+          const pt = nodeAnchorPoints(selNode).find((a) => a.dir === dir)!;
+          this.connectFrom = selNode.id;
+          this.connectFromPt = { x: pt.x, y: pt.y };
+          return;
+        }
+      }
     }
 
     // Click-click connect mode
