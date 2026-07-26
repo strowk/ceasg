@@ -1,0 +1,8 @@
+html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
+#app { height: 100vh; }
+.ceasg-preview { display: flex; flex-direction: column; height: 100vh; }
+.ceasg-render { flex: 1; overflow: auto; padding: 8px; border-bottom: 1px solid var(--vscode-panel-border); }
+.ceasg-src { height: 35%; border: 0; outline: 0; resize: none; padding: 8px;
+  font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size);
+  background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); }
+.ceasg-err { color: var(--vscode-errorForeground); white-space: pre-wrap; }
