@@ -1,12 +1,13 @@
 {
   "name": "ceasg",
-  "displayName": "ceasg",
-  "description": "mermaid diagrams wisewig",
+  "displayName": "ceasg — Visual Mermaid Editor",
+  "description": "Edit Mermaid diagrams visually from a CodeLens in your markdown — drag/drop flowchart WYSIWYG plus live preview for all diagram types.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
   "activationEvents": [
