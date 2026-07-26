@@ -46,6 +46,22 @@ Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
 - VS Code 1.103.0 or later.
 - A Markdown file with `` ```mermaid `` code blocks.
 
+## Acknowledgements
+
+The flowchart engine — parsing, serialization, dagre layout, geometry, and shapes — is
+**ported from [Mermaid Flow](https://github.com/THANSHEER/obsidian-mermaid-flow)** by
+THANSHEER, an Obsidian plugin for visually editing Mermaid flowcharts. Those files live in
+`src/core/` and each carries an attribution header. The `%% mermaid-flow:pos %%` layout
+convention is reused so diagrams stay cross-compatible with that plugin. Sincere thanks to
+the Mermaid Flow project — ceasg would not exist without it.
+
+Diagrams are rendered with [Mermaid](https://mermaid.js.org/) and laid out with
+[dagre](https://github.com/dagrejs/dagre).
+
 ## License
 
-Open source under [MIT](LICENSE).
+Licensed under the **GNU General Public License v3.0 or later** — [GPL-3.0-or-later](LICENSE).
+
+Because ceasg's flowchart engine is derived from Mermaid Flow (which is GPL-3.0-or-later),
+the whole extension — including its newly written code — is licensed under GPL-3.0-or-later.
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md) for details.

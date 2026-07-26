@@ -1,4 +1,12 @@
 /*
+ * Ported from Mermaid Flow (obsidian-mermaid-flow)
+ *   https://github.com/THANSHEER/obsidian-mermaid-flow
+ * Copyright (C) THANSHEER and Mermaid Flow contributors.
+ * Licensed under GPL-3.0-or-later. Adapted for the ceasg VS Code extension
+ * (2026): import paths and a DOM accessor shim; core logic unchanged.
+ */
+
+/*
  * Maps a diagram's theme config to the default node/edge colours the canvas
  * paints, so the interactive editor visually tracks the rendered Mermaid.
  *

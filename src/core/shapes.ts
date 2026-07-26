@@ -1,4 +1,12 @@
 /*
+ * Ported from Mermaid Flow (obsidian-mermaid-flow)
+ *   https://github.com/THANSHEER/obsidian-mermaid-flow
+ * Copyright (C) THANSHEER and Mermaid Flow contributors.
+ * Licensed under GPL-3.0-or-later. Adapted for the ceasg VS Code extension
+ * (2026): import paths and a DOM accessor shim; core logic unchanged.
+ */
+
+/*
  * Single source of truth for node-shape geometry. Both the editor canvas and
  * the shape-palette icons build their SVG from these functions, so a shape
  * always looks the same wherever it is drawn.

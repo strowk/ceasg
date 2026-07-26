@@ -3,6 +3,7 @@
   "displayName": "ceasg — Visual Mermaid Editor",
   "description": "Edit Mermaid diagrams visually from a CodeLens in your markdown — drag/drop flowchart WYSIWYG plus live preview for all diagram types.",
   "version": "0.0.1",
+  "license": "GPL-3.0-or-later",
   "engines": {
     "vscode": "^1.103.0"
   },
