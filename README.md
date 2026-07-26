@@ -38,8 +38,7 @@ Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
 
 - **Flowchart WYSIWYG only** — Other diagram types (sequence, state, class, etc.) render as live preview with a text editor; no visual editing UI.
 - **No PNG/SVG export** — Use Mermaid's live editor or browser DevTools to screenshot/save.
-- **No AI assist** — Fast-follow feature.
-- **No copy/paste** — Select, duplicate, and other multi-select shortcuts deferred to v1.1.
+- **No copy/paste** — Select, duplicate, and other multi-select shortcuts deferred to later.
 - **No subgraph creation UI** — The model supports subgraphs; a create-subgraph action is planned.
 - **No theme/style presets dropdown** — Inline color/style controls available in the properties panel.
 
