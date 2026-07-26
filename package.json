@@ -13,6 +13,7 @@
     "url": "https://github.com/strowk/ceasg/issues"
   },
   "homepage": "https://github.com/strowk/ceasg#readme",
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.103.0"
   },
@@ -54,6 +55,7 @@
     "@types/vscode": "^1.103.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
     "jsdom": "^29.1.1",

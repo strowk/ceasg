@@ -15,6 +15,7 @@ vsc-extension-quickstart.md
 pnpm-lock.yaml
 sample.md
 media/webview.css
+media/icon.svg
 .vscodeignore
 .superpowers/**
 *.vsix
