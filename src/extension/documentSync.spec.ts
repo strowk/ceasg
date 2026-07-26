@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { locateById, computeInnerEdit } from './documentSync';
+import { locateById, computeInnerEdit, sameMermaidSource } from './documentSync';
 
 const doc = '```mermaid\n%% ceasg:{"id":"abcd"} %%\ngraph TD\n  A --> B\n```\n';
 
@@ -25,5 +25,14 @@ describe('computeInnerEdit', () => {
     const crlf = '```mermaid\r\n%% ceasg:{"id":"abcd"} %%\r\ngraph TD\r\n```\r\n';
     // same logical content the webview would send back with LF endings
     expect(computeInnerEdit(crlf, 'abcd', '%% ceasg:{"id":"abcd"} %%\ngraph TD\n')).toBeNull();
+  });
+});
+
+describe('sameMermaidSource', () => {
+  it('treats CRLF and LF as equal', () => {
+    expect(sameMermaidSource('a\r\nb\r\n', 'a\nb\n')).toBe(true);
+  });
+  it('detects real differences', () => {
+    expect(sameMermaidSource('graph TD\n', 'graph LR\n')).toBe(false);
   });
 });

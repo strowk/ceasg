@@ -16,3 +16,7 @@ export function computeInnerEdit(
   if (normalizedCurrent === normalizedReplacement) { return null; }
   return { start: block.innerStart, end: block.innerEnd, replacement };
 }
+
+export function sameMermaidSource(a: string, b: string): boolean {
+  return a.replace(/\r\n/g, '\n') === b.replace(/\r\n/g, '\n');
+}

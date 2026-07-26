@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { HostToWebview, WebviewToHost, isUpdateMessage, isReadyMessage, PaneMode } from '../shared/messages';
 import { findMermaidBlocks } from './blockLocator';
 import { ensureBlockId } from './blockText';
-import { computeInnerEdit, locateById } from './documentSync';
+import { computeInnerEdit, locateById, sameMermaidSource } from './documentSync';
 import { getWebviewHtml } from './webviewHtml';
 
 interface Session {
@@ -11,6 +11,7 @@ interface Session {
   blockId: string;
   version: number;
   init: HostToWebview;
+  lastWebviewSource: string;
 }
 
 function randomId(): string {
@@ -62,16 +63,18 @@ export class PanelManager {
     );
 
     const session: Session = { panel, documentUri, blockId, version: 0,
-      init: { type: 'init', mode, source, version: 0 } };
+      init: { type: 'init', mode, source, version: 0 }, lastWebviewSource: '' };
     this.sessions.set(key, session);
 
     panel.webview.html = getWebviewHtml(panel.webview, this.context.extensionUri);
-    panel.onDidDispose(() => this.sessions.delete(key), null, this.context.subscriptions);
 
-    panel.webview.onDidReceiveMessage(async (msg: WebviewToHost) => {
+    const disposables: vscode.Disposable[] = [];
+
+    disposables.push(panel.webview.onDidReceiveMessage(async (msg: WebviewToHost) => {
       if (isReadyMessage(msg)) { panel.webview.postMessage(session.init); return; }
       if (isUpdateMessage(msg)) {
         session.version = msg.version;
+        session.lastWebviewSource = msg.source;
         const doc = await vscode.workspace.openTextDocument(documentUri);
         const e = computeInnerEdit(doc.getText(), blockId, msg.source);
         if (!e) { return; }
@@ -79,7 +82,12 @@ export class PanelManager {
         wsEdit.replace(documentUri, new vscode.Range(doc.positionAt(e.start), doc.positionAt(e.end)), e.replacement);
         await vscode.workspace.applyEdit(wsEdit);
       }
-    }, null, this.context.subscriptions);
+    }));
+
+    panel.onDidDispose(() => {
+      this.sessions.delete(key);
+      disposables.forEach((d) => d.dispose());
+    });
   }
 
   handleSave(document: vscode.TextDocument): void {
@@ -87,6 +95,7 @@ export class PanelManager {
       if (session.documentUri.toString() !== document.uri.toString()) { continue; }
       const block = locateById(document.getText(), session.blockId);
       if (!block) { continue; }
+      if (sameMermaidSource(block.source, session.lastWebviewSource)) { continue; }
       const msg: HostToWebview = { type: 'externalUpdate', source: block.source, version: session.version };
       session.panel.webview.postMessage(msg);
     }
