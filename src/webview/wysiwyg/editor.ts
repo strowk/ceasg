@@ -14,6 +14,7 @@ export class WysiwygEditor {
   private historyTimer: ReturnType<typeof setTimeout> | undefined;
   private canvasHost: HTMLElement;
   private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
+  private keyboardAttached = false;
   viewport: Viewport | null = null;
   overlay: Overlay | null = null;
   selection: SelectionState | null = null;
@@ -116,6 +117,8 @@ export class WysiwygEditor {
   }
 
   attachKeyboard(): void {
+    if (this.keyboardAttached) { return; }
+    this.keyboardAttached = true;
     window.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
