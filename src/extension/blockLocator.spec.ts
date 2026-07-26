@@ -29,6 +29,14 @@ describe('findMermaidBlocks', () => {
     const t = '```mermaid\n%% ceasg:{"id":"abcd1234"} %%\ngraph TD\n```\n';
     expect(findMermaidBlocks(t)[0].id).toBe('abcd1234');
   });
+  it('handles CRLF documents (Windows line endings)', () => {
+    const crlf = ['# T', '', '```mermaid', 'graph TD', '  A --> B', '```', ''].join('\r\n');
+    const b = findMermaidBlocks(crlf);
+    expect(b).toHaveLength(1);
+    // core range invariant must still hold on CRLF text
+    expect(crlf.slice(b[0].innerStart, b[0].innerEnd)).toBe(b[0].source);
+    expect(b[0].type).toBe('flowchart');
+  });
 });
 
 describe('sniffType', () => {

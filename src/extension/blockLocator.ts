@@ -7,8 +7,8 @@ export interface MermaidBlock {
   type: string;
 }
 
-const FENCE_OPEN = /^[ \t]*```mermaid[ \t]*$/;
-const FENCE_CLOSE = /^[ \t]*```[ \t]*$/;
+const FENCE_OPEN = /^[ \t]*```mermaid[ \t\r]*$/;
+const FENCE_CLOSE = /^[ \t]*```[ \t\r]*$/;
 const ID_RE = /%%\s*ceasg:(\{[\s\S]*?\})\s*%%/;
 
 export function findMermaidBlocks(text: string): MermaidBlock[] {
