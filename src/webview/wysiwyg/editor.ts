@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -40,6 +40,7 @@ export class WysiwygEditor {
 
     this.repaint();
     this.viewport?.fit(this.model);
+    this.attachKeyboard();
   }
 
   getModel(): DiagramModel { return this.model; }
@@ -104,6 +105,50 @@ export class WysiwygEditor {
     this.model = cloneModel(this.history[this.historyIndex]);
     this.repaint();
     this.scheduleSync();
+  }
+
+  deleteSelected(): void {
+    if (this.selection === null || this.selection.multi.size === 0) { return; }
+    const ids = [...this.selection.multi];
+    this.mutate((m) => { for (const id of ids) { removeNode(m, id); } }, { commit: true });
+    this.selection.clear();
+    this.onSelectionChange();
+  }
+
+  attachKeyboard(): void {
+    window.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); this.undo(); return; }
+      if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); this.redo(); return; }
+      if (mod && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        if (this.selection !== null) {
+          this.selection.multi = new Set(this.model.nodes.map((n) => n.id));
+          this.repaint();
+          this.onSelectionChange();
+        }
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (this.selection === null || this.selection.multi.size === 0) { return; }
+        e.preventDefault();
+        this.deleteSelected();
+        return;
+      }
+      const nudge = e.shiftKey ? 10 : 1;
+      const deltas: Record<string, [number, number]> = { ArrowLeft: [-nudge, 0], ArrowRight: [nudge, 0], ArrowUp: [0, -nudge], ArrowDown: [0, nudge] };
+      if (deltas[e.key] && this.selection !== null && this.selection.multi.size > 0) {
+        e.preventDefault();
+        const [dx, dy] = deltas[e.key];
+        this.mutate((m) => { for (const id of this.selection!.multi) { const n = m.nodes.find((nn) => nn.id === id); if (n) { n.x += dx; n.y += dy; } } }, { commit: true });
+      }
+    });
+  }
+
+  private onSelectionChange(): void {
+    this.drawSelection();
   }
 
   serialize(): string { return modelToMermaid(this.model, { includePositions: true }); }
