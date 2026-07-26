@@ -24,8 +24,10 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   const style = resolveNodeStyle(model, node);
   for (const shapeEl of createShapeElements(node.shape, node.x, node.y, w, h)) {
     shapeEl.classList.add('ceasg-shape');
-    if (style?.fillColor) { shapeEl.setAttribute('fill', style.fillColor); }
-    if (style?.strokeColor) { shapeEl.setAttribute('stroke', style.strokeColor); }
+    // Inline style beats the `.ceasg-shape` stylesheet rule; a presentation
+    // attribute would be overridden by it, so per-node colors must use style.
+    if (style?.fillColor) { shapeEl.style.fill = style.fillColor; }
+    if (style?.strokeColor) { shapeEl.style.stroke = style.strokeColor; }
     g.appendChild(shapeEl);
   }
   const lines = node.label.split('\n');
@@ -35,7 +37,7 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   text.setAttribute('y', String(node.y));
   text.setAttribute('text-anchor', 'middle');
   text.setAttribute('dominant-baseline', 'central');
-  if (style?.textColor) { text.setAttribute('fill', style.textColor); }
+  if (style?.textColor) { text.style.fill = style.textColor; }
   const lineH = 16;
   lines.forEach((line, i) => {
     const tspan = el('tspan');
