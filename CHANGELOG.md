@@ -4,6 +4,11 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.1.1] - 2026-07-26
+
+### Changed
+- Added an animated demo to the README and Marketplace listing.
+
 ## [0.1.0] - 2026-07-26
 
 ### Added
