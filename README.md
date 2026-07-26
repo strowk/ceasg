@@ -1,71 +1,51 @@
-# ceasg README
+# ceasg — Visual Mermaid Editor
 
-This is the README for your extension "ceasg". After writing up a brief description, we recommend including the following sections.
+A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on any `mermaid` code block in Markdown, and the editor opens in a pane beside your text. Edit flowcharts with an intuitive drag-and-drop canvas, or preview other Mermaid diagram types with live rendering.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **CodeLens integration** — "Mermaid: Open Visual Editor" appears above every `mermaid` block in Markdown.
+- **Dual-mode editing:**
+  - **Flowchart WYSIWYG** — Drag nodes, connect edges, adjust shapes/colors, auto-layout, and set position all visually on the canvas.
+  - **Live preview for other types** — Sequence, state, class, and other diagram types render live as you edit the Mermaid source in the editor.
+- **Two-way sync:**
+  - Edits in the visual editor write back to the Markdown file instantly.
+  - External changes (save in the Markdown editor) pull into the visual editor automatically.
+- **Layout persistence** — Node positions are stored in hidden `%% mermaid-flow:pos %%` comments and survive round-trips.
+- **Block identity** — Flowchart nodes carry hidden `%% ceasg:{"id":...} %%` markers to maintain identity across edits (compatible with the Obsidian mermaid-flow plugin).
 
-For example if there is an image subfolder under your extension project workspace:
+## Workflow
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Open a Markdown file with one or more `` ```mermaid `` code blocks.
+2. Click "Mermaid: Open Visual Editor" in the CodeLens above a block.
+3. The editor pane opens beside your Markdown.
+4. For **flowchart** blocks: drag to move, click to select, click endpoints to connect edges, right-click to delete, use the properties panel to change shape/color/label.
+5. For **other diagram types**: edit the text in the Markdown editor (left), see live preview updates in the editor pane (right).
+6. Save the Markdown file (`Ctrl+S` / `Cmd+S`). External changes sync back into the visual editor automatically.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Hidden Comment Conventions
+
+The extension preserves two lightweight comment formats for interoperability:
+
+- `%% ceasg:{"id":"....."} %%` — Marks a flowchart node with a stable identity. Safe to edit or remove (if removed, a new ID is assigned on next save).
+- `%% mermaid-flow:pos id=x,y id=x,y ... %%` — Records node layout positions. Updated on every edit; safe to ignore or delete (layout resets to auto-layout on next save).
+
+Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
+
+## Known Limitations (v1)
+
+- **Flowchart WYSIWYG only** — Other diagram types (sequence, state, class, etc.) render as live preview with a text editor; no visual editing UI.
+- **No PNG/SVG export** — Use Mermaid's live editor or browser DevTools to screenshot/save.
+- **No AI assist** — Fast-follow feature.
+- **No copy/paste** — Select, duplicate, and other multi-select shortcuts deferred to v1.1.
+- **No subgraph creation UI** — The model supports subgraphs; a create-subgraph action is planned.
+- **No theme/style presets dropdown** — Inline color/style controls available in the properties panel.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VS Code 1.103.0 or later.
+- A Markdown file with `` ```mermaid `` code blocks.
 
-## Extension Settings
+## License
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Open source under [MIT](LICENSE).

@@ -1,21 +1,24 @@
 {
   "name": "ceasg",
-  "displayName": "ceasg",
-  "description": "mermaid diagrams wisewig",
+  "displayName": "ceasg — Visual Mermaid Editor",
+  "description": "Edit Mermaid diagrams visually from a CodeLens in your markdown — drag/drop flowchart WYSIWYG plus live preview for all diagram types.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "ceasg.helloWorld",
-        "title": "Hello World"
+        "command": "ceasg.openEditor",
+        "title": "Mermaid: Open Visual Editor"
       }
     ]
   },
@@ -29,24 +32,32 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:unit": "vitest run"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
+    "@types/dagre": "^0.7.54",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
-    "eslint": "^10.5.0",
+    "@types/vscode": "^1.103.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
     "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
+    "jsdom": "^29.1.1",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
+    "mermaid": "^11.16.0"
   }
 }

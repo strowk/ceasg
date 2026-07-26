@@ -4,6 +4,13 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.1.0] - 2026-07-26
 
-- Initial release
+### Added
+- Initial release of visual Mermaid editor.
+- CodeLens integration on every `mermaid` code block in Markdown files.
+- Dual-mode editing: WYSIWYG flowchart canvas with drag/drop, select, connect, shape/color controls, and auto-layout; live preview for all other diagram types.
+- Two-way sync: editor→Markdown write-back and Markdown→editor pull on save.
+- Layout persistence via hidden `%% mermaid-flow:pos %%` comments (cross-compatible with Obsidian mermaid-flow plugin).
+- Block identity tracking with hidden `%% ceasg:{"id":...} %%` markers.
+- Full WYSIWYG feature set: multi-select, marquee, drag, connect, delete, undo/redo, nudge, select-all, inline labels, shape selection, edge kind controls (solid/dashed), color/style inline editing, direction + auto-layout, zoom/fit viewport, properties panel.
