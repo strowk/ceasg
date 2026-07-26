@@ -18,4 +18,12 @@ describe('computeInnerEdit', () => {
   it('no-op when unchanged', () => {
     expect(computeInnerEdit(doc, 'abcd', '%% ceasg:{"id":"abcd"} %%\ngraph TD\n  A --> B\n')).toBeNull();
   });
+  it('returns null when the block id is not found', () => {
+    expect(computeInnerEdit(doc, 'nope', 'graph LR\n')).toBeNull();
+  });
+  it('treats CRLF vs LF as unchanged (no spurious edit)', () => {
+    const crlf = '```mermaid\r\n%% ceasg:{"id":"abcd"} %%\r\ngraph TD\r\n```\r\n';
+    // same logical content the webview would send back with LF endings
+    expect(computeInnerEdit(crlf, 'abcd', '%% ceasg:{"id":"abcd"} %%\ngraph TD\n')).toBeNull();
+  });
 });
