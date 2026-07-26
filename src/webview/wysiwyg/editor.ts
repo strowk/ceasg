@@ -60,6 +60,7 @@ export class WysiwygEditor {
 
   drawSelection(): void {
     if (!this.overlay || !this.selection) { return; }
+    this.overlay.clear();
     for (const id of this.selection.multi) {
       const n = this.model.nodes.find((nn) => nn.id === id);
       if (!n) { continue; }

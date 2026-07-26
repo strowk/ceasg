@@ -24,9 +24,14 @@ export class PointerController {
   private last = { x: 0, y: 0 };
   private marqueeStart: { x: number; y: number } | null = null;
   private connectFrom: string | null = null;
+  private connectFromPt: { x: number; y: number } | null = null;
   private panning = false;
   private spaceDown = false;
+  private capturedPointerId: number | null = null;
   mode: Mode = 'select';
+
+  private boundKeyDown = (e: KeyboardEvent): void => { if (e.code === 'Space') { this.spaceDown = true; } };
+  private boundKeyUp = (e: KeyboardEvent): void => { if (e.code === 'Space') { this.spaceDown = false; } };
 
   constructor(
     private readonly editor: WysiwygEditor,
@@ -39,8 +44,13 @@ export class PointerController {
     svg.addEventListener('pointermove', (e) => this.onMove(e));
     svg.addEventListener('pointerup', (e) => this.onUp(e));
     svg.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
-    window.addEventListener('keydown', (e) => { if (e.code === 'Space') { this.spaceDown = true; } });
-    window.addEventListener('keyup', (e) => { if (e.code === 'Space') { this.spaceDown = false; } });
+    window.removeEventListener('keydown', this.boundKeyDown);
+    window.removeEventListener('keyup', this.boundKeyUp);
+    window.addEventListener('keydown', this.boundKeyDown);
+    window.addEventListener('keyup', this.boundKeyUp);
+    if (this.capturedPointerId !== null) {
+      svg.setPointerCapture(this.capturedPointerId);
+    }
   }
 
   private pt(e: PointerEvent): { x: number; y: number } {
@@ -49,6 +59,7 @@ export class PointerController {
 
   private onDown(e: PointerEvent, svg: SVGSVGElement): void {
     svg.setPointerCapture(e.pointerId);
+    this.capturedPointerId = e.pointerId;
     const p = this.pt(e);
     this.down = p; this.last = { x: e.clientX, y: e.clientY };
     const model = this.editor.getModel();
@@ -57,8 +68,27 @@ export class PointerController {
 
     const anchor = anchorAtPoint(model, p.x, p.y, 10 / this.editor.viewport!.scale);
     if (anchor || this.mode === 'connect') {
-      const node = anchor ? anchor.id : nodeAtPoint(model, p.x, p.y)?.id ?? null;
-      if (node) { this.connectFrom = node; return; }
+      const nodeId = anchor ? anchor.id : nodeAtPoint(model, p.x, p.y)?.id ?? null;
+      if (nodeId) {
+        this.connectFrom = nodeId;
+        const node = model.nodes.find((n) => n.id === nodeId)!;
+        if (anchor) {
+          const w = node.w ?? estimateNodeSize(node).w;
+          const h = node.h ?? estimateNodeSize(node).h;
+          const bx = node.x - w / 2;
+          const by = node.y - h / 2;
+          const anchorPts: Record<string, { x: number; y: number }> = {
+            N: { x: node.x, y: by },
+            S: { x: node.x, y: by + h },
+            E: { x: bx + w, y: node.y },
+            W: { x: bx, y: node.y },
+          };
+          this.connectFromPt = anchorPts[anchor.dir];
+        } else {
+          this.connectFromPt = { x: node.x, y: node.y };
+        }
+        return;
+      }
     }
 
     const node = nodeAtPoint(model, p.x, p.y);
@@ -96,9 +126,12 @@ export class PointerController {
       return;
     }
     if (this.connectFrom) {
-      const from = this.editor.getModel().nodes.find((n) => n.id === this.connectFrom)!;
+      const fromPt = this.connectFromPt ?? (() => {
+        const from = this.editor.getModel().nodes.find((n) => n.id === this.connectFrom)!;
+        return { x: from.x, y: from.y };
+      })();
       this.editor.repaint();
-      this.overlay0().ghostLine(from.x, from.y, p.x, p.y);
+      this.overlay0().ghostLine(fromPt.x, fromPt.y, p.x, p.y);
       return;
     }
     if (this.marqueeStart) {
@@ -113,9 +146,11 @@ export class PointerController {
 
   private onUp(e: PointerEvent): void {
     const p = this.pt(e);
-    if (this.panning) { this.panning = false; this.down = null; return; }
-    if (this.dragging) { this.dragging = false; this.editor.commit(); this.down = null; return; }
-    if (this.connectFrom) {
+    if (this.panning) {
+      this.panning = false; this.down = null;
+    } else if (this.dragging) {
+      this.dragging = false; this.editor.commit(); this.down = null;
+    } else if (this.connectFrom) {
       const target = nodeAtPoint(this.editor.getModel(), p.x, p.y);
       if (target && target.id !== this.connectFrom) {
         const from = this.connectFrom;
@@ -124,9 +159,8 @@ export class PointerController {
         }, { commit: true });
       } else { this.editor.repaint(); }
       this.connectFrom = null;
-      return;
-    }
-    if (this.marqueeStart) {
+      this.connectFromPt = null;
+    } else if (this.marqueeStart) {
       const x = Math.min(this.marqueeStart.x, p.x);
       const y = Math.min(this.marqueeStart.y, p.y);
       const w = Math.abs(p.x - this.marqueeStart.x);
@@ -139,6 +173,7 @@ export class PointerController {
       this.editor.repaint();
       this.onSelectionChange();
     }
+    this.capturedPointerId = null;
   }
 
   private onWheel(e: WheelEvent): void {
