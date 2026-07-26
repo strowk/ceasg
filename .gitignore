@@ -4,3 +4,7 @@ out/
 .vscode-test/
 *.vsix
 .superpowers/
+*.log
+# generated from vitest.config.ts (only the .ts source is tracked)
+vitest.config.js
+vitest.config.js.map
