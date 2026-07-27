@@ -39,6 +39,7 @@ async function main() {
 
 	fs.mkdirSync('dist', { recursive: true });
 	if (fs.existsSync('media/webview.css')) { fs.copyFileSync('media/webview.css', 'dist/webview.css'); }
+	if (fs.existsSync('media/diagram.css')) { fs.copyFileSync('media/diagram.css', 'dist/diagram.css'); }
 
 	if (watch) {
 		await Promise.all([extensionCtx.watch(), webviewCtx.watch()]);

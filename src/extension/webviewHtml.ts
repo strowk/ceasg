@@ -11,11 +11,13 @@ export function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri
   const nonce = getNonce();
   const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
   const cssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));
+  const diagramCssUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'diagram.css'));
   return `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="${diagramCssUri}">
 <link rel="stylesheet" href="${cssUri}">
 </head><body>
 <div id="app"></div>

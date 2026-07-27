@@ -9,17 +9,6 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-wysiwyg { height: 100vh; display: flex; flex-direction: column; }
 .ceasg-canvas { flex: 1; overflow: hidden; background: var(--vscode-editor-background); }
 .ceasg-canvas-svg { width: 100%; height: 100%; }
-.ceasg-shape { fill: var(--vscode-editorWidget-background); stroke: var(--vscode-foreground); stroke-width: 1.5; }
-.ceasg-label { fill: var(--vscode-foreground); font: 14px var(--vscode-font-family); }
-.ceasg-edge-line { stroke: var(--vscode-foreground); stroke-width: 1.5; }
-.ceasg-edge-hit { stroke: transparent; stroke-width: 12; fill: none; }
-.ceasg-edge-dotted .ceasg-edge-line { stroke-dasharray: 5 5; }
-.ceasg-edge-thick .ceasg-edge-line { stroke-width: 3; }
-.ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
-.ceasg-edge-label-bg { fill: var(--vscode-editor-background); }
-.ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
-.ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
-.ceasg-arrowhead { fill: var(--vscode-foreground); }
 .ceasg-overlay { pointer-events: none; }
 .ceasg-sel { fill: none; stroke: var(--vscode-focusBorder); stroke-width: 1.5; stroke-dasharray: 4 2; }
 .ceasg-marquee { fill: var(--vscode-focusBorder); fill-opacity: 0.08; stroke: var(--vscode-focusBorder); stroke-width: 1; stroke-dasharray: 4 2; }

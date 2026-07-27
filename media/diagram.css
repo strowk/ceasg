@@ -1,0 +1,11 @@
+.ceasg-shape { fill: var(--vscode-editorWidget-background); stroke: var(--vscode-foreground); stroke-width: 1.5; }
+.ceasg-label { fill: var(--vscode-foreground); font: 14px var(--vscode-font-family); }
+.ceasg-edge-line { stroke: var(--vscode-foreground); stroke-width: 1.5; }
+.ceasg-edge-hit { stroke: transparent; stroke-width: 12; fill: none; }
+.ceasg-edge-dotted .ceasg-edge-line { stroke-dasharray: 5 5; }
+.ceasg-edge-thick .ceasg-edge-line { stroke-width: 3; }
+.ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
+.ceasg-edge-label-bg { fill: var(--vscode-editor-background); }
+.ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
+.ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
+.ceasg-arrowhead { fill: var(--vscode-foreground); }
