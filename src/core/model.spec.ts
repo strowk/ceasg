@@ -99,9 +99,13 @@ describe('group tree helpers', () => {
     m.groups.push({ id: 'inner', title: 'i', nodeIds: ['B'], parentId: 'outer', x: 120, y: 60, w: 100, h: 80 });
     translateGroup(m, 'outer', 10, 20);
     expect(m.nodes.find((n) => n.id === 'A')!.x).toBe(110);
+    expect(m.nodes.find((n) => n.id === 'A')!.y).toBe(120);
     expect(m.nodes.find((n) => n.id === 'B')!.x).toBe(210);
+    expect(m.nodes.find((n) => n.id === 'B')!.y).toBe(120);
     expect(m.groups.find((g) => g.id === 'outer')!.x).toBe(60);
+    expect(m.groups.find((g) => g.id === 'outer')!.y).toBe(70);
     expect(m.groups.find((g) => g.id === 'inner')!.x).toBe(130);
+    expect(m.groups.find((g) => g.id === 'inner')!.y).toBe(80);
   });
 
   it('removeGroup reparents child groups and members to parent', () => {
