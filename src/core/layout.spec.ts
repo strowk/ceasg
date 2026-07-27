@@ -26,15 +26,25 @@ describe('autoLayout', () => {
 });
 
 describe('auto layout with nested groups', () => {
-  it('keeps nested members inside the parent group box', () => {
+  it('clears stale stored group bounds and re-derives nesting after layout', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',
     );
+    const outerGrp = model.groups.find((g) => g.id === 'outer')!;
+    // Seed WRONG tiny stored bounds that would break nesting if not cleared.
+    outerGrp.x = 0; outerGrp.y = 0; outerGrp.w = 1; outerGrp.h = 1;
     autoLayout(model);
-    const outer = groupBounds(model, model.groups.find((g) => g.id === 'outer')!);
+    // Layout must clear stored bounds so they re-derive from laid-out members.
+    expect(outerGrp.x).toBeUndefined();
+    expect(outerGrp.y).toBeUndefined();
+    expect(outerGrp.w).toBeUndefined();
+    expect(outerGrp.h).toBeUndefined();
+    const outer = groupBounds(model, outerGrp);
     const inner = groupBounds(model, model.groups.find((g) => g.id === 'inner')!);
+    // Re-derived outer box fully encloses inner on all four edges.
     expect(outer.x).toBeLessThanOrEqual(inner.x);
     expect(outer.y).toBeLessThanOrEqual(inner.y);
     expect(outer.x + outer.w).toBeGreaterThanOrEqual(inner.x + inner.w);
+    expect(outer.y + outer.h).toBeGreaterThanOrEqual(inner.y + inner.h);
   });
 });
