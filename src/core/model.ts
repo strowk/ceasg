@@ -12,6 +12,8 @@
  * serializer.ts.
  */
 
+import { estimateNodeSize } from "./nodeGeometry";
+
 export type Direction = "TB" | "BT" | "LR" | "RL";
 
 export const DIRECTIONS: Direction[] = ["TB", "BT", "LR", "RL"];
@@ -148,7 +150,17 @@ export interface DiagramGroup {
 	id: string;
 	title: string;
 	nodeIds: string[];
+	/** Enclosing group id for nesting; undefined = top-level. */
+	parentId?: string;
+	/** Explicit box (top-left origin). Undefined → derived from members. */
+	x?: number;
+	y?: number;
+	w?: number;
+	h?: number;
 }
+
+export const GROUP_PAD = 20;
+export const GROUP_TITLE_H = 24;
 
 /** Diagram-level Mermaid config, emitted as a `%%{init: …}%%` directive. */
 export interface DiagramConfig {
@@ -327,8 +339,146 @@ export function assignNodeToGroup(
 	}
 }
 
-/** Delete a group but keep its member nodes (ungroup). */
+export function groupChildren(
+	model: DiagramModel,
+	id: string,
+): DiagramGroup[] {
+	return model.groups.filter((g) => g.parentId === id);
+}
+
+/** Top-left box for a group: stored bounds when set, else derived from members. */
+export function groupBounds(
+	model: DiagramModel,
+	group: DiagramGroup,
+): { x: number; y: number; w: number; h: number } {
+	if (
+		group.x !== undefined &&
+		group.y !== undefined &&
+		group.w !== undefined &&
+		group.h !== undefined
+	) {
+		return { x: group.x, y: group.y, w: group.w, h: group.h };
+	}
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	const add = (x: number, y: number, w: number, h: number) => {
+		minX = Math.min(minX, x);
+		minY = Math.min(minY, y);
+		maxX = Math.max(maxX, x + w);
+		maxY = Math.max(maxY, y + h);
+	};
+	for (const id of group.nodeIds) {
+		const n = findNode(model, id);
+		if (!n) continue;
+		const s = estimateNodeSize(n);
+		add(n.x - s.w / 2, n.y - s.h / 2, s.w, s.h);
+	}
+	for (const child of groupChildren(model, group.id)) {
+		const b = groupBounds(model, child);
+		add(b.x, b.y, b.w, b.h);
+	}
+	if (!Number.isFinite(minX)) {
+		// Empty group with no stored bounds: a small default box.
+		return { x: 0, y: 0, w: 120, h: 80 };
+	}
+	return {
+		x: minX - GROUP_PAD,
+		y: minY - GROUP_PAD - GROUP_TITLE_H,
+		w: maxX - minX + GROUP_PAD * 2,
+		h: maxY - minY + GROUP_PAD * 2 + GROUP_TITLE_H,
+	};
+}
+
+/** True if `maybeAncestor` is `id` or an ancestor of `id` in the group tree. */
+function isGroupAncestor(
+	model: DiagramModel,
+	maybeAncestor: string,
+	id: string,
+): boolean {
+	let cur: string | undefined = id;
+	while (cur) {
+		if (cur === maybeAncestor) return true;
+		cur = model.groups.find((g) => g.id === cur)?.parentId;
+	}
+	return false;
+}
+
+export function assignGroupToParent(
+	model: DiagramModel,
+	groupId: string,
+	parentId: string | null,
+): void {
+	const group = model.groups.find((g) => g.id === groupId);
+	if (!group) return;
+	if (parentId === null) {
+		group.parentId = undefined;
+		return;
+	}
+	if (parentId === groupId) return;
+	// Refuse cycles: a group cannot become a child of its own descendant.
+	if (isGroupAncestor(model, groupId, parentId)) return;
+	group.parentId = parentId;
+}
+
+export function groupDescendantNodeIds(
+	model: DiagramModel,
+	id: string,
+): string[] {
+	const out: string[] = [];
+	const group = model.groups.find((g) => g.id === id);
+	if (!group) return out;
+	out.push(...group.nodeIds);
+	for (const child of groupChildren(model, id)) {
+		out.push(...groupDescendantNodeIds(model, child.id));
+	}
+	return out;
+}
+
+export function translateGroup(
+	model: DiagramModel,
+	id: string,
+	dx: number,
+	dy: number,
+): void {
+	const group = model.groups.find((g) => g.id === id);
+	if (!group) return;
+	// Move this group's stored bounds and every descendant group's stored bounds.
+	const shiftGroup = (g: DiagramGroup) => {
+		if (g.x !== undefined) g.x += dx;
+		if (g.y !== undefined) g.y += dy;
+		for (const child of groupChildren(model, g.id)) shiftGroup(child);
+	};
+	shiftGroup(group);
+	// Move every descendant member node.
+	for (const nid of groupDescendantNodeIds(model, id)) {
+		const n = findNode(model, nid);
+		if (n && !n.locked) {
+			n.x += dx;
+			n.y += dy;
+		}
+	}
+}
+
+/** Delete a group but keep its contents: reparent child groups and member
+ *  nodes to this group's parent (top-level when it had none). */
 export function removeGroup(model: DiagramModel, groupId: string): void {
+	const group = model.groups.find((g) => g.id === groupId);
+	if (!group) return;
+	const newParent = group.parentId;
+	for (const child of groupChildren(model, groupId)) {
+		child.parentId = newParent;
+	}
+	// Member nodes fall to the parent group (or become ungrouped at top-level).
+	if (newParent) {
+		const parent = model.groups.find((g) => g.id === newParent);
+		if (parent) {
+			for (const nid of group.nodeIds) {
+				if (!parent.nodeIds.includes(nid)) parent.nodeIds.push(nid);
+			}
+		}
+	}
 	model.groups = model.groups.filter((g) => g.id !== groupId);
 }
 
@@ -393,7 +543,16 @@ export function cloneModel(model: DiagramModel): DiagramModel {
 				? { ...e.style, extra: e.style.extra ? [...e.style.extra] : undefined }
 				: undefined,
 		})),
-		groups: model.groups.map((g) => ({ ...g, nodeIds: [...g.nodeIds] })),
+		groups: model.groups.map((g) => ({
+			id: g.id,
+			title: g.title,
+			nodeIds: [...g.nodeIds],
+			parentId: g.parentId,
+			x: g.x,
+			y: g.y,
+			w: g.w,
+			h: g.h,
+		})),
 		classDefs: model.classDefs.map((c) => ({
 			name: c.name,
 			style: { ...c.style, extra: c.style.extra ? [...c.style.extra] : undefined },
