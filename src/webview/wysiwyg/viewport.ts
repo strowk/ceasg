@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, estimateNodeSize } from '../../core';
+import { DiagramModel, DiagramNode, estimateNodeSize, groupBounds } from '../../core';
 
 const PAD = 40;
 
@@ -7,7 +7,7 @@ function sizeOf(n: DiagramNode): { w: number; h: number } {
 }
 
 export function computeContentBounds(model: DiagramModel): { minX: number; minY: number; maxX: number; maxY: number } {
-  if (model.nodes.length === 0) { return { minX: 0, minY: 0, maxX: 400, maxY: 300 }; }
+  if (model.nodes.length === 0 && model.groups.length === 0) { return { minX: 0, minY: 0, maxX: 400, maxY: 300 }; }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of model.nodes) {
     const { w, h } = sizeOf(n);
@@ -15,6 +15,15 @@ export function computeContentBounds(model: DiagramModel): { minX: number; minY:
     minY = Math.min(minY, n.y - h / 2);
     maxX = Math.max(maxX, n.x + w / 2);
     maxY = Math.max(maxY, n.y + h / 2);
+  }
+  // Subgraph boxes extend above/around their members (title band + padding), so
+  // fit must account for them or the box top spills past the viewport edge.
+  for (const g of model.groups) {
+    const b = groupBounds(model, g);
+    minX = Math.min(minX, b.x);
+    minY = Math.min(minY, b.y);
+    maxX = Math.max(maxX, b.x + b.w);
+    maxY = Math.max(maxY, b.y + b.h);
   }
   return { minX: minX - PAD, minY: minY - PAD, maxX: maxX + PAD, maxY: maxY + PAD };
 }
