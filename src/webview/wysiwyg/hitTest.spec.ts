@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { nodeAtPoint, nodesInRect, edgeAtPoint } from './hitTest';
-import { emptyModel } from '../../core';
+import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint } from './hitTest';
+import { emptyModel, mermaidToModel } from '../../core';
 
 function m2() {
   const m = emptyModel();
@@ -38,5 +38,19 @@ describe('hitTest', () => {
   });
   it('nodesInRect returns enclosed node ids', () => {
     expect(nodesInRect(m2(), { x: 40, y: 60, w: 120, h: 90 })).toEqual(['A']);
+  });
+});
+
+describe('groupAtPoint', () => {
+  it('returns the innermost group containing the point', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n');
+    // stored bounds: inner nested inside outer
+    const outer = model.groups.find((g) => g.id === 'outer')!;
+    const inner = model.groups.find((g) => g.id === 'inner')!;
+    outer.x = 0; outer.y = 0; outer.w = 400; outer.h = 400;
+    inner.x = 100; inner.y = 100; inner.w = 100; inner.h = 100;
+    expect(groupAtPoint(model, 150, 150)).toBe('inner'); // inside both → innermost
+    expect(groupAtPoint(model, 20, 20)).toBe('outer');   // only outer
+    expect(groupAtPoint(model, 500, 500)).toBeUndefined();
   });
 });

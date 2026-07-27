@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, estimateNodeSize } from '../../core';
+import { DiagramModel, DiagramNode, estimateNodeSize, groupBounds } from '../../core';
 import { edgePathD, selfLoopPathD } from './edgePath';
 
 export type Hit =
@@ -74,4 +74,25 @@ export function anchorForNode(
     if (Math.abs(x - a.x) <= tol && Math.abs(y - a.y) <= tol) { return a.dir; }
   }
   return undefined;
+}
+
+function groupDepth(model: DiagramModel, id: string): number {
+  let d = 0;
+  let cur = model.groups.find((g) => g.id === id)?.parentId;
+  while (cur) { d++; cur = model.groups.find((g) => g.id === cur)?.parentId; }
+  return d;
+}
+
+/** The innermost (deepest-nested) group whose box contains (x, y). */
+export function groupAtPoint(model: DiagramModel, x: number, y: number): string | undefined {
+  let best: string | undefined;
+  let bestDepth = -1;
+  for (const grp of model.groups) {
+    const b = groupBounds(model, grp);
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+      const d = groupDepth(model, grp.id);
+      if (d > bestDepth) { bestDepth = d; best = grp.id; }
+    }
+  }
+  return best;
 }
