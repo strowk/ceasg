@@ -1,15 +1,11 @@
 import mermaid from 'mermaid';
-import { renderAll } from './previewHost';
+import { startPreview } from './previewHost';
 
-function run(): void {
-  const dark =
-    document.body.classList.contains('vscode-dark') ||
-    document.body.classList.contains('vscode-high-contrast');
-  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' });
-  void renderAll((id, src) => mermaid.render(id, src));
-}
+const dark =
+  document.body.classList.contains('vscode-dark') ||
+  document.body.classList.contains('vscode-high-contrast');
+mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' });
 
-// previewScripts are re-run on every content change; the data-done guard in
-// renderAll makes re-runs cheap and idempotent.
-run();
-document.addEventListener('DOMContentLoaded', run);
+// Contributed preview scripts run once at load; startPreview also re-renders on
+// VS Code's `vscode.markdown.updateContent` event so diagrams survive edits.
+startPreview((id, src) => mermaid.render(id, src));

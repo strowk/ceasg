@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { decodeSource, processElement, renderAll } from './previewHost';
+import { decodeSource, processElement, renderAll, renderAllFresh, startPreview } from './previewHost';
 import { encodeSource } from './markdownItMermaid';
 
 function placeholder(src: string): HTMLElement {
@@ -53,5 +53,31 @@ describe('renderAll', () => {
     document.body.append(placeholder('flowchart LR\nA-->B'), placeholder('flowchart TD\nX-->Y'));
     await renderAll(noMermaid);
     expect(document.querySelectorAll('.ceasg-diagram[data-done]').length).toBe(2);
+  });
+});
+
+describe('renderAllFresh', () => {
+  // VS Code's incremental preview update can leave a stale data-done marker on
+  // an emptied placeholder; a fresh pass must clear markers and re-render.
+  it('re-renders a placeholder even if it is already marked data-done', async () => {
+    document.body.innerHTML = '';
+    const el = placeholder('flowchart LR\nA-->B');
+    el.setAttribute('data-done', '1'); // marker survived but content was blanked
+    document.body.append(el);
+    await renderAllFresh(noMermaid);
+    expect(el.querySelector('svg[data-node-id], svg [data-node-id]')).toBeTruthy();
+  });
+});
+
+describe('startPreview', () => {
+  it('re-renders diagrams when the preview content updates', async () => {
+    document.body.innerHTML = '';
+    startPreview(noMermaid); // initial pass sees no placeholders
+    // Simulate VS Code morphing new content into the existing preview DOM.
+    document.body.append(placeholder('flowchart LR\nA-->B'));
+    window.dispatchEvent(new Event('vscode.markdown.updateContent'));
+    await new Promise((r) => setTimeout(r));
+    expect(document.querySelector('.ceasg-diagram[data-done]')).toBeTruthy();
+    expect(document.querySelector('.ceasg-diagram svg [data-node-id], .ceasg-diagram svg[data-node-id]')).toBeTruthy();
   });
 });

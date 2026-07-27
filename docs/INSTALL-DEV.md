@@ -6,7 +6,7 @@ version, so installing the VSIX **replaces** the marketplace copy.
 1. Build the VSIX (from the `extension/` folder):
 
    pnpm run package
-   pnpm exec vsce package
+   pnpm exec vsce package --no-dependencies
 
 2. Install it, overwriting the installed version:
 

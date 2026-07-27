@@ -36,3 +36,34 @@ export async function renderAll(render: MermaidRender): Promise<void> {
   const els = Array.from(document.querySelectorAll('.ceasg-diagram:not([data-done])'));
   for (const el of els) { await processElement(el, render, seq++); }
 }
+
+/**
+ * Clear the data-done markers, then render every placeholder from scratch.
+ *
+ * VS Code's Markdown preview updates incrementally: on any edit it regenerates
+ * the preview DOM in place, which blanks our rendered placeholders. Depending
+ * on how the DOM morph treats attributes, a stale `data-done` marker may
+ * survive on an emptied placeholder — so we cannot trust it after an update.
+ * Resetting first guarantees a correct re-render.
+ */
+export async function renderAllFresh(render: MermaidRender): Promise<void> {
+  for (const el of Array.from(document.querySelectorAll('.ceasg-diagram[data-done]'))) {
+    el.removeAttribute('data-done');
+  }
+  await renderAll(render);
+}
+
+/**
+ * Wire up rendering for the preview webview: render once now, again once the
+ * DOM is ready, and again whenever VS Code updates the preview content.
+ *
+ * Contributed preview scripts run only ONCE (at initial load), not on every
+ * content change. To keep diagrams alive across edits we must listen for
+ * VS Code's `vscode.markdown.updateContent` event on `window`.
+ */
+export function startPreview(render: MermaidRender): void {
+  const go = (): void => { void renderAllFresh(render); };
+  go();
+  document.addEventListener('DOMContentLoaded', go);
+  window.addEventListener('vscode.markdown.updateContent', go);
+}
