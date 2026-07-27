@@ -1,7 +1,8 @@
-import { newEdgeId } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint } from './hitTest';
+import { newEdgeId, translateGroup } from '../../core';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
+import { reassignNodeMembership, reassignGroupParent } from './editor';
 
 export class SelectionState {
   single: string | null = null;
@@ -21,6 +22,7 @@ export class PointerController {
   private down: { x: number; y: number } | null = null;
   private dragging = false;
   private dragIds: string[] = [];
+  private groupDragId: string | null = null;
   private last = { x: 0, y: 0 };
   private marqueeStart: { x: number; y: number } | null = null;
   private connectFrom: string | null = null;
@@ -131,6 +133,17 @@ export class PointerController {
       this.onSelectionChange();
       return;
     }
+    // Group box hit (nodes were checked first, so a node inside wins).
+    const groupId = groupAtPoint(model, p.x, p.y);
+    if (groupId) {
+      if (e.shiftKey) { this.selection.toggle(groupId); }
+      else { this.selection.select(groupId); }
+      this.groupDragId = groupId;
+      this.dragging = true;
+      this.dragIds = [];
+      this.onSelectionChange();
+      return;
+    }
     // edge hit-test
     const edgeId = edgeAtPoint(model, p.x, p.y, 6 / this.editor.viewport!.scale);
     if (edgeId !== undefined) {
@@ -156,9 +169,13 @@ export class PointerController {
       const dy = p.y - this.down.y;
       this.down = p;
       this.editor.mutate((m) => {
-        for (const id of this.dragIds) {
-          const n = m.nodes.find((nn) => nn.id === id);
-          if (n && !n.locked) { n.x += dx; n.y += dy; }
+        if (this.groupDragId) {
+          translateGroup(m, this.groupDragId, dx, dy);
+        } else {
+          for (const id of this.dragIds) {
+            const n = m.nodes.find((nn) => nn.id === id);
+            if (n && !n.locked) { n.x += dx; n.y += dy; }
+          }
         }
       });
       return;
@@ -187,7 +204,16 @@ export class PointerController {
     if (this.panning) {
       this.panning = false; this.down = null;
     } else if (this.dragging) {
-      this.dragging = false; this.editor.commit(); this.down = null;
+      this.dragging = false;
+      this.editor.mutate((m) => {
+        if (this.groupDragId) {
+          reassignGroupParent(m, this.groupDragId);
+        } else {
+          for (const id of this.dragIds) { reassignNodeMembership(m, id); }
+        }
+      }, { commit: true });
+      this.groupDragId = null;
+      this.down = null;
     } else if (this.connectFrom && !this.connectClickWaiting) {
       // Anchor-drag connect: pointer released on a target node creates the edge
       const target = nodeAtPoint(this.editor.getModel(), p.x, p.y);

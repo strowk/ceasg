@@ -1,14 +1,46 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint } from './hitTest';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
+
+/** After a node drag ends, set the node's membership to the innermost group its
+ *  centre lands in (or ungroup when it lands on empty canvas). */
+export function reassignNodeMembership(model: DiagramModel, nodeId: string): void {
+  const n = model.nodes.find((nn) => nn.id === nodeId);
+  if (!n) return;
+  const gid = groupAtPoint(model, n.x, n.y);
+  assignNodeToGroup(model, nodeId, gid ?? null);
+}
+
+/** After a group drag ends, reparent it to the innermost OTHER group its box
+ *  centre lands in (excluding itself and its descendants), or top-level. */
+export function reassignGroupParent(model: DiagramModel, groupId: string): void {
+  const g = model.groups.find((gr) => gr.id === groupId);
+  if (!g) return;
+  const b = groupBounds(model, g);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  // Candidate = innermost group at centre that is not this group.
+  let best: string | null = null;
+  let bestDepth = -1;
+  for (const other of model.groups) {
+    if (other.id === groupId) continue;
+    const ob = groupBounds(model, other);
+    const inside = cx >= ob.x && cx <= ob.x + ob.w && cy >= ob.y && cy <= ob.y + ob.h;
+    if (!inside) continue;
+    let d = 0, cur = other.parentId;
+    while (cur) { d++; cur = model.groups.find((gg) => gg.id === cur)?.parentId; }
+    if (d > bestDepth) { bestDepth = d; best = other.id; }
+  }
+  assignGroupToParent(model, groupId, best); // assignGroupToParent guards cycles
+}
 
 export class WysiwygEditor {
   private model: DiagramModel = mermaidToModel('flowchart TB\n').model;
@@ -75,6 +107,7 @@ export class WysiwygEditor {
 
   getModel(): DiagramModel { return this.model; }
   getRefs(): RenderRefs { return this.refs; }
+  isGroupId(id: string): boolean { return this.model.groups.some((g) => g.id === id); }
 
   addNodeOfShape(shape: NodeShape, clientX: number, clientY: number): void {
     this.mutate((m) => {
@@ -131,12 +164,16 @@ export class WysiwygEditor {
     for (const [, g] of this.refs.edgeEls) {
       g.classList.remove('ceasg-edge-selected');
     }
+    for (const [, g] of this.refs.groupEls) { g.classList.remove('ceasg-group-selected'); }
     for (const id of this.selection.multi) {
       const n = this.model.nodes.find((nn) => nn.id === id);
       if (n) {
         const w = n.w ?? estimateNodeSize(n).w;
         const h = n.h ?? estimateNodeSize(n).h;
         this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
+      } else if (this.isGroupId(id)) {
+        const gEl = this.refs.groupEls.get(id);
+        if (gEl) { gEl.classList.add('ceasg-group-selected'); }
       } else {
         // Check if the selected id is an edge
         const edgeEl = this.refs.edgeEls.get(id);
