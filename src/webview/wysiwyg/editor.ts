@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -9,6 +9,10 @@ import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
+
+/** Must match the .ceasg-group-title font in media/diagram.css so the rename
+ *  editor is sized to the same text the box renders. */
+const GROUP_TITLE_FONT = '600 13px "trebuchet ms", verdana, arial, sans-serif';
 
 /** After a node drag ends, set the node's membership to the innermost group its
  *  centre lands in (or ungroup when it lands on empty canvas). */
@@ -167,7 +171,15 @@ export class WysiwygEditor {
       if (gId) {
         const grp = this.model.groups.find((g) => g.id === gId)!;
         const b = groupBounds(this.model, grp);
-        openLabelEditor(this.canvasHost, this.viewport!, { x: b.x + 60, y: b.y + 12, text: grp.title }, (text) => {
+        // Size the editor to the title text (there's no natural node-sized box
+        // for a subgraph), positioned over the top-left title.
+        const titleW = measureTextWidth(grp.title || grp.id, GROUP_TITLE_FONT);
+        const boxW = titleW + 20;
+        const boxH = 22;
+        openLabelEditor(this.canvasHost, this.viewport!, {
+          x: b.x + 10 + titleW / 2, y: b.y + 16, text: grp.title,
+          w: boxW, h: boxH, minW: 60, minH: 22,
+        }, (text) => {
           this.mutate((m) => { const gg = m.groups.find((g) => g.id === gId); if (gg) { gg.title = text; } }, { commit: true });
         });
         return;

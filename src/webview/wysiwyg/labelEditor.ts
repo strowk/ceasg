@@ -1,8 +1,11 @@
 import { Viewport } from './viewport';
 
-/** Open an in-place textarea over a canvas point (node center or edge-label midpoint). */
+/** Open an in-place textarea over a canvas point (node center or edge-label midpoint).
+ *  `w`/`h` are the target size in canvas units (scaled to screen); `minW`/`minH`
+ *  are absolute screen-px floors (default 120×28) so callers that already size to
+ *  their content — e.g. a subgraph title — can shrink below the node default. */
 export function openLabelEditor(
-  host: HTMLElement, viewport: Viewport, at: { x: number; y: number; text: string; w?: number; h?: number }, onCommit: (text: string) => void,
+  host: HTMLElement, viewport: Viewport, at: { x: number; y: number; text: string; w?: number; h?: number; minW?: number; minH?: number }, onCommit: (text: string) => void,
 ): void {
   const ta = document.createElement('textarea');
   ta.className = 'ceasg-label-editor';
@@ -15,9 +18,9 @@ export function openLabelEditor(
     return { sx: rect.left + (x - p.x) * scale, sy: rect.top + (y - p.y) * scale };
   };
   const { sx, sy } = svgToScreen(at.x, at.y);
-  // Match the node's on-screen size, with the previous default as a minimum floor.
-  const w = Math.max(120, (at.w ?? 0) * scale);
-  const h = Math.max(28, (at.h ?? 0) * scale);
+  // Match the target on-screen size, with a minimum floor (node default 120×28).
+  const w = Math.max(at.minW ?? 120, (at.w ?? 0) * scale);
+  const h = Math.max(at.minH ?? 28, (at.h ?? 0) * scale);
   ta.style.position = 'fixed';
   ta.style.left = `${sx - w / 2}px`;
   ta.style.top = `${sy - h / 2}px`;
