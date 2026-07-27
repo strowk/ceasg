@@ -4,6 +4,14 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0] - 2026-07-27
+
+### Added
+- Subgraph support in the visual flowchart editor: subgraph containers now render as boxes with titles behind their member nodes, including nested subgraphs.
+- Create a subgraph from the current node selection, ungroup it (keeping its contents), and rename it by double-clicking the title.
+- Drag a whole subgraph to move it with all its members and nested subgraphs; drag individual nodes in or out of a subgraph to change membership (applied when the drag ends); resize a subgraph with its corner handles.
+- Subgraph geometry persists via a `%% mermaid-flow:gpos %%` comment and round-trips losslessly, including nesting.
+
 ## [0.2.0] - 2026-07-27
 
 ### Added
