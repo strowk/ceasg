@@ -212,7 +212,12 @@ function emitGroup(
 	grouped: Set<string>,
 	depth: number,
 	lines: string[],
+	seen: Set<string>,
 ): void {
+	// Guard against cyclic parentId causing infinite recursion.
+	if (seen.has(group.id)) return;
+	seen.add(group.id);
+
 	const pad = INDENT.repeat(depth + 1);
 	const title =
 		group.title && group.title !== group.id
@@ -221,10 +226,12 @@ function emitGroup(
 	lines.push(`${pad}subgraph ${sanitizeId(group.id)}${title}`);
 	// Nested child groups first.
 	for (const child of groupChildren(model, group.id)) {
-		emitGroup(model, child, nodeById, grouped, depth + 1, lines);
+		emitGroup(model, child, nodeById, grouped, depth + 1, lines, seen);
 	}
 	// Then this group's direct member node declarations.
 	for (const id of group.nodeIds) {
+		// Guard against a node appearing in both a parent and child nodeIds.
+		if (grouped.has(id)) continue;
 		const node = nodeById.get(id);
 		if (!node) continue;
 		grouped.add(id);
@@ -272,11 +279,12 @@ export function modelToMermaid(
 
 	const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
 	const grouped = new Set<string>();
+	const seen = new Set<string>();
 
 	// Subgraphs (tree walk from top-level groups), declaring members inside.
 	for (const group of model.groups) {
 		if (group.parentId) continue; // emitted by its parent
-		emitGroup(model, group, nodeById, grouped, 0, lines);
+		emitGroup(model, group, nodeById, grouped, 0, lines, seen);
 	}
 
 	// Remaining (ungrouped) nodes.

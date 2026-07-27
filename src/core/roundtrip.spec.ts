@@ -66,6 +66,7 @@ describe('nested subgraph round-trip', () => {
     // inner subgraph appears before its end, nested inside outer
     expect(out).toMatch(/subgraph outer[\s\S]*subgraph inner[\s\S]*end[\s\S]*end/);
     expect(out).toContain('Gamma');
+    expect(out.match(/Gamma/g)!.length).toBe(1);
     expect(roundtrip(out)).toBe(out);
   });
 
