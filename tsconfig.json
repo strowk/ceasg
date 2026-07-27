@@ -11,5 +11,5 @@
         "esModuleInterop": true
     },
     "include": ["src"],
-    "exclude": ["**/*.spec.ts", "src/webview/**"]
+    "exclude": ["**/*.spec.ts", "src/webview/**", "src/preview/preview-inject.ts"]
 }

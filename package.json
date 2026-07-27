@@ -3,7 +3,7 @@
   "publisher": "ceasg",
   "displayName": "ceasg — Visual Mermaid Editor",
   "description": "Edit Mermaid diagrams visually from a CodeLens in your markdown — drag/drop flowchart WYSIWYG plus live preview for all diagram types.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
@@ -27,11 +27,22 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
-      {
-        "command": "ceasg.openEditor",
-        "title": "Mermaid: Open Visual Editor"
+      { "command": "ceasg.openEditor", "title": "Mermaid: Open Visual Editor" }
+    ],
+    "markdown.markdownItPlugins": true,
+    "markdown.previewScripts": ["./dist/preview.js"],
+    "markdown.previewStyles": ["./media/diagram.css", "./media/preview.css"],
+    "configuration": {
+      "title": "ceasg",
+      "properties": {
+        "ceasg.previewRendering": {
+          "type": "string",
+          "enum": ["on", "off"],
+          "default": "on",
+          "description": "Render Mermaid diagrams in the built-in Markdown preview. Flowcharts use ceasg's positioned (comment-based) layout; other diagram types render with mermaid.js."
+        }
       }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

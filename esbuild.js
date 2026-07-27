@@ -36,16 +36,20 @@ async function main() {
 		...shared, entryPoints: ['src/webview/main.ts'], format: 'iife',
 		platform: 'browser', outfile: 'dist/webview.js',
 	});
+	const previewCtx = await esbuild.context({
+		...shared, entryPoints: ['src/preview/preview-inject.ts'], format: 'iife',
+		platform: 'browser', outfile: 'dist/preview.js',
+	});
 
 	fs.mkdirSync('dist', { recursive: true });
 	if (fs.existsSync('media/webview.css')) { fs.copyFileSync('media/webview.css', 'dist/webview.css'); }
 	if (fs.existsSync('media/diagram.css')) { fs.copyFileSync('media/diagram.css', 'dist/diagram.css'); }
 
 	if (watch) {
-		await Promise.all([extensionCtx.watch(), webviewCtx.watch()]);
+		await Promise.all([extensionCtx.watch(), webviewCtx.watch(), previewCtx.watch()]);
 	} else {
-		await Promise.all([extensionCtx.rebuild(), webviewCtx.rebuild()]);
-		await Promise.all([extensionCtx.dispose(), webviewCtx.dispose()]);
+		await Promise.all([extensionCtx.rebuild(), webviewCtx.rebuild(), previewCtx.rebuild()]);
+		await Promise.all([extensionCtx.dispose(), webviewCtx.dispose(), previewCtx.dispose()]);
 	}
 }
 

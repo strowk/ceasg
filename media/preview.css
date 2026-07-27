@@ -1,0 +1,3 @@
+.ceasg-diagram { display: block; margin: 1em 0; overflow-x: auto; }
+.ceasg-diagram svg { display: block; }
+.ceasg-diagram .ceasg-err { color: var(--vscode-errorForeground); white-space: pre-wrap; font-family: var(--vscode-editor-font-family); }

@@ -7,6 +7,6 @@
         "noEmit": true,
         "rootDir": "src"
     },
-    "include": ["src/webview", "src/core", "src/shared"],
+    "include": ["src/webview", "src/core", "src/shared", "src/preview/preview-inject.ts", "src/preview/previewHost.ts", "src/preview/flowchartPreview.ts"],
     "exclude": ["**/*.spec.ts"]
 }
