@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { WysiwygEditor } from './editor';
-import { mermaidToModel } from '../../core';
+import { mermaidToModel, removeNode } from '../../core';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
 import { makeGroupFromNodes, ungroup } from './editor';
 
@@ -95,5 +95,18 @@ describe('create / ungroup operations', () => {
     ungroup(model, 'g1');
     expect(model.groups.find((g) => g.id === 'g1')).toBeUndefined();
     expect(model.nodes.find((n) => n.id === 'A')).toBeTruthy();
+  });
+
+  it('mixed selection: ungroup a group and delete a node in one pass', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph g1\nA\nend\nB\n');
+    // simulate deleteSelected's pass over ids [g1, B]
+    const groupIds = new Set(['g1']);
+    for (const id of ['g1', 'B']) {
+      if (groupIds.has(id)) { ungroup(model, id); }
+      else if (model.nodes.some((n) => n.id === id)) { removeNode(model, id); }
+    }
+    expect(model.groups.find((g) => g.id === 'g1')).toBeUndefined(); // ungrouped
+    expect(model.nodes.find((n) => n.id === 'A')).toBeTruthy();      // kept
+    expect(model.nodes.find((n) => n.id === 'B')).toBeUndefined();   // deleted
   });
 });

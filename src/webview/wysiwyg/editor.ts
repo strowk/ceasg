@@ -294,16 +294,14 @@ export class WysiwygEditor {
 
   deleteSelected(): void {
     if (this.selection === null || this.selection.multi.size === 0) { return; }
-    // A selected group is ungrouped (contents kept), not deleted.
-    for (const id of [...this.selection.multi]) {
-      if (this.isGroupId(id)) { this.ungroupSelection(); return; }
-    }
     const ids = [...this.selection.multi];
+    // Evaluate group membership before mutate (this.model is replaced after callback runs)
+    const groupIds = new Set(ids.filter((id) => this.isGroupId(id)));
     this.mutate((m) => {
       for (const id of ids) {
-        // A selected id is either a node or an edge; removeNode also drops edges
-        // touching the node, so an already-removed edge id is a safe no-op.
-        if (m.nodes.some((n) => n.id === id)) { removeNode(m, id); }
+        // Groups are ungrouped (contents kept); nodes/edges are removed.
+        if (groupIds.has(id)) { ungroup(m, id); }
+        else if (m.nodes.some((n) => n.id === id)) { removeNode(m, id); }
         else { removeEdge(m, id); }
       }
     }, { commit: true });
