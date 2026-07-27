@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { WysiwygEditor } from './editor';
 import { mermaidToModel } from '../../core';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
+import { makeGroupFromNodes, ungroup } from './editor';
 
 function make() {
   const root = document.createElement('div');
@@ -67,5 +68,32 @@ describe('reassignNodeMembership', () => {
     A.x = 500; A.y = 500; // outside
     reassignNodeMembership(model, 'A');
     expect(g1.nodeIds).not.toContain('A');
+  });
+});
+
+describe('create / ungroup operations', () => {
+  it('wraps selected nodes in a new group with bbox bounds', () => {
+    const { model } = mermaidToModel('flowchart TB\nA\nB\nC\n');
+    model.nodes.forEach((n, i) => { n.x = 100 + i * 100; n.y = 100; });
+    const gid = makeGroupFromNodes(model, ['A', 'B']);
+    const g = model.groups.find((gr) => gr.id === gid)!;
+    expect(g.nodeIds.sort()).toEqual(['A', 'B']);
+    expect(g.w).toBeGreaterThan(0);
+    expect(g.x).toBeDefined();
+    expect(g.nodeIds).not.toContain('C');
+  });
+
+  it('nests the new group under a shared parent group', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph outer\nA\nB\nend\n');
+    model.nodes.forEach((n, i) => { n.x = 100 + i * 100; n.y = 100; });
+    const gid = makeGroupFromNodes(model, ['A', 'B']);
+    expect(model.groups.find((g) => g.id === gid)!.parentId).toBe('outer');
+  });
+
+  it('ungroup keeps nodes and removes the group', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph g1\nA\nend\n');
+    ungroup(model, 'g1');
+    expect(model.groups.find((g) => g.id === 'g1')).toBeUndefined();
+    expect(model.nodes.find((n) => n.id === 'A')).toBeTruthy();
   });
 });

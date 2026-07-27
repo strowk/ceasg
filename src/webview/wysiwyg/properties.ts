@@ -15,6 +15,8 @@ export class PropertiesPanel {
       if (node) { this.nodePanel(node.id); return; }
       const edge = model.edges.find((e) => e.id === selection.single);
       if (edge) { this.edgePanel(edge.id); return; }
+      const group = model.groups.find((g) => g.id === selection.single);
+      if (group) { this.groupPanel(group.id); return; }
     }
     if (selection.multi.size > 1) { this.multiPanel(selection); return; }
     this.host.appendChild(this.hint(`${model.nodes.length} nodes · ${model.edges.length} edges`));
@@ -98,6 +100,23 @@ export class PropertiesPanel {
     });
 
     const actions = document.createElement('div'); actions.className = 'ceasg-panel-actions'; actions.append(rev, del);
+    this.host.appendChild(actions);
+  }
+
+  private groupPanel(id: string): void {
+    const group = () => this.editor.getModel().groups.find((g) => g.id === id)!;
+    const head = document.createElement('div'); head.className = 'ceasg-panel-head'; head.textContent = `Subgraph ${id}`;
+    this.host.appendChild(head);
+
+    const title = document.createElement('input'); title.type = 'text'; title.value = group().title;
+    title.addEventListener('input', () => this.editor.mutate((m) => { const g = m.groups.find((g) => g.id === id); if (g) { g.title = title.value; } }, { commit: true }));
+    this.host.appendChild(this.row('Title', title));
+
+    this.host.appendChild(this.hint(`${group().nodeIds.length} member nodes`));
+
+    const ungroupBtn = document.createElement('button'); ungroupBtn.textContent = 'Ungroup'; ungroupBtn.className = 'ceasg-danger';
+    ungroupBtn.addEventListener('click', () => this.editor.ungroupSelection());
+    const actions = document.createElement('div'); actions.className = 'ceasg-panel-actions'; actions.append(ungroupBtn);
     this.host.appendChild(actions);
   }
 

@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -40,6 +40,25 @@ export function reassignGroupParent(model: DiagramModel, groupId: string): void 
     if (d > bestDepth) { bestDepth = d; best = other.id; }
   }
   assignGroupToParent(model, groupId, best); // assignGroupToParent guards cycles
+}
+
+/** Wrap nodes in a fresh group. Bounds = bbox+padding; nests under a shared
+ *  parent group when all nodes already share one. Returns the new group id. */
+export function makeGroupFromNodes(model: DiagramModel, nodeIds: string[]): string {
+  const id = newGroupId(model);
+  const parents = new Set(nodeIds.map((nid) => groupOf(model, nid)?.id));
+  const parentId = parents.size === 1 ? [...parents][0] : undefined;
+  // Remove from any current group, then add to the new one.
+  for (const nid of nodeIds) { assignNodeToGroup(model, nid, null); }
+  model.groups.push({ id, title: id, nodeIds: [...nodeIds], parentId });
+  const g = model.groups[model.groups.length - 1];
+  const b = groupBounds(model, g); // derived from members
+  g.x = b.x; g.y = b.y; g.w = b.w; g.h = b.h;
+  return id;
+}
+
+export function ungroup(model: DiagramModel, groupId: string): void {
+  removeGroup(model, groupId);
 }
 
 export class WysiwygEditor {
@@ -137,6 +156,15 @@ export class WysiwygEditor {
       if (node) {
         openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label, w: node.w ?? estimateNodeSize(node).w, h: node.h ?? estimateNodeSize(node).h }, (text) => {
           this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
+        });
+        return;
+      }
+      const gId = groupAtPoint(this.model, p.x, p.y);
+      if (gId) {
+        const grp = this.model.groups.find((g) => g.id === gId)!;
+        const b = groupBounds(this.model, grp);
+        openLabelEditor(this.canvasHost, this.viewport!, { x: b.x + 60, y: b.y + 12, text: grp.title }, (text) => {
+          this.mutate((m) => { const gg = m.groups.find((g) => g.id === gId); if (gg) { gg.title = text; } }, { commit: true });
         });
         return;
       }
@@ -246,8 +274,30 @@ export class WysiwygEditor {
     this.scheduleSync();
   }
 
+  groupSelection(): void {
+    if (!this.selection) { return; }
+    const ids = [...this.selection.multi].filter((id) => this.model.nodes.some((n) => n.id === id));
+    if (ids.length === 0) { return; }
+    let gid = '';
+    this.mutate((m) => { gid = makeGroupFromNodes(m, ids); }, { commit: true });
+    this.selection.select(gid);
+    this.refreshSelection();
+  }
+
+  ungroupSelection(): void {
+    if (!this.selection || !this.selection.single || !this.isGroupId(this.selection.single)) { return; }
+    const gid = this.selection.single;
+    this.mutate((m) => { ungroup(m, gid); }, { commit: true });
+    this.selection.clear();
+    this.refreshSelection();
+  }
+
   deleteSelected(): void {
     if (this.selection === null || this.selection.multi.size === 0) { return; }
+    // A selected group is ungrouped (contents kept), not deleted.
+    for (const id of [...this.selection.multi]) {
+      if (this.isGroupId(id)) { this.ungroupSelection(); return; }
+    }
     const ids = [...this.selection.multi];
     this.mutate((m) => {
       for (const id of ids) {

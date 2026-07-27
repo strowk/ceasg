@@ -24,6 +24,8 @@ export class Toolbar {
     shapesBtn.addEventListener('click', () => palette.toggle());
     bar.appendChild(shapesBtn);
     bar.appendChild(this.btn('⌫', 'Delete selected', () => this.editor.deleteSelected()));
+    bar.appendChild(this.btn('▢+', 'Group selection into subgraph', () => this.editor.groupSelection()));
+    bar.appendChild(this.btn('▢-', 'Ungroup selected subgraph', () => this.editor.ungroupSelection()));
     bar.appendChild(this.btn('⤢', 'Auto layout', () => this.autoLayout()));
 
     const connectBtn = this.btn('⇝', 'Connect mode', () => {
