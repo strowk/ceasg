@@ -4,7 +4,7 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles } from './hitTest';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';

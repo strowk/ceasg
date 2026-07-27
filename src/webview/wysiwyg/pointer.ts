@@ -1,5 +1,5 @@
 import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint } from './hitTest';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, resizeBox } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
@@ -190,12 +190,9 @@ export class PointerController {
       this.editor.mutate((m) => {
         const g = m.groups.find((gr) => gr.id === groupId);
         if (!g || g.x === undefined || g.y === undefined || g.w === undefined || g.h === undefined) { return; }
-        if (corner === 'nw') { g.x += dx; g.y += dy; g.w -= dx; g.h -= dy; }
-        else if (corner === 'ne') { g.y += dy; g.w += dx; g.h -= dy; }
-        else if (corner === 'sw') { g.x += dx; g.w -= dx; g.h += dy; }
-        else { g.w += dx; g.h += dy; }
-        if (g.w < 40) { g.w = 40; }
-        if (g.h < 40) { g.h = 40; }
+        const cur = { x: g.x, y: g.y, w: g.w, h: g.h };
+        const nb = resizeBox(cur, corner, dx, dy);
+        g.x = nb.x; g.y = nb.y; g.w = nb.w; g.h = nb.h;
       });
       return;
     }

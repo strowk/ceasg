@@ -108,6 +108,23 @@ export function groupHandleAtPoint(
   return undefined;
 }
 
+/** Apply a corner-resize delta to a box, keeping the opposite edge anchored and
+ *  never shrinking below `min`. Returns the new box. */
+export function resizeBox(
+  b: { x: number; y: number; w: number; h: number },
+  corner: Corner, dx: number, dy: number, min = 40,
+): { x: number; y: number; w: number; h: number } {
+  let { x, y, w, h } = b;
+  if (corner === 'nw') { x += dx; y += dy; w -= dx; h -= dy; }
+  else if (corner === 'ne') { y += dy; w += dx; h -= dy; }
+  else if (corner === 'sw') { x += dx; w -= dx; h += dy; }
+  else { w += dx; h += dy; }
+  // Clamp to min while keeping the anchored (opposite) edge fixed.
+  if (w < min) { if (corner === 'nw' || corner === 'sw') { x -= (min - w); } w = min; }
+  if (h < min) { if (corner === 'nw' || corner === 'ne') { y -= (min - h); } h = min; }
+  return { x, y, w, h };
+}
+
 /** The innermost (deepest-nested) group whose box contains (x, y). */
 export function groupAtPoint(model: DiagramModel, x: number, y: number): string | undefined {
   let best: string | undefined;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint } from './hitTest';
+import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint, resizeBox } from './hitTest';
 import { emptyModel, mermaidToModel } from '../../core';
 
 function m2() {
@@ -52,6 +52,20 @@ describe('groupAtPoint', () => {
     expect(groupAtPoint(model, 150, 150)).toBe('inner'); // inside both → innermost
     expect(groupAtPoint(model, 20, 20)).toBe('outer');   // only outer
     expect(groupAtPoint(model, 500, 500)).toBeUndefined();
+  });
+});
+
+describe('resizeBox', () => {
+  it('se grows without moving the origin', () => {
+    expect(resizeBox({ x: 10, y: 10, w: 100, h: 80 }, 'se', 20, 30)).toEqual({ x: 10, y: 10, w: 120, h: 110 });
+  });
+  it('nw keeps the opposite (se) edge anchored when clamped to min', () => {
+    // Box right edge = 110, bottom edge = 90. Drag NW far past min.
+    const r = resizeBox({ x: 10, y: 10, w: 100, h: 80 }, 'nw', 500, 500, 40);
+    expect(r.w).toBe(40); expect(r.h).toBe(40);
+    // opposite edges stay put: x+w == 110, y+h == 90
+    expect(r.x + r.w).toBe(110);
+    expect(r.y + r.h).toBe(90);
   });
 });
 
