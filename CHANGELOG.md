@@ -4,6 +4,14 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.2.0] - 2026-07-27
+
+### Added
+- Positioned rendering in VS Code's built-in Markdown preview: flowcharts render with their manual `%% mermaid-flow:pos %%` layout — the same image as the visual editor — while all other diagram types render normally via Mermaid. ceasg acts as the sole Mermaid renderer for the preview (remove/disable any other Mermaid preview extension).
+- Flowcharts without saved positions are auto-laid-out (dagre) in the preview, matching the editor's "Auto layout".
+- Setting `ceasg.previewRendering` (default `on`) to toggle preview rendering.
+- Diagrams re-render live as the Markdown document is edited, and each diagram's errors are isolated so one bad block can't blank the preview.
+
 ## [0.1.1] - 2026-07-26
 
 ### Changed
