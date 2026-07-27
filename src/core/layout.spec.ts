@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { autoLayout, layoutMissing } from './layout';
-import { emptyModel } from './model';
+import { emptyModel, groupBounds } from './model';
+import { mermaidToModel } from './parser';
 
 describe('autoLayout', () => {
   it('assigns finite non-overlapping positions to a chain', () => {
@@ -21,5 +22,19 @@ describe('autoLayout', () => {
     expect(m.nodes.find((n) => n.id === 'A')).toMatchObject({ x: 500, y: 500 });
     const b = m.nodes.find((n) => n.id === 'B')!;
     expect(b.x === 0 && b.y === 0).toBe(false);
+  });
+});
+
+describe('auto layout with nested groups', () => {
+  it('keeps nested members inside the parent group box', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',
+    );
+    autoLayout(model);
+    const outer = groupBounds(model, model.groups.find((g) => g.id === 'outer')!);
+    const inner = groupBounds(model, model.groups.find((g) => g.id === 'inner')!);
+    expect(outer.x).toBeLessThanOrEqual(inner.x);
+    expect(outer.y).toBeLessThanOrEqual(inner.y);
+    expect(outer.x + outer.w).toBeGreaterThanOrEqual(inner.x + inner.w);
   });
 });

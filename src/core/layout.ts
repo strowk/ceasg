@@ -56,20 +56,19 @@ function dagreLayout(model: DiagramModel): void {
 		g.setNode(node.id, { width: s.w, height: s.h });
 	}
 
-	// Subgraphs become compound clusters so members stay together.
-	const claimed = new Set<string>();
+	// Groups become compound clusters; nested groups parent to their parent group.
+	const groupIds = new Set(model.groups.map((g) => g.id));
 	for (const grp of model.groups) {
 		if (nodeIds.has(grp.id)) continue; // id collision with a node — skip
-		const members = grp.nodeIds.filter(
-			(id) => nodeIds.has(id) && !claimed.has(id),
-		);
-		if (members.length === 0) continue;
-		// Compound-parent size is recomputed by dagre from its children, so the
-		// initial 0×0 is a placeholder only (NodeLabel requires width/height).
 		g.setNode(grp.id, { width: 0, height: 0 });
-		for (const id of members) {
-			g.setParent(id, grp.id);
-			claimed.add(id);
+	}
+	for (const grp of model.groups) {
+		if (nodeIds.has(grp.id)) continue;
+		if (grp.parentId && groupIds.has(grp.parentId)) {
+			g.setParent(grp.id, grp.parentId);
+		}
+		for (const id of grp.nodeIds) {
+			if (nodeIds.has(id)) g.setParent(id, grp.id);
 		}
 	}
 
@@ -97,6 +96,11 @@ function dagreLayout(model: DiagramModel): void {
 		}
 		node.x = Math.max(40, Math.round(px));
 		node.y = Math.max(30, Math.round(py));
+	}
+
+	// A fresh layout invalidates any manual group boxes — let them re-derive.
+	for (const grp of model.groups) {
+		grp.x = grp.y = grp.w = grp.h = undefined;
 	}
 }
 
