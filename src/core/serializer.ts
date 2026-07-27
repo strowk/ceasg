@@ -27,6 +27,8 @@ import {
 	hasConfig,
 	hasEdgeStyle,
 	hasStyle,
+	groupChildren,
+	groupBounds,
 } from "./model";
 
 const INDENT = "    ";
@@ -203,6 +205,44 @@ function configDirective(cfg: DiagramConfig): string | null {
 	return `%%{init: ${JSON.stringify(init)}}%%`;
 }
 
+function emitGroup(
+	model: DiagramModel,
+	group: DiagramModel["groups"][number],
+	nodeById: Map<string, DiagramNode>,
+	grouped: Set<string>,
+	depth: number,
+	lines: string[],
+): void {
+	const pad = INDENT.repeat(depth + 1);
+	const title =
+		group.title && group.title !== group.id
+			? ` [${quoteLabel(group.title)}]`
+			: "";
+	lines.push(`${pad}subgraph ${sanitizeId(group.id)}${title}`);
+	// Nested child groups first.
+	for (const child of groupChildren(model, group.id)) {
+		emitGroup(model, child, nodeById, grouped, depth + 1, lines);
+	}
+	// Then this group's direct member node declarations.
+	for (const id of group.nodeIds) {
+		const node = nodeById.get(id);
+		if (!node) continue;
+		grouped.add(id);
+		lines.push(INDENT.repeat(depth + 2) + nodeDeclaration(node));
+	}
+	lines.push(`${pad}end`);
+}
+
+function groupPositionComment(model: DiagramModel): string | null {
+	const parts = model.groups
+		.map((g) => {
+			const b = groupBounds(model, g);
+			return `${sanitizeId(g.id)}=${Math.round(b.x)},${Math.round(b.y)},${Math.round(b.w)},${Math.round(b.h)}`;
+		});
+	if (parts.length === 0) return null;
+	return `%% mermaid-flow:gpos ${parts.join(" ")}`;
+}
+
 function positionComment(model: DiagramModel): string | null {
 	const parts = model.nodes
 		.filter((n) => Number.isFinite(n.x) && Number.isFinite(n.y))
@@ -233,20 +273,10 @@ export function modelToMermaid(
 	const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
 	const grouped = new Set<string>();
 
-	// Subgraphs first, declaring their member nodes inside.
+	// Subgraphs (tree walk from top-level groups), declaring members inside.
 	for (const group of model.groups) {
-		const members = group.nodeIds.filter((id) => nodeById.has(id));
-		if (members.length === 0) continue;
-		const title = group.title && group.title !== group.id
-			? ` [${quoteLabel(group.title)}]`
-			: "";
-		lines.push(`${INDENT}subgraph ${sanitizeId(group.id)}${title}`);
-		for (const id of members) {
-			grouped.add(id);
-			const node = nodeById.get(id);
-			if (node) lines.push(INDENT + INDENT + nodeDeclaration(node));
-		}
-		lines.push(`${INDENT}end`);
+		if (group.parentId) continue; // emitted by its parent
+		emitGroup(model, group, nodeById, grouped, 0, lines);
 	}
 
 	// Remaining (ungrouped) nodes.
@@ -289,6 +319,8 @@ export function modelToMermaid(
 	if (includePositions) {
 		const pos = positionComment(model);
 		if (pos) lines.push(INDENT + pos);
+		const gpos = groupPositionComment(model);
+		if (gpos) lines.push(INDENT + gpos);
 	}
 
 	return lines.join("\n");

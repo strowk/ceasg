@@ -57,3 +57,26 @@ describe('round-trip parse↔serialize', () => {
     expect(roundtrip(out)).toBe(out);
   });
 });
+
+describe('nested subgraph round-trip', () => {
+  it('preserves nesting structure across a round trip', () => {
+    const src =
+      'flowchart TB\nsubgraph outer\nsubgraph inner\nA[Alpha] --> B[Beta]\nend\nC[Gamma]\nend\n';
+    const out = roundtrip(src);
+    // inner subgraph appears before its end, nested inside outer
+    expect(out).toMatch(/subgraph outer[\s\S]*subgraph inner[\s\S]*end[\s\S]*end/);
+    expect(out).toContain('Gamma');
+    expect(roundtrip(out)).toBe(out);
+  });
+
+  it('emits a gpos comment when positions are included', () => {
+    const model = mermaidToModel(
+      'flowchart TB\nsubgraph g1\nA-->B\nend\n',
+    ).model;
+    model.groups[0].x = 40; model.groups[0].y = 20;
+    model.groups[0].w = 300; model.groups[0].h = 180;
+    const out = modelToMermaid(model, { includePositions: true });
+    expect(out).toContain('%% mermaid-flow:gpos');
+    expect(out).toContain('g1=40,20,300,180');
+  });
+});
