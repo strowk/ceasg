@@ -35,3 +35,30 @@ describe('renderDiagram', () => {
     expect(shape.style.fill).toBe('rgb(255, 0, 0)');
   });
 });
+
+describe('renderDiagram groups', () => {
+  it('emits a group box and title behind the nodes', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph g1 [My Group]\nA[Alpha]-->B[Beta]\nend\n',
+    );
+    model.nodes.forEach((n, i) => { n.x = 100 + i * 150; n.y = 100; });
+    const { svg, refs } = renderDiagram(model);
+    expect(svg.querySelectorAll('[data-group-id]').length).toBe(1);
+    expect(refs.groupEls.get('g1')).toBeTruthy();
+    expect(svg.textContent).toContain('My Group');
+    // group layer precedes node layer in DOM order (renders behind)
+    const groupLayer = svg.querySelector('.ceasg-group-layer')!;
+    const nodeLayer = svg.querySelector('.ceasg-node-layer')!;
+    expect(groupLayer.compareDocumentPosition(nodeLayer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('renders an outer group before its nested child (outer behind)', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',
+    );
+    model.nodes.forEach((n, i) => { n.x = 120 + i * 120; n.y = 120; });
+    const { svg } = renderDiagram(model);
+    const ids = [...svg.querySelectorAll('[data-group-id]')].map((e) => e.getAttribute('data-group-id'));
+    expect(ids.indexOf('outer')).toBeLessThan(ids.indexOf('inner'));
+  });
+});

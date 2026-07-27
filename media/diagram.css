@@ -9,3 +9,20 @@
 .ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
 .ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
 .ceasg-arrowhead { fill: var(--vscode-foreground); }
+.ceasg-group-box {
+  fill: color-mix(in srgb, currentColor 4%, transparent);
+  stroke: color-mix(in srgb, currentColor 35%, transparent);
+  stroke-width: 1px;
+}
+.ceasg-group .ceasg-group-box { pointer-events: all; }
+.ceasg-group-title {
+  font: 600 13px "trebuchet ms", verdana, arial, sans-serif;
+  fill: currentColor;
+  opacity: 0.8;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+.ceasg-group-selected .ceasg-group-box {
+  stroke: var(--vscode-focusBorder, #007fd4);
+  stroke-width: 2px;
+}

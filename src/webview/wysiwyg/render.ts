@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, createShapeElements, estimateNodeSize, resolveNodeStyle, measureTextWidth } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, estimateNodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -7,6 +7,7 @@ const EDGE_LABEL_FONT = '12px "trebuchet ms", verdana, arial, sans-serif';
 export interface RenderRefs {
   nodeEls: Map<string, SVGGElement>;
   edgeEls: Map<string, SVGGElement>;
+  groupEls: Map<string, SVGGElement>;
 }
 
 function el<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
@@ -99,6 +100,28 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
   return g;
 }
 
+function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
+  const g = el('g');
+  g.setAttribute('class', 'ceasg-group');
+  g.setAttribute('data-group-id', group.id);
+  const b = groupBounds(model, group);
+  const rect = el('rect');
+  rect.setAttribute('class', 'ceasg-group-box');
+  rect.setAttribute('x', String(b.x));
+  rect.setAttribute('y', String(b.y));
+  rect.setAttribute('width', String(b.w));
+  rect.setAttribute('height', String(b.h));
+  rect.setAttribute('rx', '6');
+  g.appendChild(rect);
+  const title = el('text');
+  title.setAttribute('class', 'ceasg-group-title');
+  title.setAttribute('x', String(b.x + 10));
+  title.setAttribute('y', String(b.y + 16));
+  title.textContent = group.title;
+  g.appendChild(title);
+  return g;
+}
+
 function arrowMarker(): SVGDefsElement {
   const defs = el('defs');
   const marker = el('marker');
@@ -122,6 +145,10 @@ export function renderDiagram(model: DiagramModel): { svg: SVGSVGElement; refs: 
   svg.setAttribute('class', 'ceasg-canvas-svg');
   svg.appendChild(arrowMarker());
 
+  const groupLayer = el('g');
+  groupLayer.setAttribute('class', 'ceasg-group-layer');
+  svg.appendChild(groupLayer);
+
   const edgeLayer = el('g');
   edgeLayer.setAttribute('class', 'ceasg-edge-layer');
   const nodeLayer = el('g');
@@ -129,7 +156,20 @@ export function renderDiagram(model: DiagramModel): { svg: SVGSVGElement; refs: 
   svg.appendChild(edgeLayer);
   svg.appendChild(nodeLayer);
 
-  const refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
+  const refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map(), groupEls: new Map() };
+
+  // Render groups outermost-first so nested boxes paint on top of their parent.
+  const orderedGroups: DiagramGroup[] = [];
+  const pushGroup = (grp: DiagramGroup) => {
+    orderedGroups.push(grp);
+    for (const child of groupChildren(model, grp.id)) pushGroup(child);
+  };
+  for (const grp of model.groups) { if (!grp.parentId) pushGroup(grp); }
+  for (const grp of orderedGroups) {
+    const gEl = renderGroup(model, grp);
+    groupLayer.appendChild(gEl);
+    refs.groupEls.set(grp.id, gEl);
+  }
 
   // count parallels for offset separation
   const pairCount = new Map<string, number>();

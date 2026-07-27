@@ -18,7 +18,7 @@ export class WysiwygEditor {
   private syncTimer: ReturnType<typeof setTimeout> | undefined;
   private historyTimer: ReturnType<typeof setTimeout> | undefined;
   private canvasHost: HTMLElement;
-  private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map() };
+  private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map(), groupEls: new Map() };
   private keyboardAttached = false;
   private toolbarBuilt = false;
   private panelBuilt = false;
