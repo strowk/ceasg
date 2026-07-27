@@ -83,6 +83,31 @@ function groupDepth(model: DiagramModel, id: string): number {
   return d;
 }
 
+export type Corner = 'nw' | 'ne' | 'sw' | 'se';
+
+export function groupResizeHandles(
+  model: DiagramModel, groupId: string,
+): Array<{ corner: Corner; x: number; y: number }> {
+  const g = model.groups.find((gr) => gr.id === groupId);
+  if (!g) { return []; }
+  const b = groupBounds(model, g);
+  return [
+    { corner: 'nw', x: b.x, y: b.y },
+    { corner: 'ne', x: b.x + b.w, y: b.y },
+    { corner: 'sw', x: b.x, y: b.y + b.h },
+    { corner: 'se', x: b.x + b.w, y: b.y + b.h },
+  ];
+}
+
+export function groupHandleAtPoint(
+  model: DiagramModel, groupId: string, x: number, y: number, tol: number,
+): Corner | undefined {
+  for (const h of groupResizeHandles(model, groupId)) {
+    if (Math.abs(x - h.x) <= tol && Math.abs(y - h.y) <= tol) { return h.corner; }
+  }
+  return undefined;
+}
+
 /** The innermost (deepest-nested) group whose box contains (x, y). */
 export function groupAtPoint(model: DiagramModel, x: number, y: number): string | undefined {
   let best: string | undefined;

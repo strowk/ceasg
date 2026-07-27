@@ -1,5 +1,5 @@
-import { newEdgeId, translateGroup } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint } from './hitTest';
+import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal } from '../../core';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
@@ -32,6 +32,7 @@ export class PointerController {
   private panning = false;
   private spaceDown = false;
   private capturedPointerId: number | null = null;
+  private resize: { groupId: string; corner: import('./hitTest').Corner } | null = null;
   mode: Mode = 'select';
 
   private boundKeyDown = (e: KeyboardEvent): void => { if (e.code === 'Space') { this.spaceDown = true; } };
@@ -125,6 +126,20 @@ export class PointerController {
       return;
     }
 
+    if (this.selection.single && this.editor.isGroupId(this.selection.single)) {
+      const corner = groupHandleAtPoint(model, this.selection.single, p.x, p.y, 8 / this.editor.viewport!.scale);
+      if (corner) {
+        // Materialise current bounds so the resize edits explicit values.
+        this.editor.mutate((m) => {
+          const g = m.groups.find((gr) => gr.id === this.selection.single)!;
+          const b = groupBoundsLocal(m, g);
+          g.x = b.x; g.y = b.y; g.w = b.w; g.h = b.h;
+        });
+        this.resize = { groupId: this.selection.single, corner };
+        return;
+      }
+    }
+
     const node = nodeAtPoint(model, p.x, p.y);
     if (node) {
       if (e.shiftKey) { this.selection.toggle(node.id); }
@@ -167,6 +182,23 @@ export class PointerController {
       this.last = { x: e.clientX, y: e.clientY };
       return;
     }
+    if (this.resize && this.down) {
+      const dx = p.x - this.down.x;
+      const dy = p.y - this.down.y;
+      this.down = p;
+      const { groupId, corner } = this.resize;
+      this.editor.mutate((m) => {
+        const g = m.groups.find((gr) => gr.id === groupId);
+        if (!g || g.x === undefined || g.y === undefined || g.w === undefined || g.h === undefined) { return; }
+        if (corner === 'nw') { g.x += dx; g.y += dy; g.w -= dx; g.h -= dy; }
+        else if (corner === 'ne') { g.y += dy; g.w += dx; g.h -= dy; }
+        else if (corner === 'sw') { g.x += dx; g.w -= dx; g.h += dy; }
+        else { g.w += dx; g.h += dy; }
+        if (g.w < 40) { g.w = 40; }
+        if (g.h < 40) { g.h = 40; }
+      });
+      return;
+    }
     if (this.dragging && this.down) {
       const dx = p.x - this.down.x;
       const dy = p.y - this.down.y;
@@ -204,6 +236,11 @@ export class PointerController {
 
   private onUp(e: PointerEvent): void {
     const p = this.pt(e);
+    if (this.resize) {
+      this.resize = null; this.editor.commit(); this.down = null;
+      this.capturedPointerId = null;
+      return;
+    }
     if (this.panning) {
       this.panning = false; this.down = null;
     } else if (this.dragging) {

@@ -4,7 +4,7 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint } from './hitTest';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
@@ -187,6 +187,12 @@ export class WysiwygEditor {
       if (n) {
         const r = 5 / (this.viewport?.scale ?? 1);
         for (const a of nodeAnchorPoints(n)) { this.overlay.handle(a.x, a.y, r); }
+      }
+    }
+    if (this.selection.single && this.isGroupId(this.selection.single)) {
+      const r = 5 / (this.viewport?.scale ?? 1);
+      for (const h of groupResizeHandles(this.model, this.selection.single)) {
+        this.overlay.handle(h.x, h.y, r);
       }
     }
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint } from './hitTest';
+import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint } from './hitTest';
 import { emptyModel, mermaidToModel } from '../../core';
 
 function m2() {
@@ -52,5 +52,17 @@ describe('groupAtPoint', () => {
     expect(groupAtPoint(model, 150, 150)).toBe('inner'); // inside both → innermost
     expect(groupAtPoint(model, 20, 20)).toBe('outer');   // only outer
     expect(groupAtPoint(model, 500, 500)).toBeUndefined();
+  });
+});
+
+describe('group resize handles', () => {
+  it('exposes four corner handles and hit-tests them', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph g1\nA\nend\n');
+    const g1 = model.groups.find((g) => g.id === 'g1')!;
+    g1.x = 0; g1.y = 0; g1.w = 200; g1.h = 100;
+    const hs = groupResizeHandles(model, 'g1');
+    expect(hs.map((h) => h.corner).sort()).toEqual(['ne', 'nw', 'se', 'sw']);
+    expect(groupHandleAtPoint(model, 'g1', 200, 100, 6)).toBe('se');
+    expect(groupHandleAtPoint(model, 'g1', 100, 50, 6)).toBeUndefined();
   });
 });
