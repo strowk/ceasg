@@ -67,6 +67,7 @@ export class PointerController {
     const p = this.pt(e);
     this.down = p; this.last = { x: e.clientX, y: e.clientY };
     const model = this.editor.getModel();
+    this.groupDragId = null;
 
     if (this.spaceDown || e.button === 1) { this.panning = true; return; }
 
@@ -138,9 +139,11 @@ export class PointerController {
     if (groupId) {
       if (e.shiftKey) { this.selection.toggle(groupId); }
       else { this.selection.select(groupId); }
-      this.groupDragId = groupId;
-      this.dragging = true;
-      this.dragIds = [];
+      if (this.selection.has(groupId)) {
+        this.groupDragId = groupId;
+        this.dragging = true;
+        this.dragIds = [];
+      }
       this.onSelectionChange();
       return;
     }
