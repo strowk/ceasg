@@ -20,3 +20,36 @@ describe('mermaidToModel', () => {
     expect(model.extras.join('\n')).toContain('someUnknownDirective foo');
   });
 });
+
+describe('subgraph nesting + geometry', () => {
+  it('records parentId for a nested subgraph', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nC\nend\n',
+    );
+    const inner = model.groups.find((g) => g.id === 'inner')!;
+    const outer = model.groups.find((g) => g.id === 'outer')!;
+    expect(inner.parentId).toBe('outer');
+    expect(outer.parentId).toBeUndefined();
+    // A and B are innermost members of inner, C is a direct member of outer
+    expect(inner.nodeIds).toContain('A');
+    expect(outer.nodeIds).toContain('C');
+    expect(outer.nodeIds).not.toContain('A');
+  });
+
+  it('parses a gpos comment into stored group bounds', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph g1\nA-->B\nend\n%% mermaid-flow:gpos g1=40,20,300,180\n',
+    );
+    const g = model.groups.find((gr) => gr.id === 'g1')!;
+    expect(g.x).toBe(40);
+    expect(g.y).toBe(20);
+    expect(g.w).toBe(300);
+    expect(g.h).toBe(180);
+  });
+
+  it('leaves bounds undefined when no gpos comment is present', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph g1\nA-->B\nend\n');
+    const g = model.groups.find((gr) => gr.id === 'g1')!;
+    expect(g.x).toBeUndefined();
+  });
+});

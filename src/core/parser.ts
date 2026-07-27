@@ -40,6 +40,7 @@ const HEADER_RE = /^\s*(?:flowchart|graph)\s+(TB|TD|BT|LR|RL)\b/i;
 // Position hint comment we write ourselves so manual layout survives a round
 // trip. Mermaid treats `%%` lines as comments, so this stays valid.
 const POS_RE = /^\s*%%\s*mermaid-flow:pos\s+(.*)$/i;
+const GPOS_RE = /^\s*%%\s*mermaid-flow:gpos\s+(.*)$/i;
 
 /** Operators, longest/most-specific first so the regex matches greedily. */
 const LINK_OP_RE = /(<-->|-\.->|-\.-|-->|---|==>|===|~~~)/;
@@ -369,6 +370,10 @@ export function mermaidToModel(text: string): ParseResult {
 		string,
 		{ x: number; y: number; w?: number; h?: number }
 	>();
+	const groupPosHints = new Map<
+		string,
+		{ x: number; y: number; w: number; h: number }
+	>();
 	const groupStack: DiagramGroup[] = [];
 	const groupedNodes = new Set<string>();
 	const linkStyleDirectives: Array<{ index: number; props: string }> = [];
@@ -424,7 +429,9 @@ export function mermaidToModel(text: string): ParseResult {
 			id = newGroupId(model);
 			title = rest;
 		}
+		const parent = groupStack[groupStack.length - 1];
 		const group: DiagramGroup = { id, title, nodeIds: [] };
+		if (parent) group.parentId = parent.id;
 		model.groups.push(group);
 		groupStack.push(group);
 	};
@@ -454,6 +461,25 @@ export function mermaidToModel(text: string): ParseResult {
 						hint.h = parseFloat(m[5]);
 					}
 					posHints.set(m[1], hint);
+				}
+			}
+			continue;
+		}
+
+		// Our own group-geometry hint comment.
+		const gposMatch = line.match(GPOS_RE);
+		if (gposMatch && gposMatch[1] !== undefined) {
+			for (const part of gposMatch[1].split(/\s+/)) {
+				const m = part.match(
+					/^([A-Za-z0-9_]+)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(\d+(?:\.\d+)?),(\d+(?:\.\d+)?)$/,
+				);
+				if (m) {
+					groupPosHints.set(m[1]!, {
+						x: parseFloat(m[2]!),
+						y: parseFloat(m[3]!),
+						w: parseFloat(m[4]!),
+						h: parseFloat(m[5]!),
+					});
 				}
 			}
 			continue;
@@ -599,8 +625,24 @@ export function mermaidToModel(text: string): ParseResult {
 		edge.style = { ...edge.style, ...parsed };
 	}
 
-	// Drop groups that ended up empty.
-	model.groups = model.groups.filter((g) => g.nodeIds.length > 0);
+	// Drop groups with no members AND no child groups.
+	const parents = new Set(
+		model.groups.map((g) => g.parentId).filter((p): p is string => !!p),
+	);
+	model.groups = model.groups.filter(
+		(g) => g.nodeIds.length > 0 || parents.has(g.id),
+	);
+
+	// Apply stored group bounds from gpos hint comments.
+	for (const group of model.groups) {
+		const hint = groupPosHints.get(group.id);
+		if (hint) {
+			group.x = hint.x;
+			group.y = hint.y;
+			group.w = hint.w;
+			group.h = hint.h;
+		}
+	}
 
 	// Apply saved position hints; everything else gets laid out by the caller.
 	for (const node of model.nodes) {
