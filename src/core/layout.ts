@@ -18,7 +18,7 @@
 
 import * as dagre from "@dagrejs/dagre";
 import type { EdgeLabel, GraphLabel, NodeLabel } from "@dagrejs/dagre";
-import { DiagramModel } from "./model";
+import { DiagramModel, materializeGroupBounds } from "./model";
 import { estimateNodeSize } from "./nodeGeometry";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
@@ -33,6 +33,9 @@ export function autoLayout(model: DiagramModel): void {
 		console.error("[ceasg] dagre layout failed, using grid fallback:", e);
 		gridFallback(model);
 	}
+	// Re-fit every group box to the freshly laid-out members and store it
+	// explicitly, so boxes stay put during subsequent member drags.
+	materializeGroupBounds(model, true);
 }
 
 function dagreLayout(model: DiagramModel): void {
@@ -97,11 +100,7 @@ function dagreLayout(model: DiagramModel): void {
 		node.x = Math.max(40, Math.round(px));
 		node.y = Math.max(30, Math.round(py));
 	}
-
-	// A fresh layout invalidates any manual group boxes — let them re-derive.
-	for (const grp of model.groups) {
-		grp.x = grp.y = grp.w = grp.h = undefined;
-	}
+	// Group boxes are re-fitted by autoLayout() via materializeGroupBounds(force).
 }
 
 /**

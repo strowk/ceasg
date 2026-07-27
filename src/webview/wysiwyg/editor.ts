@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -94,6 +94,10 @@ export class WysiwygEditor {
   init(source: string): void {
     this.model = mermaidToModel(source).model;
     layoutMissing(this.model);
+    // Freeze derived group boxes into explicit bounds (respecting any saved
+    // gpos geometry) so a subgraph box stays put while its members are dragged
+    // out — a live-derived box would re-wrap them and nothing could ever leave.
+    materializeGroupBounds(this.model);
     this.history = [cloneModel(this.model)];
     this.historyIndex = 0;
 

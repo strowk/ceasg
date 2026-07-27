@@ -26,22 +26,21 @@ describe('autoLayout', () => {
 });
 
 describe('auto layout with nested groups', () => {
-  it('clears stale stored group bounds and re-derives nesting after layout', () => {
+  it('re-fits stale stored group bounds into explicit boxes that nest after layout', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',
     );
     const outerGrp = model.groups.find((g) => g.id === 'outer')!;
-    // Seed WRONG tiny stored bounds that would break nesting if not cleared.
+    // Seed WRONG tiny stored bounds that would break nesting if not re-fitted.
     outerGrp.x = 0; outerGrp.y = 0; outerGrp.w = 1; outerGrp.h = 1;
     autoLayout(model);
-    // Layout must clear stored bounds so they re-derive from laid-out members.
-    expect(outerGrp.x).toBeUndefined();
-    expect(outerGrp.y).toBeUndefined();
-    expect(outerGrp.w).toBeUndefined();
-    expect(outerGrp.h).toBeUndefined();
+    // Layout re-fits stored bounds to explicit values (not undefined) so boxes
+    // stay put during later member drags — the 1x1 seed must be replaced.
+    expect(outerGrp.w).toBeGreaterThan(1);
+    expect(outerGrp.h).toBeGreaterThan(1);
     const outer = groupBounds(model, outerGrp);
     const inner = groupBounds(model, model.groups.find((g) => g.id === 'inner')!);
-    // Re-derived outer box fully encloses inner on all four edges.
+    // Re-fitted outer box fully encloses inner on all four edges.
     expect(outer.x).toBeLessThanOrEqual(inner.x);
     expect(outer.y).toBeLessThanOrEqual(inner.y);
     expect(outer.x + outer.w).toBeGreaterThanOrEqual(inner.x + inner.w);

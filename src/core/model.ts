@@ -461,6 +461,56 @@ export function translateGroup(
 	}
 }
 
+/** Depth of a group in the tree (0 = top-level). */
+function groupTreeDepth(model: DiagramModel, id: string): number {
+	let d = 0;
+	let cur = model.groups.find((g) => g.id === id)?.parentId;
+	while (cur) {
+		d++;
+		cur = model.groups.find((g) => g.id === cur)?.parentId;
+	}
+	return d;
+}
+
+/**
+ * Freeze derived group boxes into explicit stored bounds so a box stays put
+ * while its members are dragged (otherwise a derived box re-wraps its members
+ * every repaint and nothing can ever leave it). Called after load/auto-layout.
+ *
+ * With `force`, every group is re-fitted (used by Auto layout); otherwise only
+ * groups whose bounds are still undefined are materialized (used on load, so
+ * saved `gpos` geometry is respected). Groups are processed deepest-first so a
+ * parent box wraps its children's just-stored boxes.
+ */
+export function materializeGroupBounds(
+	model: DiagramModel,
+	force = false,
+): void {
+	if (force) {
+		for (const g of model.groups) {
+			g.x = g.y = g.w = g.h = undefined;
+		}
+	}
+	const deepestFirst = [...model.groups].sort(
+		(a, b) => groupTreeDepth(model, b.id) - groupTreeDepth(model, a.id),
+	);
+	for (const g of deepestFirst) {
+		if (
+			g.x !== undefined &&
+			g.y !== undefined &&
+			g.w !== undefined &&
+			g.h !== undefined
+		) {
+			continue;
+		}
+		const b = groupBounds(model, g);
+		g.x = b.x;
+		g.y = b.y;
+		g.w = b.w;
+		g.h = b.h;
+	}
+}
+
 /** Delete a group but keep its contents: reparent child groups and member
  *  nodes to this group's parent (top-level when it had none). */
 export function removeGroup(model: DiagramModel, groupId: string): void {

@@ -3,6 +3,7 @@ import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES } from './m
 import {
   groupChildren, groupBounds, assignGroupToParent,
   groupDescendantNodeIds, translateGroup, removeGroup, GROUP_PAD,
+  materializeGroupBounds,
 } from './model';
 
 function nodeAt(id: string, x: number, y: number) {
@@ -119,5 +120,51 @@ describe('group tree helpers', () => {
     expect(m.groups.find((g) => g.id === 'leaf')!.parentId).toBe('outer');
     // member A had innermost 'inner'; after ungroup it belongs to outer
     expect(m.groups.find((g) => g.id === 'outer')!.nodeIds).toContain('A');
+  });
+});
+
+describe('materializeGroupBounds', () => {
+  it('freezes derived bounds so a dragged-out member escapes the fixed box', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 100));
+    m.groups.push({ id: 'g1', title: 'g1', nodeIds: ['A'] });
+    materializeGroupBounds(m);
+    const g = m.groups[0];
+    expect(g.x).toBeDefined();
+    const frozen = groupBounds(m, g);
+    // Drag the member far away; the box must NOT follow (it is now explicit).
+    m.nodes[0].x = 900; m.nodes[0].y = 900;
+    const after = groupBounds(m, g);
+    expect(after).toEqual(frozen);
+    // The node's new centre is outside the frozen box (so membership can change).
+    expect(m.nodes[0].x).toBeGreaterThan(after.x + after.w);
+  });
+
+  it('only materializes undefined bounds by default (respects saved gpos)', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 100));
+    m.groups.push({ id: 'g1', title: 'g1', nodeIds: ['A'], x: 5, y: 6, w: 7, h: 8 });
+    materializeGroupBounds(m);
+    expect(m.groups[0]).toMatchObject({ x: 5, y: 6, w: 7, h: 8 });
+  });
+
+  it('with force, re-fits even groups that already had bounds', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 100));
+    m.groups.push({ id: 'g1', title: 'g1', nodeIds: ['A'], x: 5, y: 6, w: 7, h: 8 });
+    materializeGroupBounds(m, true);
+    expect(m.groups[0].w).toBeGreaterThan(7); // re-fit to wrap node A
+  });
+
+  it('materializes nested groups so the parent box wraps the child box', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 100));
+    m.groups.push({ id: 'outer', title: 'o', nodeIds: [] });
+    m.groups.push({ id: 'inner', title: 'i', nodeIds: ['A'], parentId: 'outer' });
+    materializeGroupBounds(m);
+    const outer = m.groups.find((g) => g.id === 'outer')!;
+    const inner = m.groups.find((g) => g.id === 'inner')!;
+    expect(outer.x).toBeLessThanOrEqual(inner.x!);
+    expect(outer.x! + outer.w!).toBeGreaterThanOrEqual(inner.x! + inner.w!);
   });
 });
