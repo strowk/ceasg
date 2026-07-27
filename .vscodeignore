@@ -19,4 +19,6 @@ media/icon.svg
 media/demo.gif
 .vscodeignore
 .superpowers/**
+docs/superpowers/**
+docs/INSTALL-DEV.md
 *.vsix
