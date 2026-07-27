@@ -21,6 +21,10 @@ type Mode = 'select' | 'connect';
 export class PointerController {
   private down: { x: number; y: number } | null = null;
   private dragging = false;
+  /** Whether the pointer actually moved past the drag threshold since press.
+   *  A plain click must NOT repaint — repaint swaps the <svg> and the browser
+   *  then never fires dblclick (breaking double-click-to-rename). */
+  private moved = false;
   private dragIds: string[] = [];
   private groupDragId: string | null = null;
   private last = { x: 0, y: 0 };
@@ -69,6 +73,7 @@ export class PointerController {
     this.down = p; this.last = { x: e.clientX, y: e.clientY };
     const model = this.editor.getModel();
     this.groupDragId = null;
+    this.moved = false;
 
     if (this.spaceDown || e.button === 1) { this.panning = true; return; }
 
@@ -197,6 +202,12 @@ export class PointerController {
       return;
     }
     if (this.dragging && this.down) {
+      // Ignore sub-threshold jitter so a stationary double-click isn't turned
+      // into a repainting drag (which would break dblclick-to-rename).
+      if (!this.moved && Math.abs(e.clientX - this.last.x) <= 3 && Math.abs(e.clientY - this.last.y) <= 3) {
+        return;
+      }
+      this.moved = true;
       const dx = p.x - this.down.x;
       const dy = p.y - this.down.y;
       this.down = p;
@@ -222,6 +233,11 @@ export class PointerController {
       return;
     }
     if (this.marqueeStart) {
+      // Same jitter guard: a plain background click must not repaint.
+      if (!this.moved && Math.abs(e.clientX - this.last.x) <= 3 && Math.abs(e.clientY - this.last.y) <= 3) {
+        return;
+      }
+      this.moved = true;
       const x = Math.min(this.marqueeStart.x, p.x);
       const y = Math.min(this.marqueeStart.y, p.y);
       const w = Math.abs(p.x - this.marqueeStart.x);
@@ -242,13 +258,17 @@ export class PointerController {
       this.panning = false; this.down = null;
     } else if (this.dragging) {
       this.dragging = false;
-      this.editor.mutate((m) => {
-        if (this.groupDragId) {
-          reassignGroupParent(m, this.groupDragId);
-        } else {
-          for (const id of this.dragIds) { reassignNodeMembership(m, id); }
-        }
-      }, { commit: true });
+      // Only a real drag reassigns membership / repaints. A plain click (no
+      // movement) leaves the svg intact so double-click-to-rename still fires.
+      if (this.moved) {
+        this.editor.mutate((m) => {
+          if (this.groupDragId) {
+            reassignGroupParent(m, this.groupDragId);
+          } else {
+            for (const id of this.dragIds) { reassignNodeMembership(m, id); }
+          }
+        }, { commit: true });
+      }
       this.groupDragId = null;
       this.down = null;
     } else if (this.connectFrom && !this.connectClickWaiting) {
@@ -263,17 +283,22 @@ export class PointerController {
       this.connectFrom = null;
       this.connectFromPt = null;
     } else if (this.marqueeStart) {
-      const x = Math.min(this.marqueeStart.x, p.x);
-      const y = Math.min(this.marqueeStart.y, p.y);
-      const w = Math.abs(p.x - this.marqueeStart.x);
-      const h = Math.abs(p.y - this.marqueeStart.y);
-      if (w > 3 || h > 3) {
-        for (const id of nodesInRect(this.editor.getModel(), { x, y, w, h })) { this.selection.multi.add(id); }
-        this.selection.single = this.selection.multi.size === 1 ? [...this.selection.multi][0] : null;
+      // Only repaint if an actual marquee was drawn; a plain background click
+      // already cleared+redrew selection in onDown, and repainting here would
+      // swap the svg and break a double-click landing on background.
+      if (this.moved) {
+        const x = Math.min(this.marqueeStart.x, p.x);
+        const y = Math.min(this.marqueeStart.y, p.y);
+        const w = Math.abs(p.x - this.marqueeStart.x);
+        const h = Math.abs(p.y - this.marqueeStart.y);
+        if (w > 3 || h > 3) {
+          for (const id of nodesInRect(this.editor.getModel(), { x, y, w, h })) { this.selection.multi.add(id); }
+          this.selection.single = this.selection.multi.size === 1 ? [...this.selection.multi][0] : null;
+        }
+        this.editor.repaint();
+        this.onSelectionChange();
       }
       this.marqueeStart = null;
-      this.editor.repaint();
-      this.onSelectionChange();
     }
     this.capturedPointerId = null;
   }
