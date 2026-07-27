@@ -52,4 +52,14 @@ describe('subgraph nesting + geometry', () => {
     const g = model.groups.find((gr) => gr.id === 'g1')!;
     expect(g.x).toBeUndefined();
   });
+
+  it('keeps an outer group that only contains a nested subgraph (no direct nodes)', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',
+    );
+    // outer has no direct member nodes, only the nested `inner` group — must survive.
+    expect(model.groups.find((g) => g.id === 'outer')).toBeTruthy();
+    expect(model.groups.find((g) => g.id === 'outer')!.nodeIds).toHaveLength(0);
+    expect(model.groups.find((g) => g.id === 'inner')!.parentId).toBe('outer');
+  });
 });
