@@ -4,7 +4,7 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.0] - 2026-07-27
+## [0.3.0] - 2026-07-28
 
 ### Added
 - Subgraph support in the visual flowchart editor: subgraph containers now render as boxes with titles behind their member nodes, including nested subgraphs.

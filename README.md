@@ -10,6 +10,7 @@ A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on a
 - **Dual-mode editing:**
   - **Flowchart WYSIWYG** — Drag nodes, connect edges, adjust shapes/colors, auto-layout, and set position all visually on the canvas.
   - **Live preview for other types** — Sequence, state, class, and other diagram types render live as you edit the Mermaid source in the editor.
+- **Subgraphs** — Render subgraph containers (including nested ones); create one from a selection, drag a whole subgraph, drag nodes in/out to change membership, rename, resize, and ungroup — all on the canvas.
 - **Two-way sync:**
   - Edits in the visual editor write back to the Markdown file instantly.
   - External changes (save in the Markdown editor) pull into the visual editor automatically.
@@ -31,6 +32,7 @@ The extension preserves two lightweight comment formats for interoperability:
 
 - `%% ceasg:{"id":"....."} %%` — Marks a flowchart node with a stable identity. Safe to edit or remove (if removed, a new ID is assigned on next save).
 - `%% mermaid-flow:pos id=x,y id=x,y ... %%` — Records node layout positions. Updated on every edit; safe to ignore or delete (layout resets to auto-layout on next save).
+- `%% mermaid-flow:gpos id=x,y,w,h ... %%` — Records subgraph box geometry. Updated on every edit; safe to ignore or delete (boxes re-derive from their members on next open).
 
 Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
 
@@ -39,7 +41,6 @@ Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
 - **Flowchart WYSIWYG only** — Other diagram types (sequence, state, class, etc.) render as live preview with a text editor; no visual editing UI.
 - **No PNG/SVG export** — Use Mermaid's live editor or browser DevTools to screenshot/save.
 - **No copy/paste** — Select, duplicate, and other multi-select shortcuts deferred to later.
-- **No subgraph creation UI** — The model supports subgraphs; a create-subgraph action is planned.
 - **No theme/style presets dropdown** — Inline color/style controls available in the properties panel.
 
 ## Requirements
