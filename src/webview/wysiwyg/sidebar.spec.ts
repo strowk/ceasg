@@ -56,4 +56,22 @@ describe('ShapeSidebar', () => {
     expect(sidebar.toggle(true)).toBe(true);
     expect(host.style.display).toBe('');
   });
+
+  it('toggle(force) overrides the current state rather than just flipping it', () => {
+    const { host, sidebar } = make();
+    expect(sidebar.isOpen).toBe(true);
+
+    // From open, force-close: returns false and hides.
+    expect(sidebar.toggle(false)).toBe(false);
+    expect(host.style.display).toBe('none');
+
+    // Force-close again from already-closed: stays false/hidden (idempotent,
+    // not flipped back open — proves `force` is honored, not just !open).
+    expect(sidebar.toggle(false)).toBe(false);
+    expect(host.style.display).toBe('none');
+
+    // From closed, force-open: returns true and shows.
+    expect(sidebar.toggle(true)).toBe(true);
+    expect(host.style.display).toBe('');
+  });
 });
