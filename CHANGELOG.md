@@ -4,6 +4,18 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.6.0] - 2026-07-28
+
+### Added
+- A collapsible **shape palette sidebar** on the left of the visual editor, showing shapes in expandable groups (one group, **Basic**, for now). Click a shape to add it, or drag it onto the canvas. Toggle the whole sidebar with the `◧` toolbar button. The toolbar's shapes dropdown is unchanged and still available.
+
+### Changed
+- A newly added node is now selected automatically, so the properties panel targets it right away. Applies whether the node came from the sidebar, the dropdown, or a drag-and-drop.
+- Clicking a shape in the toolbar dropdown now places it at the canvas centre and cascades down-right if that spot is taken, so repeated clicks no longer stack nodes on one point.
+
+### Fixed
+- The canvas no longer distorts when the editor pane is resized. The `viewBox` was derived from the pane's size but never recomputed, so after a resize the diagram letterboxed and clicks landed on the wrong nodes until the next zoom or pan.
+
 ## [0.5.0] - 2026-07-28
 
 ### Added
