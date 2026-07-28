@@ -1,4 +1,4 @@
-import { NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, duplicateNode, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
+import { BASE_FONT_SIZE, NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
 
@@ -8,6 +8,16 @@ const DASH_PRESETS: Record<string, string> = { Solid: '', Dashed: '6 4', Dotted:
 const FONT_PRESETS: Record<string, string> = {
   Default: '', 'Sans-serif': 'sans-serif', Serif: 'serif', Monospace: 'monospace', Cursive: 'cursive',
 };
+
+/*
+ * What the canvas renders each property at when it is unset — mirrors
+ * media/diagram.css. Numeric inputs seed from these so stepping an unset field
+ * starts from the value in effect. Node font size uses core's BASE_FONT_SIZE,
+ * which .ceasg-label is kept in lockstep with.
+ */
+const DEFAULT_NODE_STROKE_W = 1.5;  // .ceasg-shape stroke-width
+const DEFAULT_EDGE_STROKE_W = 1.5;  // .ceasg-edge-line stroke-width
+const DEFAULT_EDGE_LABEL_SIZE = 12; // .ceasg-edge-label font-size
 
 export class PropertiesPanel {
   constructor(private readonly host: HTMLElement, private readonly editor: WysiwygEditor) {
@@ -58,12 +68,24 @@ export class PropertiesPanel {
     return sel;
   }
 
-  /** A number input that maps a blank field to `undefined` (property unset). */
-  private numberInput(value: number | undefined, min: string, step: string, onInput: (v: number | undefined) => void): HTMLInputElement {
+  /**
+   * A number input that maps a blank field to `undefined` (property unset).
+   *
+   * An unset property seeds the field with `fallback` — the value the canvas
+   * actually renders it at — so the spinner steps from what the user sees
+   * instead of jumping to `min`. The field is dimmed until edited to show the
+   * number is the inherited default rather than something set on this element.
+   */
+  private numberInput(value: number | undefined, fallback: number, min: string, step: string, onInput: (v: number | undefined) => void): HTMLInputElement {
     const i = document.createElement('input');
     i.type = 'number'; i.min = min; i.step = step;
-    i.value = value !== undefined ? String(value) : '';
-    i.addEventListener('input', () => { const v = parseFloat(i.value); onInput(Number.isFinite(v) ? v : undefined); });
+    i.value = String(value ?? fallback);
+    if (value === undefined) { i.classList.add('ceasg-input-inherited'); }
+    i.addEventListener('input', () => {
+      i.classList.remove('ceasg-input-inherited');
+      const v = parseFloat(i.value);
+      onInput(Number.isFinite(v) ? v : undefined);
+    });
     return i;
   }
 
@@ -96,11 +118,11 @@ export class PropertiesPanel {
     }, { commit: true });
 
     this.host.appendChild(this.row('Font size',
-      this.numberInput(node().style?.fontSize, '1', '1', (v) => setStyle({ fontSize: v }))));
+      this.numberInput(node().style?.fontSize, BASE_FONT_SIZE, '1', '1', (v) => setStyle({ fontSize: v }))));
     this.host.appendChild(this.row('Font',
       this.presetSelect(FONT_PRESETS, node().style?.fontFamily ?? '', (v) => setStyle({ fontFamily: v || undefined }))));
     this.host.appendChild(this.row('Border width',
-      this.numberInput(node().style?.strokeWidth, '0', '0.5', (v) => setStyle({ strokeWidth: v }))));
+      this.numberInput(node().style?.strokeWidth, DEFAULT_NODE_STROKE_W, '0', '0.5', (v) => setStyle({ strokeWidth: v }))));
     this.host.appendChild(this.row('Border dash',
       this.presetSelect(DASH_PRESETS, node().style?.strokeDasharray ?? '', (v) => setStyle({ strokeDasharray: v || undefined }))));
 
@@ -135,18 +157,20 @@ export class PropertiesPanel {
     lineColor.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, strokeColor: lineColor.value }; }, { commit: true }));
     this.host.appendChild(this.row('Line color', lineColor));
 
-    const lineWidth = document.createElement('input'); lineWidth.type = 'number'; lineWidth.min = '0'; lineWidth.step = '0.5'; lineWidth.value = edge().style?.strokeWidth !== undefined ? String(edge().style!.strokeWidth) : '';
-    lineWidth.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = parseFloat(lineWidth.value); e.style = { ...e.style, strokeWidth: Number.isFinite(v) ? v : undefined }; }, { commit: true }));
-    this.host.appendChild(this.row('Line width', lineWidth));
+    const setEdgeStyle = (patch: Partial<EdgeStyle>) => this.editor.mutate((m) => {
+      const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, ...patch };
+    }, { commit: true });
+
+    this.host.appendChild(this.row('Line width',
+      this.numberInput(edge().style?.strokeWidth, DEFAULT_EDGE_STROKE_W, '0', '0.5', (v) => setEdgeStyle({ strokeWidth: v }))));
 
     const dash = this.presetSelect(DASH_PRESETS, edge().style?.strokeDasharray ?? '', (v) => this.editor.mutate((m) => {
       const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, strokeDasharray: v || undefined };
     }, { commit: true }));
     this.host.appendChild(this.row('Dash', dash));
 
-    const labelSize = document.createElement('input'); labelSize.type = 'number'; labelSize.min = '1'; labelSize.step = '1'; labelSize.value = edge().style?.fontSize !== undefined ? String(edge().style!.fontSize) : '';
-    labelSize.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = parseFloat(labelSize.value); e.style = { ...e.style, fontSize: Number.isFinite(v) ? v : undefined }; }, { commit: true }));
-    this.host.appendChild(this.row('Label size', labelSize));
+    this.host.appendChild(this.row('Label size',
+      this.numberInput(edge().style?.fontSize, DEFAULT_EDGE_LABEL_SIZE, '1', '1', (v) => setEdgeStyle({ fontSize: v }))));
 
     const labelColor = document.createElement('input'); labelColor.type = 'color'; labelColor.value = edge().style?.textColor ?? '#888888';
     labelColor.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, textColor: labelColor.value }; }, { commit: true }));
@@ -208,11 +232,11 @@ export class PropertiesPanel {
     this.host.appendChild(this.row('Text', mkColor(first?.textColor, (v) => ({ textColor: v }))));
 
     this.host.appendChild(this.row('Font size',
-      this.numberInput(first?.fontSize, '1', '1', (v) => setAll({ fontSize: v }))));
+      this.numberInput(first?.fontSize, BASE_FONT_SIZE, '1', '1', (v) => setAll({ fontSize: v }))));
     this.host.appendChild(this.row('Font',
       this.presetSelect(FONT_PRESETS, first?.fontFamily ?? '', (v) => setAll({ fontFamily: v || undefined }))));
     this.host.appendChild(this.row('Border width',
-      this.numberInput(first?.strokeWidth, '0', '0.5', (v) => setAll({ strokeWidth: v }))));
+      this.numberInput(first?.strokeWidth, DEFAULT_NODE_STROKE_W, '0', '0.5', (v) => setAll({ strokeWidth: v }))));
     this.host.appendChild(this.row('Border dash',
       this.presetSelect(DASH_PRESETS, first?.strokeDasharray ?? '', (v) => setAll({ strokeDasharray: v || undefined }))));
   }

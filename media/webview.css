@@ -31,6 +31,10 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-panel-row input[type="text"], .ceasg-panel-row input[type="number"], .ceasg-panel-row select { flex: 1.5; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); font-size: 12px; padding: 2px 4px; }
 .ceasg-panel-row input[type="color"] { width: 36px; height: 22px; border: 1px solid var(--vscode-input-border); background: none; cursor: pointer; }
 .ceasg-panel-row input[type="checkbox"] { cursor: pointer; }
+/* A numeric field showing the inherited default rather than a value set on this
+   element. Dimmed so the number reads as "what it currently renders at", while
+   still giving the spinner a sensible place to step from. */
+.ceasg-panel-row input.ceasg-input-inherited { opacity: 0.55; font-style: italic; }
 .ceasg-panel-actions { display: flex; gap: 4px; margin-top: 8px; }
 .ceasg-panel-actions button { flex: 1; font-size: 12px; padding: 3px 0; cursor: pointer; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; }
 .ceasg-panel-actions button:hover { background: var(--vscode-button-hoverBackground); }

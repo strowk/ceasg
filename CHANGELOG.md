@@ -12,7 +12,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Properties panel gains **Font size**, **Font**, **Border width** and **Border dash** controls for the selected node, and mirrors all four in the multi-select panel alongside the existing color pickers.
 - Node `stroke-width` and `stroke-dasharray` are now first-class style properties and round-trip losslessly instead of being preserved as opaque extras.
 
+### Changed
+- Unstyled node labels draw at 16px Trebuchet — the font node boxes have always been measured in, and Mermaid's own flowchart default — instead of 14px in the VS Code UI font. Boxes are unaffected; the canvas now matches the rendered diagram more closely.
+
 ### Fixed
+- Numeric properties-panel fields (node **Font size** / **Border width**, edge **Line width** / **Label size**) seed from the value the canvas actually renders, shown dimmed until edited, so stepping an unset field starts from the effective default instead of jumping to the minimum.
+- Diamond nodes size to keep their label inside the rhombus. Because a diamond narrows toward its points, fixed padding left long or multi-line labels overflowing the sloped edges even at the default font size.
 - Node font properties inherited from a `classDef` are honored everywhere geometry is computed — hit testing, connection handles, edge endpoints, auto layout and fit-to-view — so a class-styled node's box and its interactions agree.
 
 ## [0.4.0] - 2026-07-28
