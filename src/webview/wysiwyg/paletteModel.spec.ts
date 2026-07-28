@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NODE_SHAPES } from '../../core';
-import { PALETTE_GROUPS, SHAPE_DRAG_TYPE, createPaletteItemButton } from './paletteModel';
+import { PALETTE_GROUPS, SHAPE_DRAG_TYPE, createPaletteItemButton, findPaletteItem } from './paletteModel';
 
 describe('PALETTE_GROUPS', () => {
   it('ships exactly one group, Basic, holding every node shape', () => {
@@ -24,11 +24,25 @@ describe('PALETTE_GROUPS', () => {
   });
 });
 
+describe('findPaletteItem', () => {
+  it('round-trips every item from its own drag payload', () => {
+    for (const item of PALETTE_GROUPS.flatMap((g) => g.items)) {
+      expect(findPaletteItem(item.dragType, item.dragData)).toBe(item);
+    }
+  });
+
+  it('returns undefined for a foreign type or an unknown payload', () => {
+    expect(findPaletteItem('text/uri-list', 'https://example.com/')).toBeUndefined();
+    expect(findPaletteItem(SHAPE_DRAG_TYPE, 'not-a-shape')).toBeUndefined();
+  });
+});
+
 describe('createPaletteItemButton', () => {
   const item = PALETTE_GROUPS[0].items[0];
 
   it('builds a draggable button with the icon and a tooltip', () => {
     const btn = createPaletteItemButton(item, () => {});
+    expect(btn.type).toBe('button');
     expect(btn.className).toBe('ceasg-palette-item');
     expect(btn.title).toBe(item.title);
     expect(btn.draggable).toBe(true);

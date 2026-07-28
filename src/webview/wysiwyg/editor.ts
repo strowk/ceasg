@@ -10,6 +10,7 @@ import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
 import { ShapeSidebar } from './sidebar';
+import { findPaletteItem } from './paletteModel';
 
 /** Must match the .ceasg-group-title font in media/diagram.css so the rename
  *  editor is sized to the same text the box renders. */
@@ -92,10 +93,20 @@ export class WysiwygEditor {
     this.canvasHost = this.root.querySelector('#canvas') as HTMLElement;
 
     this.canvasHost.addEventListener('dragover', (e) => { e.preventDefault(); });
+    // Resolve the drop through the palette registry rather than a hardcoded
+    // mime: a future group brings its own dragType/dragData and add() and this
+    // handler needs no change. A payload from no palette is a no-op.
     this.canvasHost.addEventListener('drop', (e) => {
       e.preventDefault();
-      const shape = e.dataTransfer?.getData('text/ceasg-shape');
-      if (shape) { this.addNodeOfShape(shape as NodeShape, e.clientX, e.clientY); }
+      const dt = e.dataTransfer;
+      if (!dt) { return; }
+      for (const type of dt.types) {
+        const item = findPaletteItem(type, dt.getData(type));
+        if (item) {
+          item.add(this, { clientX: e.clientX, clientY: e.clientY });
+          return;
+        }
+      }
     });
 
     // The viewBox is derived from the host's size and nothing else recomputes it,
@@ -186,6 +197,10 @@ export class WysiwygEditor {
     this.mutate((m) => {
       addedId = nextNodeId(m);
       m.nodes.push({ id: addedId, label: addedId, shape, x, y });
+      // A node landing inside a subgraph box must join that group in the SAME
+      // history entry and serialization, or the Markdown would place it outside
+      // the `subgraph … end` block while the canvas draws it inside.
+      reassignNodeMembership(m, addedId);
     }, { commit: true });
     if (addedId && this.selection) {
       this.selection.select(addedId);

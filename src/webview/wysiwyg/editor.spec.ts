@@ -9,7 +9,19 @@ function make() {
   const posts: unknown[] = [];
   const api = { postMessage: (m: unknown) => posts.push(m), getState: () => null, setState: () => {} };
   const editor = new WysiwygEditor(root, api);
-  return { editor, posts };
+  return { editor, posts, root };
+}
+
+/** Dispatch a drop on the canvas host with a fabricated dataTransfer — jsdom
+ *  has no DataTransfer, and only `types` + `getData` are read. */
+function fireDrop(root: HTMLElement, data: Record<string, string>, clientX = 0, clientY = 0): void {
+  const ev = new Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(ev, 'clientX', { value: clientX });
+  Object.defineProperty(ev, 'clientY', { value: clientY });
+  Object.defineProperty(ev, 'dataTransfer', {
+    value: { types: Object.keys(data), getData: (t: string) => data[t] ?? '' },
+  });
+  (root.querySelector('#canvas') as HTMLElement).dispatchEvent(ev);
 }
 
 describe('WysiwygEditor state', () => {
@@ -137,5 +149,81 @@ describe('adding nodes from a palette', () => {
     const added = nodes[nodes.length - 1];
     expect(added.shape).toBe('diamond');
     expect(editor.selection!.single).toBe(added.id);
+  });
+
+  it('joins the subgraph whose box covers where the node lands', () => {
+    const { editor } = make();
+    editor.init('flowchart TB\nsubgraph g1\nA[A]\nend\n');
+    // jsdom measures every element rect as zero, so the canvas centre resolves
+    // to the viewBox origin. Cover that point (and the cascade's reach) so the
+    // new node is unambiguously inside g1's box.
+    const t = editor.viewport!.getTransform();
+    const g1 = editor.getModel().groups.find((g) => g.id === 'g1')!;
+    g1.x = t.vbX - 1000; g1.y = t.vbY - 1000; g1.w = 2000; g1.h = 2000;
+
+    editor.addNodeAtFreeSpot('rect');
+    const nodes = editor.getModel().nodes;
+    const added = nodes[nodes.length - 1];
+    expect(editor.getModel().groups.find((g) => g.id === 'g1')!.nodeIds).toContain(added.id);
+  });
+});
+
+describe('canvas drop', () => {
+  it('adds a node of the dropped palette shape', () => {
+    const { editor, root } = make();
+    editor.init('flowchart TB\nA[A]\n');
+    const before = editor.getModel().nodes.length;
+
+    fireDrop(root, { 'text/ceasg-shape': 'diamond' });
+
+    const nodes = editor.getModel().nodes;
+    expect(nodes).toHaveLength(before + 1);
+    expect(nodes[nodes.length - 1].shape).toBe('diamond');
+  });
+
+  it('ignores a drop whose payload belongs to no palette', () => {
+    const { editor, root } = make();
+    editor.init('flowchart TB\nA[A]\n');
+    const before = editor.getModel().nodes.length;
+
+    fireDrop(root, { 'text/uri-list': 'https://example.com/' });
+
+    expect(editor.getModel().nodes).toHaveLength(before);
+  });
+});
+
+describe('canvas resize', () => {
+  it('recomputes the viewBox when the ResizeObserver fires', () => {
+    let fire: (() => void) | undefined;
+    const g = globalThis as unknown as { ResizeObserver?: unknown };
+    const had = 'ResizeObserver' in g;
+    const prev = g.ResizeObserver;
+    g.ResizeObserver = class {
+      constructor(cb: () => void) { fire = cb; }
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    };
+    try {
+      const { editor, root } = make();
+      editor.init('flowchart TB\nA[A]\n');
+      const host = root.querySelector('#canvas') as HTMLElement;
+      // jsdom lays nothing out, and the observer callback bails on a zero-sized
+      // host — give it the size a real pane resize would report.
+      Object.defineProperty(host, 'clientWidth', { value: 640, configurable: true });
+      Object.defineProperty(host, 'clientHeight', { value: 480, configurable: true });
+      const svg = host.querySelector('svg')!;
+      svg.setAttribute('viewBox', 'stale');
+
+      expect(fire).toBeDefined();
+      fire!();
+
+      const t = editor.viewport!.getTransform();
+      expect(svg.getAttribute('viewBox')).toBe(`${t.vbX} ${t.vbY} ${640 / t.zoom} ${480 / t.zoom}`);
+    } finally {
+      // Restore so every other test keeps exercising the `typeof ResizeObserver
+      // !== 'undefined'` guard.
+      if (had) { g.ResizeObserver = prev; } else { delete g.ResizeObserver; }
+    }
   });
 });

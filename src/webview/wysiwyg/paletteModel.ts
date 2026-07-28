@@ -45,6 +45,17 @@ export const PALETTE_GROUPS: PaletteGroup[] = [
   { id: 'basic', title: 'Basic', items: NODE_SHAPES.map(shapeItem) },
 ];
 
+/** The palette item a drag payload came from, or undefined when the payload
+ *  belongs to no palette (a foreign drag). Lets the canvas drop handler stay
+ *  ignorant of what any group's items are and how they add themselves. */
+export function findPaletteItem(dragType: string, dragData: string): PaletteItem | undefined {
+  for (const group of PALETTE_GROUPS) {
+    const item = group.items.find((i) => i.dragType === dragType && i.dragData === dragData);
+    if (item) { return item; }
+  }
+  return undefined;
+}
+
 /** The single definition of a palette item button, so the dropdown and the
  *  sidebar stay pixel-identical and the drag payload is written in one place. */
 export function createPaletteItemButton(
@@ -52,6 +63,7 @@ export function createPaletteItemButton(
   onActivate: (item: PaletteItem) => void,
 ): HTMLButtonElement {
   const btn = document.createElement('button');
+  btn.type = 'button';
   btn.className = 'ceasg-palette-item';
   btn.title = item.title;
   btn.draggable = true;
