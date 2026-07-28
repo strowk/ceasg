@@ -110,3 +110,32 @@ describe('create / ungroup operations', () => {
     expect(model.nodes.find((n) => n.id === 'B')).toBeUndefined();   // deleted
   });
 });
+
+describe('adding nodes from a palette', () => {
+  it('addNodeAtFreeSpot cascades instead of stacking, and selects the new node', () => {
+    const { editor } = make();
+    editor.init('flowchart TB\nA[A]\n');
+
+    editor.addNodeAtFreeSpot('rect');
+    const nodes1 = editor.getModel().nodes;
+    const first = nodes1[nodes1.length - 1];
+
+    editor.addNodeAtFreeSpot('rect');
+    const nodes2 = editor.getModel().nodes;
+    const second = nodes2[nodes2.length - 1];
+
+    expect(second.id).not.toBe(first.id);
+    expect(first.x !== second.x || first.y !== second.y).toBe(true);
+    expect(editor.selection!.single).toBe(second.id);
+  });
+
+  it('addNodeOfShape selects the dropped node', () => {
+    const { editor } = make();
+    editor.init('flowchart TB\nA[A]\n');
+    editor.addNodeOfShape('diamond', 0, 0);
+    const nodes = editor.getModel().nodes;
+    const added = nodes[nodes.length - 1];
+    expect(added.shape).toBe('diamond');
+    expect(editor.selection!.single).toBe(added.id);
+  });
+});

@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth, findFreeSpot } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -150,11 +150,33 @@ export class WysiwygEditor {
   isGroupId(id: string): boolean { return this.model.groups.some((g) => g.id === id); }
 
   addNodeOfShape(shape: NodeShape, clientX: number, clientY: number): void {
+    const p = this.viewport?.screenToSvg(clientX, clientY) ?? { x: 100, y: 100 };
+    this.addNodeAt(shape, p.x, p.y);
+  }
+
+  /** Add at the canvas centre, cascading down-right past anything already there
+   *  so repeated palette clicks never stack nodes on one spot. */
+  addNodeAtFreeSpot(shape: NodeShape): void {
+    const r = this.canvasHost.getBoundingClientRect();
+    const c = this.viewport?.screenToSvg(r.left + r.width / 2, r.top + r.height / 2)
+      ?? { x: 100, y: 100 };
+    const p = findFreeSpot(this.model, c.x, c.y, shape);
+    this.addNodeAt(shape, p.x, p.y);
+  }
+
+  /** Shared tail of every add path: insert, then select so the properties panel
+   *  targets the new node immediately. Select after mutate — the repaint inside
+   *  it redraws the overlay from the selection as it stood before. */
+  private addNodeAt(shape: NodeShape, x: number, y: number): void {
+    let addedId = '';
     this.mutate((m) => {
-      const id = nextNodeId(m);
-      const p = this.viewport?.screenToSvg(clientX, clientY) ?? { x: 100, y: 100 };
-      m.nodes.push({ id, label: id, shape, x: p.x, y: p.y });
+      addedId = nextNodeId(m);
+      m.nodes.push({ id: addedId, label: addedId, shape, x, y });
     }, { commit: true });
+    if (addedId && this.selection) {
+      this.selection.select(addedId);
+      this.refreshSelection();
+    }
   }
 
   repaint(): void {
