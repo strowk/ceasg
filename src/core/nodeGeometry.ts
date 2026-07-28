@@ -19,6 +19,14 @@ export const MIN_W = 80;
 /** Padding around the label: 32px horizontally, 28px vertically. */
 const PAD_W = 32;
 const PAD_H = 28;
+/**
+ * How much of a diamond's rhombus the label may occupy, as `tw/w + th/h`.
+ * 1.0 means the label's corners exactly touch the sloped edges, so this leaves
+ * a 30% margin. Calibrated to sit just above the historical ratio for a typical
+ * short label (`Choice` at 16px ≈ 0.67), which is why ordinary diamonds keep
+ * their existing size.
+ */
+const DIAMOND_FIT = 0.7;
 
 /**
  * Size a node from its manual w/h or its label text + shape padding.
@@ -53,12 +61,24 @@ export function estimateNodeSize(
 			h = d;
 			break;
 		}
-		case "diamond":
+		case "diamond": {
 			w = Math.max(w + 28, 100);
 			// A diamond needs extra height for its points; floor at the historical
 			// 72 so default-font diamonds are unchanged.
 			h = Math.max(72, h + PAD_H);
+			// The box above only pads by fixed amounts, but a rhombus pinches in
+			// toward its points: it contains a tw x th label only where
+			// tw/w + th/h <= 1. Fixed padding therefore gets relatively tighter as
+			// the label grows, and long or multi-line labels overflow outright.
+			// Grow both axes uniformly (preserving the diamond's aspect) until the
+			// label sits within DIAMOND_FIT of the edges.
+			const grow = (widest / w + (fontSize * lines.length) / h) / DIAMOND_FIT;
+			if (grow > 1) {
+				w = Math.ceil(w * grow);
+				h = Math.ceil(h * grow);
+			}
 			break;
+		}
 		case "hexagon":
 			w += 40;
 			break;

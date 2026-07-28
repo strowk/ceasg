@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { estimateNodeSize, NODE_H, MIN_W } from './nodeGeometry';
+import { measureTextWidth, BASE_FONT_FAMILY } from './textMetrics';
 
 describe('estimateNodeSize', () => {
   it('respects manual overrides', () => {
@@ -52,6 +53,36 @@ describe('estimateNodeSize', () => {
     it('still honours manual w/h overrides regardless of font', () => {
       const s = estimateNodeSize({ ...rect('Hi'), w: 200, h: 100 }, { fontSize: 40 });
       expect(s).toEqual({ w: 200, h: 100 });
+    });
+  });
+
+  describe('diamond label fit', () => {
+    // A rhombus contains a `tw x th` label only where tw/w + th/h <= 1, so a
+    // diamond that merely pads by a constant pinches its text as the label grows.
+    const fit = (label: string, style?: { fontSize?: number }) => {
+      const node = { id: 'A', label, shape: 'diamond' as const, x: 0, y: 0 };
+      const { w, h } = estimateNodeSize(node, style);
+      const lines = label.split('\n');
+      const fontSize = style?.fontSize ?? 16;
+      const tw = Math.max(...lines.map((l) => measureTextWidth(l, `${fontSize}px ${BASE_FONT_FAMILY}`)));
+      return tw / w + (fontSize * lines.length) / h;
+    };
+
+    it('keeps a long label inside the rhombus', () => {
+      expect(fit('Is the value greater than zero?')).toBeLessThanOrEqual(0.71);
+    });
+
+    it('keeps a large-font label inside the rhombus', () => {
+      expect(fit('Decide about this?', { fontSize: 26 })).toBeLessThanOrEqual(0.71);
+    });
+
+    it('keeps a multi-line label inside the rhombus', () => {
+      expect(fit('two lines\nof label here')).toBeLessThanOrEqual(0.71);
+    });
+
+    it('leaves a comfortable short label at its historical size', () => {
+      const s = estimateNodeSize({ id: 'A', label: 'Choice', shape: 'diamond', x: 0, y: 0 });
+      expect(s).toEqual({ w: 110, h: 72 });
     });
   });
 });
