@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, estimateNodeSize, groupBounds } from '../../core';
+import { DiagramModel, DiagramNode, nodeSize, groupBounds } from '../../core';
 import { edgePathD, selfLoopPathD } from './edgePath';
 
 export type Hit =
@@ -8,15 +8,14 @@ export type Hit =
   | { kind: 'resize'; id: string }
   | { kind: 'background' };
 
-function box(n: DiagramNode): { x: number; y: number; w: number; h: number } {
-  const w = n.w ?? estimateNodeSize(n).w;
-  const h = n.h ?? estimateNodeSize(n).h;
+function box(model: DiagramModel, n: DiagramNode): { x: number; y: number; w: number; h: number } {
+  const { w, h } = nodeSize(model, n);
   return { x: n.x - w / 2, y: n.y - h / 2, w, h };
 }
 
 export function nodeAtPoint(model: DiagramModel, x: number, y: number): DiagramNode | undefined {
   for (let i = model.nodes.length - 1; i >= 0; i--) {
-    const b = box(model.nodes[i]);
+    const b = box(model, model.nodes[i]);
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { return model.nodes[i]; }
   }
   return undefined;
@@ -25,7 +24,7 @@ export function nodeAtPoint(model: DiagramModel, x: number, y: number): DiagramN
 export function nodesInRect(model: DiagramModel, r: { x: number; y: number; w: number; h: number }): string[] {
   const rx2 = r.x + r.w, ry2 = r.y + r.h;
   return model.nodes.filter((n) => {
-    const b = box(n);
+    const b = box(model, n);
     return b.x >= r.x && b.y >= r.y && b.x + b.w <= rx2 && b.y + b.h <= ry2;
   }).map((n) => n.id);
 }
@@ -41,7 +40,7 @@ export function edgeAtPoint(model: DiagramModel, x: number, y: number, tol: numb
     const from = model.nodes.find((n) => n.id === e.from);
     const to = model.nodes.find((n) => n.id === e.to);
     if (!from || !to) { continue; }
-    const d = e.from === e.to ? selfLoopPathD(from, model.direction) : edgePathD(from, to, model.direction);
+    const d = e.from === e.to ? selfLoopPathD(model, from, model.direction) : edgePathD(model, from, to, model.direction);
     const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
     if (nums.length < 8) { continue; }
     const [x0, y0, x1, y1, x2, y2, x3, y3] = nums;
@@ -60,9 +59,10 @@ export function edgeAtPoint(model: DiagramModel, x: number, y: number, tol: numb
 
 /** The four connection-handle points (edge midpoints) of a single node. */
 export function nodeAnchorPoints(
+  model: DiagramModel,
   node: DiagramNode,
 ): Array<{ dir: 'N' | 'S' | 'E' | 'W'; x: number; y: number }> {
-  const b = box(node);
+  const b = box(model, node);
   return [
     { dir: 'N', x: node.x, y: b.y },
     { dir: 'S', x: node.x, y: b.y + b.h },
@@ -73,9 +73,9 @@ export function nodeAnchorPoints(
 
 /** Which of a single node's connection handles (if any) is within `tol` of (x, y). */
 export function anchorForNode(
-  node: DiagramNode, x: number, y: number, tol: number,
+  model: DiagramModel, node: DiagramNode, x: number, y: number, tol: number,
 ): 'N' | 'S' | 'E' | 'W' | undefined {
-  for (const a of nodeAnchorPoints(node)) {
+  for (const a of nodeAnchorPoints(model, node)) {
     if (Math.abs(x - a.x) <= tol && Math.abs(y - a.y) <= tol) { return a.dir; }
   }
   return undefined;

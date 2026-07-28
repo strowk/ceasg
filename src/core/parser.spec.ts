@@ -63,3 +63,29 @@ describe('subgraph nesting + geometry', () => {
     expect(model.groups.find((g) => g.id === 'inner')!.parentId).toBe('outer');
   });
 });
+
+describe('node style props', () => {
+  it('parses stroke-width and stroke-dasharray as typed fields, not extras', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nA-->B\nstyle A stroke-width:3px,stroke-dasharray:5 5\n',
+    );
+    const style = model.nodes.find((n) => n.id === 'A')!.style!;
+    expect(style.strokeWidth).toBe(3);
+    expect(style.strokeDasharray).toBe('5 5');
+    expect(style.extra ?? []).toHaveLength(0);
+  });
+
+  it('parses font-size and font-family', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nA-->B\nstyle A font-size:24px,font-family:monospace\n',
+    );
+    const style = model.nodes.find((n) => n.id === 'A')!.style!;
+    expect(style.fontSize).toBe(24);
+    expect(style.fontFamily).toBe('monospace');
+  });
+
+  it('still preserves genuinely unknown props verbatim', () => {
+    const { model } = mermaidToModel('flowchart LR\nA-->B\nstyle A opacity:0.5\n');
+    expect(model.nodes.find((n) => n.id === 'A')!.style!.extra).toEqual(['opacity:0.5']);
+  });
+});

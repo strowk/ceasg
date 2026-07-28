@@ -1,16 +1,12 @@
-import { DiagramModel, DiagramNode, estimateNodeSize, groupBounds } from '../../core';
+import { DiagramModel, nodeSize, groupBounds } from '../../core';
 
 const PAD = 40;
-
-function sizeOf(n: DiagramNode): { w: number; h: number } {
-  return { w: n.w ?? estimateNodeSize(n).w, h: n.h ?? estimateNodeSize(n).h };
-}
 
 export function computeContentBounds(model: DiagramModel): { minX: number; minY: number; maxX: number; maxY: number } {
   if (model.nodes.length === 0 && model.groups.length === 0) { return { minX: 0, minY: 0, maxX: 400, maxY: 300 }; }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of model.nodes) {
-    const { w, h } = sizeOf(n);
+    const { w, h } = nodeSize(model, n);
     minX = Math.min(minX, n.x - w / 2);
     minY = Math.min(minY, n.y - h / 2);
     maxX = Math.max(maxX, n.x + w / 2);

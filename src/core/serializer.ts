@@ -123,6 +123,8 @@ function stylePropsToString(s: NodeStyle): string | null {
 	const props: string[] = [];
 	if (s.fillColor) props.push(`fill:${s.fillColor}`);
 	if (s.strokeColor) props.push(`stroke:${s.strokeColor}`);
+	if (s.strokeWidth) props.push(`stroke-width:${s.strokeWidth}px`);
+	if (s.strokeDasharray) props.push(`stroke-dasharray:${s.strokeDasharray}`);
 	if (s.textColor) props.push(`color:${s.textColor}`);
 	if (s.fontSize) props.push(`font-size:${s.fontSize}px`);
 	if (s.fontFamily) props.push(`font-family:${s.fontFamily}`);

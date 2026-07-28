@@ -107,7 +107,10 @@ export interface NodeStyle {
 	textColor?: string;
 	fontSize?: number;
 	fontFamily?: string;
-	/** Any style props we don't model explicitly, kept verbatim (e.g. stroke-width). */
+	strokeWidth?: number;
+	/** Dash pattern for the node border, e.g. "5 5"; empty/undefined = solid. */
+	strokeDasharray?: string;
+	/** Any style props we don't model explicitly, kept verbatim. */
 	extra?: string[];
 }
 
@@ -194,6 +197,8 @@ export function hasStyle(style: NodeStyle | undefined): boolean {
 		style.textColor !== undefined ||
 		style.fontSize !== undefined ||
 		style.fontFamily !== undefined ||
+		style.strokeWidth !== undefined ||
+		style.strokeDasharray !== undefined ||
 		(style.extra !== undefined && style.extra.length > 0)
 	);
 }
@@ -273,8 +278,26 @@ export function resolveNodeStyle(
 		if (layer.textColor !== undefined) merged.textColor = layer.textColor;
 		if (layer.fontSize !== undefined) merged.fontSize = layer.fontSize;
 		if (layer.fontFamily !== undefined) merged.fontFamily = layer.fontFamily;
+		if (layer.strokeWidth !== undefined) merged.strokeWidth = layer.strokeWidth;
+		if (layer.strokeDasharray !== undefined)
+			merged.strokeDasharray = layer.strokeDasharray;
 	}
 	return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+/**
+ * Rendered size of a node: its manual `w`/`h` overrides, else the label
+ * estimate measured in the node's *resolved* font (classDef layers included).
+ * The single source of truth for node geometry — the renderer, hit testing,
+ * the viewport, edge endpoints and auto layout all go through this so they
+ * cannot disagree.
+ */
+export function nodeSize(
+	model: DiagramModel,
+	node: DiagramNode,
+): { w: number; h: number } {
+	const est = estimateNodeSize(node, resolveNodeStyle(model, node));
+	return { w: node.w ?? est.w, h: node.h ?? est.h };
 }
 
 export function findNode(
@@ -375,7 +398,7 @@ export function groupBounds(
 	for (const id of group.nodeIds) {
 		const n = findNode(model, id);
 		if (!n) continue;
-		const s = estimateNodeSize(n);
+		const s = nodeSize(model, n);
 		add(n.x - s.w / 2, n.y - s.h / 2, s.w, s.h);
 	}
 	for (const child of groupChildren(model, group.id)) {

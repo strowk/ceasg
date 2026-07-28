@@ -1,6 +1,13 @@
-import { NODE_SHAPES, SHAPE_LABELS, NodeShape, duplicateNode, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
+import { NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, duplicateNode, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
+
+/** Border/line dash presets, shared by the node and edge panels. */
+const DASH_PRESETS: Record<string, string> = { Solid: '', Dashed: '6 4', Dotted: '2 4' };
+/** Generic CSS font stacks — enough to be useful without a font enumeration API. */
+const FONT_PRESETS: Record<string, string> = {
+  Default: '', 'Sans-serif': 'sans-serif', Serif: 'serif', Monospace: 'monospace', Cursive: 'cursive',
+};
 
 export class PropertiesPanel {
   constructor(private readonly host: HTMLElement, private readonly editor: WysiwygEditor) {
@@ -30,6 +37,36 @@ export class PropertiesPanel {
     const s = document.createElement('span'); s.textContent = label; r.appendChild(s); r.appendChild(control); return r;
   }
 
+  /**
+   * A `<select>` over named presets. When `current` is a value we have no preset
+   * for — hand-written Mermaid such as `font-family:Georgia` or
+   * `stroke-dasharray:5 5` — it is appended as its own option and selected, so
+   * merely opening the panel never silently rewrites the author's value.
+   */
+  private presetSelect(presets: Record<string, string>, current: string, onPick: (v: string) => void): HTMLSelectElement {
+    const sel = document.createElement('select');
+    for (const name of Object.keys(presets)) {
+      const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o);
+    }
+    const known = Object.keys(presets).find((k) => presets[k] === current);
+    if (known === undefined) {
+      const o = document.createElement('option'); o.value = current; o.textContent = current; sel.appendChild(o);
+      presets = { ...presets, [current]: current };
+    }
+    sel.value = known ?? current;
+    sel.addEventListener('change', () => onPick(presets[sel.value] ?? ''));
+    return sel;
+  }
+
+  /** A number input that maps a blank field to `undefined` (property unset). */
+  private numberInput(value: number | undefined, min: string, step: string, onInput: (v: number | undefined) => void): HTMLInputElement {
+    const i = document.createElement('input');
+    i.type = 'number'; i.min = min; i.step = step;
+    i.value = value !== undefined ? String(value) : '';
+    i.addEventListener('input', () => { const v = parseFloat(i.value); onInput(Number.isFinite(v) ? v : undefined); });
+    return i;
+  }
+
   private nodePanel(id: string): void {
     const node = () => this.editor.getModel().nodes.find((n) => n.id === id)!;
     const head = document.createElement('div'); head.className = 'ceasg-panel-head'; head.textContent = `Node ${id}`;
@@ -53,6 +90,19 @@ export class PropertiesPanel {
     this.host.appendChild(this.row('Fill', mkColor(() => node().style?.fillColor, (v) => { const n = node(); n.style = { ...n.style, fillColor: v }; })));
     this.host.appendChild(this.row('Border', mkColor(() => node().style?.strokeColor, (v) => { const n = node(); n.style = { ...n.style, strokeColor: v }; })));
     this.host.appendChild(this.row('Text', mkColor(() => node().style?.textColor, (v) => { const n = node(); n.style = { ...n.style, textColor: v }; })));
+
+    const setStyle = (patch: Partial<NodeStyle>) => this.editor.mutate((m) => {
+      const n = m.nodes.find((n) => n.id === id)!; n.style = { ...n.style, ...patch };
+    }, { commit: true });
+
+    this.host.appendChild(this.row('Font size',
+      this.numberInput(node().style?.fontSize, '1', '1', (v) => setStyle({ fontSize: v }))));
+    this.host.appendChild(this.row('Font',
+      this.presetSelect(FONT_PRESETS, node().style?.fontFamily ?? '', (v) => setStyle({ fontFamily: v || undefined }))));
+    this.host.appendChild(this.row('Border width',
+      this.numberInput(node().style?.strokeWidth, '0', '0.5', (v) => setStyle({ strokeWidth: v }))));
+    this.host.appendChild(this.row('Border dash',
+      this.presetSelect(DASH_PRESETS, node().style?.strokeDasharray ?? '', (v) => setStyle({ strokeDasharray: v || undefined }))));
 
     const lock = document.createElement('input'); lock.type = 'checkbox'; lock.checked = !!node().locked;
     lock.addEventListener('change', () => this.editor.mutate((m) => { m.nodes.find((n) => n.id === id)!.locked = lock.checked; }, { commit: true }));
@@ -89,12 +139,9 @@ export class PropertiesPanel {
     lineWidth.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = parseFloat(lineWidth.value); e.style = { ...e.style, strokeWidth: Number.isFinite(v) ? v : undefined }; }, { commit: true }));
     this.host.appendChild(this.row('Line width', lineWidth));
 
-    const DASH_PRESETS: Record<string, string> = { Solid: '', Dashed: '6 4', Dotted: '2 4' };
-    const dash = document.createElement('select');
-    for (const name of Object.keys(DASH_PRESETS)) { const o = document.createElement('option'); o.value = name; o.textContent = name; dash.appendChild(o); }
-    const currentDash = edge().style?.strokeDasharray ?? '';
-    dash.value = Object.keys(DASH_PRESETS).find((k) => DASH_PRESETS[k] === currentDash) ?? 'Solid';
-    dash.addEventListener('change', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = DASH_PRESETS[dash.value]; e.style = { ...e.style, strokeDasharray: v || undefined }; }, { commit: true }));
+    const dash = this.presetSelect(DASH_PRESETS, edge().style?.strokeDasharray ?? '', (v) => this.editor.mutate((m) => {
+      const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, strokeDasharray: v || undefined };
+    }, { commit: true }));
     this.host.appendChild(this.row('Dash', dash));
 
     const labelSize = document.createElement('input'); labelSize.type = 'number'; labelSize.min = '1'; labelSize.step = '1'; labelSize.value = edge().style?.fontSize !== undefined ? String(edge().style!.fontSize) : '';
@@ -145,26 +192,28 @@ export class PropertiesPanel {
 
     const model = this.editor.getModel();
     const ids = [...selection.multi];
+    // Controls seed from the first selected node, then write to all of them.
+    const first = model.nodes.find((n) => n.id === ids[0])?.style;
+    const setAll = (patch: Partial<NodeStyle>) => this.editor.mutate((m) => {
+      for (const id of ids) { const n = m.nodes.find((n) => n.id === id); if (n) { n.style = { ...n.style, ...patch }; } }
+    }, { commit: true });
 
-    const fillColor = document.createElement('input'); fillColor.type = 'color';
-    fillColor.value = model.nodes.find((n) => n.id === ids[0])?.style?.fillColor ?? '#888888';
-    fillColor.addEventListener('input', () => this.editor.mutate((m) => {
-      for (const id of ids) { const n = m.nodes.find((n) => n.id === id); if (n) { n.style = { ...n.style, fillColor: fillColor.value }; } }
-    }, { commit: true }));
-    this.host.appendChild(this.row('Fill', fillColor));
+    const mkColor = (current: string | undefined, apply: (v: string) => Partial<NodeStyle>) => {
+      const c = document.createElement('input'); c.type = 'color'; c.value = current ?? '#888888';
+      c.addEventListener('input', () => setAll(apply(c.value)));
+      return c;
+    };
+    this.host.appendChild(this.row('Fill', mkColor(first?.fillColor, (v) => ({ fillColor: v }))));
+    this.host.appendChild(this.row('Border', mkColor(first?.strokeColor, (v) => ({ strokeColor: v }))));
+    this.host.appendChild(this.row('Text', mkColor(first?.textColor, (v) => ({ textColor: v }))));
 
-    const strokeColor = document.createElement('input'); strokeColor.type = 'color';
-    strokeColor.value = model.nodes.find((n) => n.id === ids[0])?.style?.strokeColor ?? '#888888';
-    strokeColor.addEventListener('input', () => this.editor.mutate((m) => {
-      for (const id of ids) { const n = m.nodes.find((n) => n.id === id); if (n) { n.style = { ...n.style, strokeColor: strokeColor.value }; } }
-    }, { commit: true }));
-    this.host.appendChild(this.row('Border', strokeColor));
-
-    const textColor = document.createElement('input'); textColor.type = 'color';
-    textColor.value = model.nodes.find((n) => n.id === ids[0])?.style?.textColor ?? '#888888';
-    textColor.addEventListener('input', () => this.editor.mutate((m) => {
-      for (const id of ids) { const n = m.nodes.find((n) => n.id === id); if (n) { n.style = { ...n.style, textColor: textColor.value }; } }
-    }, { commit: true }));
-    this.host.appendChild(this.row('Text', textColor));
+    this.host.appendChild(this.row('Font size',
+      this.numberInput(first?.fontSize, '1', '1', (v) => setAll({ fontSize: v }))));
+    this.host.appendChild(this.row('Font',
+      this.presetSelect(FONT_PRESETS, first?.fontFamily ?? '', (v) => setAll({ fontFamily: v || undefined }))));
+    this.host.appendChild(this.row('Border width',
+      this.numberInput(first?.strokeWidth, '0', '0.5', (v) => setAll({ strokeWidth: v }))));
+    this.host.appendChild(this.row('Border dash',
+      this.presetSelect(DASH_PRESETS, first?.strokeDasharray ?? '', (v) => setAll({ strokeDasharray: v || undefined }))));
   }
 }

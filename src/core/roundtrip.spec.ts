@@ -47,6 +47,16 @@ describe('round-trip parse↔serialize', () => {
     expect(out).toContain('font-size:20px');
     expect(roundtrip(out)).toBe(out);
   });
+  it('preserves node font and stroke style props', () => {
+    const src = 'flowchart LR\nA-->B\nstyle A font-size:24px,font-family:monospace,stroke-width:3px,stroke-dasharray:5 5\n';
+    const out = roundtrip(src);
+    expect(out).toContain('style A');
+    expect(out).toContain('font-size:24px');
+    expect(out).toContain('font-family:monospace');
+    expect(out).toContain('stroke-width:3px');
+    expect(out).toContain('stroke-dasharray:5 5');
+    expect(roundtrip(out)).toBe(out);
+  });
   it('preserves classDef and class assignments', () => {
     const src = 'flowchart LR\nA[Node]\nclassDef hot fill:#f00\nclass A hot\n';
     const out = roundtrip(src);

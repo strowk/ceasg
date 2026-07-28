@@ -35,6 +35,41 @@ describe('renderDiagram', () => {
     expect(shape.style.fill).toBe('rgb(255, 0, 0)');
   });
 
+  it('applies node stroke width and dasharray from style', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[X]\nstyle A stroke-width:3px,stroke-dasharray:5 5\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    const shape = refs.nodeEls.get('A')!.querySelector<SVGElement>('.ceasg-shape')!;
+    expect(shape.style.strokeWidth).toBe('3');
+    expect(shape.style.strokeDasharray).toBe('5 5');
+  });
+
+  it('applies node font size and family from style', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[X]\nstyle A font-size:24px,font-family:monospace\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    const text = refs.nodeEls.get('A')!.querySelector<SVGElement>('.ceasg-label')!;
+    expect(text.style.fontSize).toBe('24px');
+    expect(text.style.fontFamily).toBe('monospace');
+  });
+
+  it('spaces multi-line labels by the styled font size', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["one<br>two"]\nstyle A font-size:30px\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    const tspans = refs.nodeEls.get('A')!.querySelectorAll('tspan');
+    expect(tspans.length).toBe(2);
+    expect(tspans[1].getAttribute('dy')).toBe('30');
+  });
+
+  it('renders a classDef font size, inherited via a class assignment', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[X]\nclassDef big font-size:28px\nclass A big\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    const text = refs.nodeEls.get('A')!.querySelector<SVGElement>('.ceasg-label')!;
+    expect(text.style.fontSize).toBe('28px');
+  });
+
   it('applies edge stroke color, width, and dasharray from style', () => {
     const { model } = mermaidToModel('flowchart LR\nA-->B\n');
     model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });

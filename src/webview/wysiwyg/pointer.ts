@@ -83,9 +83,9 @@ export class PointerController {
     if (this.mode !== 'connect' && this.selection.single) {
       const selNode = model.nodes.find((n) => n.id === this.selection.single);
       if (selNode) {
-        const dir = anchorForNode(selNode, p.x, p.y, 9 / this.editor.viewport!.scale);
+        const dir = anchorForNode(model, selNode, p.x, p.y, 9 / this.editor.viewport!.scale);
         if (dir) {
-          const pt = nodeAnchorPoints(selNode).find((a) => a.dir === dir)!;
+          const pt = nodeAnchorPoints(model, selNode).find((a) => a.dir === dir)!;
           this.connectFrom = selNode.id;
           this.connectFromPt = { x: pt.x, y: pt.y };
           return;

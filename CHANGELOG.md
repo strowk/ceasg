@@ -4,6 +4,17 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.5.0] - 2026-07-28
+
+### Added
+- Node styling now renders on the visual canvas: `font-size`, `font-family`, `stroke-width` and `stroke-dasharray` (from a `style` line, a `classDef`, or the properties panel) are drawn on the node and its label.
+- Node boxes resize to fit their font, so a large label stays inside its shape — including non-rectangular shapes and multi-line labels, whose line spacing now follows the font size.
+- Properties panel gains **Font size**, **Font**, **Border width** and **Border dash** controls for the selected node, and mirrors all four in the multi-select panel alongside the existing color pickers.
+- Node `stroke-width` and `stroke-dasharray` are now first-class style properties and round-trip losslessly instead of being preserved as opaque extras.
+
+### Fixed
+- Node font properties inherited from a `classDef` are honored everywhere geometry is computed — hit testing, connection handles, edge endpoints, auto layout and fit-to-view — so a class-styled node's box and its interactions agree.
+
 ## [0.4.0] - 2026-07-28
 
 ### Added

@@ -12,11 +12,10 @@
  * match what is actually rendered.
  */
 
-import type { DiagramModel, DiagramNode } from "./model";
-import { estimateNodeSize } from "./nodeGeometry";
+import { nodeSize, type DiagramModel, type DiagramNode } from "./model";
 
-function approxHalf(node: DiagramNode): { hw: number; hh: number } {
-	const { w, h } = estimateNodeSize(node);
+function approxHalf(model: DiagramModel, node: DiagramNode): { hw: number; hh: number } {
+	const { w, h } = nodeSize(model, node);
 	return { hw: w / 2, hh: h / 2 };
 }
 
@@ -31,23 +30,23 @@ export function alignNodes(model: DiagramModel, ids: string[], dir: AlignDir): v
 
 	switch (dir) {
 		case "left": {
-			const ref = Math.min(...nodes.map((n) => n.x - approxHalf(n).hw));
-			for (const n of nodes) n.x = Math.round(ref + approxHalf(n).hw);
+			const ref = Math.min(...nodes.map((n) => n.x - approxHalf(model, n).hw));
+			for (const n of nodes) n.x = Math.round(ref + approxHalf(model, n).hw);
 			break;
 		}
 		case "right": {
-			const ref = Math.max(...nodes.map((n) => n.x + approxHalf(n).hw));
-			for (const n of nodes) n.x = Math.round(ref - approxHalf(n).hw);
+			const ref = Math.max(...nodes.map((n) => n.x + approxHalf(model, n).hw));
+			for (const n of nodes) n.x = Math.round(ref - approxHalf(model, n).hw);
 			break;
 		}
 		case "top": {
-			const ref = Math.min(...nodes.map((n) => n.y - approxHalf(n).hh));
-			for (const n of nodes) n.y = Math.round(ref + approxHalf(n).hh);
+			const ref = Math.min(...nodes.map((n) => n.y - approxHalf(model, n).hh));
+			for (const n of nodes) n.y = Math.round(ref + approxHalf(model, n).hh);
 			break;
 		}
 		case "bottom": {
-			const ref = Math.max(...nodes.map((n) => n.y + approxHalf(n).hh));
-			for (const n of nodes) n.y = Math.round(ref - approxHalf(n).hh);
+			const ref = Math.max(...nodes.map((n) => n.y + approxHalf(model, n).hh));
+			for (const n of nodes) n.y = Math.round(ref - approxHalf(model, n).hh);
 			break;
 		}
 		case "center-x": {

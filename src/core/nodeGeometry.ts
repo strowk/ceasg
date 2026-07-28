@@ -11,23 +11,40 @@
  * auto layout so both always agree on node dimensions.
  */
 
-import type { DiagramNode } from "./model";
-import { measureTextWidth } from "./textMetrics";
+import type { DiagramNode, NodeStyle } from "./model";
+import { BASE_FONT_FAMILY, BASE_FONT_SIZE, measureTextWidth } from "./textMetrics";
 
 export const NODE_H = 44;
 export const MIN_W = 80;
+/** Padding around the label: 32px horizontally, 28px vertically. */
+const PAD_W = 32;
+const PAD_H = 28;
 
-/** Size a node from its manual w/h or its label text + shape padding. */
-export function estimateNodeSize(node: DiagramNode): { w: number; h: number } {
+/**
+ * Size a node from its manual w/h or its label text + shape padding.
+ *
+ * `style` is the node's *resolved* style (see `resolveNodeStyle`); its
+ * `fontSize`/`fontFamily` decide the font the label is measured in, so a node
+ * styled `font-size:24px` gets a box that actually fits its text. At the
+ * default 16px the formulas below reproduce the historical constants exactly
+ * (h = NODE_H = 44 for one line, +16 per extra line), so unstyled diagrams
+ * keep their existing geometry.
+ */
+export function estimateNodeSize(
+	node: DiagramNode,
+	style?: NodeStyle,
+): { w: number; h: number } {
 	if (node.w && node.h) {
 		return { w: node.w, h: node.h };
 	}
+	const fontSize = style?.fontSize ?? BASE_FONT_SIZE;
+	const font = `${fontSize}px ${style?.fontFamily ?? BASE_FONT_FAMILY}`;
 	const rawLabel = node.label || node.id;
 	const lines = rawLabel.split("\n");
 	// Width uses the widest measured line; height grows for multi-line labels.
-	const widest = Math.max(...lines.map((l) => measureTextWidth(l)));
-	let w = Math.max(MIN_W, Math.ceil(widest) + 32);
-	let h = NODE_H + Math.max(0, (lines.length - 1) * 16);
+	const widest = Math.max(...lines.map((l) => measureTextWidth(l, font)));
+	let w = Math.max(MIN_W, Math.ceil(widest) + PAD_W);
+	let h = fontSize * lines.length + PAD_H;
 	switch (node.shape) {
 		case "circle":
 		case "double-circle": {
@@ -38,7 +55,9 @@ export function estimateNodeSize(node: DiagramNode): { w: number; h: number } {
 		}
 		case "diamond":
 			w = Math.max(w + 28, 100);
-			h = 72;
+			// A diamond needs extra height for its points; floor at the historical
+			// 72 so default-font diamonds are unchanged.
+			h = Math.max(72, h + PAD_H);
 			break;
 		case "hexagon":
 			w += 40;

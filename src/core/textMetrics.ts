@@ -21,7 +21,9 @@ const FALLBACK_CHAR_W = 8.2;
 // the box we size matches the text we draw. Mermaid's stock flowchart font/size,
 // which the rendered diagram uses — measuring with it keeps the canvas boxes the
 // same size as the render's.
-const LABEL_FONT = '16px "trebuchet ms", verdana, arial, sans-serif';
+export const BASE_FONT_SIZE = 16;
+export const BASE_FONT_FAMILY = '"trebuchet ms", verdana, arial, sans-serif';
+const LABEL_FONT = `${BASE_FONT_SIZE}px ${BASE_FONT_FAMILY}`;
 
 let ctx: CanvasRenderingContext2D | null | undefined;
 
@@ -52,5 +54,10 @@ export function measureTextWidth(text: string, font: string = LABEL_FONT): numbe
 	for (const ch of text) {
 		units += isWide(ch.codePointAt(0) ?? 0) ? 2 : 1;
 	}
-	return units * FALLBACK_CHAR_W;
+	// FALLBACK_CHAR_W is calibrated for BASE_FONT_SIZE, so scale it by the size
+	// in `font` — otherwise the estimate is font-blind and a node styled
+	// `font-size:32px` would get a box sized for 16px text.
+	const px = /(\d+(?:\.\d+)?)px/.exec(font);
+	const scale = px ? Number(px[1]) / BASE_FONT_SIZE : 1;
+	return units * FALLBACK_CHAR_W * scale;
 }

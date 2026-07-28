@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES } from './model';
+import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, resolveNodeStyle, nodeSize } from './model';
 import {
   groupChildren, groupBounds, assignGroupToParent,
   groupDescendantNodeIds, translateGroup, removeGroup, GROUP_PAD,
@@ -166,5 +166,61 @@ describe('materializeGroupBounds', () => {
     const inner = m.groups.find((g) => g.id === 'inner')!;
     expect(outer.x).toBeLessThanOrEqual(inner.x!);
     expect(outer.x! + outer.w!).toBeGreaterThanOrEqual(inner.x! + inner.w!);
+  });
+});
+
+describe('resolveNodeStyle with font and stroke props', () => {
+  const model = () => {
+    const m = emptyModel('LR');
+    m.classDefs = [
+      { name: 'default', style: { fontSize: 12, strokeWidth: 1 } },
+      { name: 'big', style: { fontSize: 28, fontFamily: 'serif' } },
+      { name: 'dashed', style: { strokeDasharray: '5 5', strokeWidth: 4 } },
+    ];
+    return m;
+  };
+
+  it('inherits font and stroke props from classDef default', () => {
+    const m = model();
+    m.nodes = [{ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0 }];
+    expect(resolveNodeStyle(m, m.nodes[0])).toMatchObject({ fontSize: 12, strokeWidth: 1 });
+  });
+
+  it('lets a later class win over an earlier one, per property', () => {
+    const m = model();
+    m.nodes = [{ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0, classes: ['big', 'dashed'] }];
+    const s = resolveNodeStyle(m, m.nodes[0])!;
+    expect(s.strokeWidth).toBe(4);          // dashed beats default
+    expect(s.strokeDasharray).toBe('5 5');
+    expect(s.fontSize).toBe(28);            // big still supplies what dashed omits
+    expect(s.fontFamily).toBe('serif');
+  });
+
+  it('lets the node style beat every class', () => {
+    const m = model();
+    m.nodes = [{
+      id: 'A', label: 'A', shape: 'rect', x: 0, y: 0,
+      classes: ['big', 'dashed'], style: { fontSize: 9, strokeDasharray: '1 1' },
+    }];
+    const s = resolveNodeStyle(m, m.nodes[0])!;
+    expect(s.fontSize).toBe(9);
+    expect(s.strokeDasharray).toBe('1 1');
+    expect(s.strokeWidth).toBe(4);          // untouched by the node style
+  });
+});
+
+describe('nodeSize', () => {
+  it('uses the classDef-resolved font, not just the node style', () => {
+    const m = emptyModel('LR');
+    m.classDefs = [{ name: 'big', style: { fontSize: 32 } }];
+    const plain = { id: 'A', label: 'Some label', shape: 'rect' as const, x: 0, y: 0 };
+    m.nodes = [plain, { ...plain, id: 'B', classes: ['big'] }];
+    expect(nodeSize(m, m.nodes[1]).h).toBeGreaterThan(nodeSize(m, m.nodes[0]).h);
+  });
+
+  it('prefers manual w/h over the font estimate', () => {
+    const m = emptyModel('LR');
+    m.nodes = [{ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0, w: 300, h: 150, style: { fontSize: 40 } }];
+    expect(nodeSize(m, m.nodes[0])).toEqual({ w: 300, h: 150 });
   });
 });

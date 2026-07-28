@@ -283,6 +283,8 @@ function parseStyleProps(propStr: string): NodeStyle {
 		color: (v, s) => (s.textColor = v),
 		"font-size": (v, s) => parsePx(v, (n) => (s.fontSize = n)),
 		"font-family": (v, s) => (s.fontFamily = v),
+		"stroke-width": (v, s) => parsePx(v, (n) => (s.strokeWidth = n)),
+		"stroke-dasharray": (v, s) => (s.strokeDasharray = v),
 	});
 }
 
@@ -295,6 +297,9 @@ function applyStyleProps(node: DiagramNode, propStr: string): void {
 	if (parsed.textColor !== undefined) style.textColor = parsed.textColor;
 	if (parsed.fontSize !== undefined) style.fontSize = parsed.fontSize;
 	if (parsed.fontFamily !== undefined) style.fontFamily = parsed.fontFamily;
+	if (parsed.strokeWidth !== undefined) style.strokeWidth = parsed.strokeWidth;
+	if (parsed.strokeDasharray !== undefined)
+		style.strokeDasharray = parsed.strokeDasharray;
 	if (parsed.extra && parsed.extra.length > 0) {
 		style.extra = [...(style.extra ?? []), ...parsed.extra];
 	}

@@ -18,8 +18,7 @@
 
 import * as dagre from "@dagrejs/dagre";
 import type { EdgeLabel, GraphLabel, NodeLabel } from "@dagrejs/dagre";
-import { DiagramModel, materializeGroupBounds } from "./model";
-import { estimateNodeSize } from "./nodeGeometry";
+import { DiagramModel, materializeGroupBounds, nodeSize } from "./model";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
 const DEFAULT_CROSS_GAP = 110; // distance between siblings within a rank (grid fallback)
@@ -55,7 +54,7 @@ function dagreLayout(model: DiagramModel): void {
 
 	const nodeIds = new Set(model.nodes.map((n) => n.id));
 	for (const node of model.nodes) {
-		const s = estimateNodeSize(node);
+		const s = nodeSize(model, node);
 		g.setNode(node.id, { width: s.w, height: s.h });
 	}
 
@@ -127,7 +126,7 @@ function gridFallback(model: DiagramModel): void {
 export function resolveOverlaps(model: DiagramModel, margin = 12): void {
 	if (model.nodes.length < 2) return;
 	const boxes = model.nodes.map((n) => {
-		const s = estimateNodeSize(n);
+		const s = nodeSize(model, n);
 		return { n, hw: s.w / 2, hh: s.h / 2 };
 	});
 

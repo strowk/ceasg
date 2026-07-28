@@ -1,4 +1,4 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, estimateNodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
@@ -162,7 +162,7 @@ export class WysiwygEditor {
       const p = this.viewport!.screenToSvg(e.clientX, e.clientY);
       const node = nodeAtPoint(this.model, p.x, p.y);
       if (node) {
-        openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label, w: node.w ?? estimateNodeSize(node).w, h: node.h ?? estimateNodeSize(node).h }, (text) => {
+        openLabelEditor(this.canvasHost, this.viewport!, { x: node.x, y: node.y, text: node.label, ...nodeSize(this.model, node) }, (text) => {
           this.mutate((m) => { const n = m.nodes.find((nn) => nn.id === node.id); if (n) { n.label = text; } }, { commit: true });
         });
         return;
@@ -192,8 +192,8 @@ export class WysiwygEditor {
       const to = edge && this.model.nodes.find((n) => n.id === edge.to);
       if (!edge || !from || !to) { return; }
       const d = edge.from === edge.to
-        ? selfLoopPathD(from, this.model.direction)
-        : edgePathD(from, to, this.model.direction);
+        ? selfLoopPathD(this.model, from, this.model.direction)
+        : edgePathD(this.model, from, to, this.model.direction);
       const mid = bezierMidpoint(d);
       openLabelEditor(this.canvasHost, this.viewport!, { x: mid.x, y: mid.y, text: edge.label }, (text) => {
         this.mutate((m) => { const ed = m.edges.find((e2) => e2.id === edgeId); if (ed) { ed.label = text; } }, { commit: true });
@@ -212,8 +212,7 @@ export class WysiwygEditor {
     for (const id of this.selection.multi) {
       const n = this.model.nodes.find((nn) => nn.id === id);
       if (n) {
-        const w = n.w ?? estimateNodeSize(n).w;
-        const h = n.h ?? estimateNodeSize(n).h;
+        const { w, h } = nodeSize(this.model, n);
         this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
       } else if (this.isGroupId(id)) {
         const gEl = this.refs.groupEls.get(id);
@@ -230,7 +229,7 @@ export class WysiwygEditor {
       const n = this.model.nodes.find((nn) => nn.id === this.selection!.single);
       if (n) {
         const r = 5 / (this.viewport?.scale ?? 1);
-        for (const a of nodeAnchorPoints(n)) { this.overlay.handle(a.x, a.y, r); }
+        for (const a of nodeAnchorPoints(this.model, n)) { this.overlay.handle(a.x, a.y, r); }
       }
     }
     if (this.selection.single && this.isGroupId(this.selection.single)) {

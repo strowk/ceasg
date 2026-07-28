@@ -1,12 +1,10 @@
-import { DiagramNode, DiagramEdge, Direction } from '../../core';
-import { estimateNodeSize } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, Direction } from '../../core';
+import { nodeSize } from '../../core';
 
-function size(n: DiagramNode): { w: number; h: number } {
-  return { w: n.w ?? estimateNodeSize(n).w, h: n.h ?? estimateNodeSize(n).h };
-}
-
-export function nodeBorderPoint(node: DiagramNode, towardX: number, towardY: number): { x: number; y: number } {
-  const { w, h } = size(node);
+// `model` is needed to resolve the node's font (classDef layers included), which
+// decides the box size and therefore where the edge meets its border.
+export function nodeBorderPoint(model: DiagramModel, node: DiagramNode, towardX: number, towardY: number): { x: number; y: number } {
+  const { w, h } = nodeSize(model, node);
   const dx = towardX - node.x;
   const dy = towardY - node.y;
   if (dx === 0 && dy === 0) { return { x: node.x + w / 2, y: node.y }; }
@@ -16,9 +14,9 @@ export function nodeBorderPoint(node: DiagramNode, towardX: number, towardY: num
   return { x: node.x + dx * scale, y: node.y + dy * scale };
 }
 
-export function edgePathD(from: DiagramNode, to: DiagramNode, dir: Direction, offset = 0): string {
-  const a = nodeBorderPoint(from, to.x, to.y);
-  const b = nodeBorderPoint(to, from.x, from.y);
+export function edgePathD(model: DiagramModel, from: DiagramNode, to: DiagramNode, dir: Direction, offset = 0): string {
+  const a = nodeBorderPoint(model, from, to.x, to.y);
+  const b = nodeBorderPoint(model, to, from.x, from.y);
   // Approach axis follows the actual geometry of this edge, so the arrowhead
   // points the natural way (down when the target is below, right when it's to the
   // right, etc.) even after nodes are dragged around. Fall back to the diagram's
@@ -40,8 +38,8 @@ export function edgePathD(from: DiagramNode, to: DiagramNode, dir: Direction, of
   return `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`;
 }
 
-export function selfLoopPathD(node: DiagramNode, dir: Direction): string {
-  const { w, h } = size(node);
+export function selfLoopPathD(model: DiagramModel, node: DiagramNode, dir: Direction): string {
+  const { w, h } = nodeSize(model, node);
   const horizontal = dir === 'LR' || dir === 'RL';
   if (horizontal) {
     const x = node.x + w / 2;

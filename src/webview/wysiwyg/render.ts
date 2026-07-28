@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, estimateNodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, nodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -13,22 +13,20 @@ function el<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap
   return document.createElementNS(SVG_NS, name);
 }
 
-function sizeOf(n: DiagramNode): { w: number; h: number } {
-  return { w: n.w ?? estimateNodeSize(n).w, h: n.h ?? estimateNodeSize(n).h };
-}
-
 function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   const g = el('g');
   g.setAttribute('class', 'ceasg-node');
   g.setAttribute('data-node-id', node.id);
-  const { w, h } = sizeOf(node);
+  const { w, h } = nodeSize(model, node);
   const style = resolveNodeStyle(model, node);
   for (const shapeEl of createShapeElements(node.shape, node.x, node.y, w, h)) {
     shapeEl.classList.add('ceasg-shape');
     // Inline style beats the `.ceasg-shape` stylesheet rule; a presentation
-    // attribute would be overridden by it, so per-node colors must use style.
+    // attribute would be overridden by it, so per-node styling must use style.
     if (style?.fillColor) { shapeEl.style.fill = style.fillColor; }
     if (style?.strokeColor) { shapeEl.style.stroke = style.strokeColor; }
+    if (style?.strokeWidth) { shapeEl.style.strokeWidth = String(style.strokeWidth); }
+    if (style?.strokeDasharray) { shapeEl.style.strokeDasharray = style.strokeDasharray; }
     g.appendChild(shapeEl);
   }
   const lines = node.label.split('\n');
@@ -39,7 +37,11 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   text.setAttribute('text-anchor', 'middle');
   text.setAttribute('dominant-baseline', 'central');
   if (style?.textColor) { text.style.fill = style.textColor; }
-  const lineH = 16;
+  if (style?.fontSize) { text.style.fontSize = `${style.fontSize}px`; }
+  if (style?.fontFamily) { text.style.fontFamily = style.fontFamily; }
+  // Line height tracks the font so multi-line labels stay spaced at any size,
+  // and agrees with the height `estimateNodeSize` reserved for them.
+  const lineH = style?.fontSize ?? BASE_FONT_SIZE;
   lines.forEach((line, i) => {
     const tspan = el('tspan');
     tspan.setAttribute('x', String(node.x));
@@ -59,7 +61,7 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
   g.setAttribute('class', `ceasg-edge ceasg-edge-${edge.kind}`);
   g.setAttribute('data-edge-id', edge.id);
 
-  const d = from.id === to.id ? selfLoopPathD(from, model.direction) : edgePathD(from, to, model.direction, offset);
+  const d = from.id === to.id ? selfLoopPathD(model, from, model.direction) : edgePathD(model, from, to, model.direction, offset);
 
   const hit = el('path');
   hit.setAttribute('class', 'ceasg-edge-hit');
