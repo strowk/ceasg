@@ -7,7 +7,10 @@
 .ceasg-edge-invisible .ceasg-edge-line { stroke-dasharray: 2 6; opacity: 0.4; }
 .ceasg-edge-label-bg { fill: var(--vscode-editor-background); }
 .ceasg-edge-label { fill: var(--vscode-foreground); font: 12px var(--vscode-font-family); }
-.ceasg-edge-selected .ceasg-edge-line { stroke: var(--vscode-focusBorder); stroke-width: 2.5; }
+/* Show selection as a translucent halo on the wide hit path (which sits under
+   the line) rather than recoloring the line itself — so a per-edge inline
+   stroke/width stays visible and updates live while the edge is selected. */
+.ceasg-edge-selected .ceasg-edge-hit { stroke: var(--vscode-focusBorder); stroke-opacity: 0.65; }
 .ceasg-arrowhead { fill: var(--vscode-foreground); }
 .ceasg-group-box {
   fill: color-mix(in srgb, currentColor 4%, transparent);

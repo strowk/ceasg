@@ -1,5 +1,5 @@
 import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, resizeBox } from './hitTest';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, resizeBox, EDGE_HIT_TOLERANCE } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
@@ -168,7 +168,7 @@ export class PointerController {
       return;
     }
     // edge hit-test
-    const edgeId = edgeAtPoint(model, p.x, p.y, 6 / this.editor.viewport!.scale);
+    const edgeId = edgeAtPoint(model, p.x, p.y, EDGE_HIT_TOLERANCE / this.editor.viewport!.scale);
     if (edgeId !== undefined) {
       this.selection.select(edgeId);
       this.onSelectionChange();

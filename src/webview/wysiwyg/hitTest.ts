@@ -30,6 +30,11 @@ export function nodesInRect(model: DiagramModel, r: { x: number; y: number; w: n
   }).map((n) => n.id);
 }
 
+/** Half-width (screen px) of the invisible clickable band around an edge line.
+ *  Constant regardless of the edge's drawn stroke width, so thin edges are just
+ *  as easy to click as thick ones. Divide by the viewport scale at call sites. */
+export const EDGE_HIT_TOLERANCE = 12;
+
 export function edgeAtPoint(model: DiagramModel, x: number, y: number, tol: number): string | undefined {
   for (let i = model.edges.length - 1; i >= 0; i--) {
     const e = model.edges[i];

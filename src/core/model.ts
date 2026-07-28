@@ -114,6 +114,8 @@ export interface NodeStyle {
 export interface EdgeStyle {
 	strokeColor?: string;
 	strokeWidth?: number;
+	/** Dash pattern for the edge line, e.g. "6 4"; empty/undefined = solid. */
+	strokeDasharray?: string;
 	textColor?: string;
 	fontSize?: number;
 	extra?: string[];
@@ -201,6 +203,7 @@ export function hasEdgeStyle(style: EdgeStyle | undefined): boolean {
 	return (
 		style.strokeColor !== undefined ||
 		style.strokeWidth !== undefined ||
+		style.strokeDasharray !== undefined ||
 		style.textColor !== undefined ||
 		style.fontSize !== undefined ||
 		(style.extra !== undefined && style.extra.length > 0)

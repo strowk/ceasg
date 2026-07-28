@@ -4,6 +4,16 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.4.0] - 2026-07-28
+
+### Added
+- Edge styling now renders on the visual canvas: per-edge line color, line width, and dash pattern (from `linkStyle` or the properties panel) are drawn on the edge, and edge labels honor their font size and color.
+- Properties panel gains **Line width**, **Dash** (Solid/Dashed/Dotted), **Label size**, and **Label color** controls for the selected edge.
+- Edge dash pattern (`stroke-dasharray`) is now a first-class style property and round-trips losslessly.
+
+### Fixed
+- A selected edge always shows the selection highlight, even when it has a custom line color.
+
 ## [0.3.0] - 2026-07-28
 
 ### Added

@@ -4,7 +4,7 @@ import { Viewport } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles, EDGE_HIT_TOLERANCE } from './hitTest';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
@@ -185,7 +185,7 @@ export class WysiwygEditor {
         return;
       }
       // Double-click the edge line (or its label) to edit the edge label in place.
-      const edgeId = edgeAtPoint(this.model, p.x, p.y, 10 / this.viewport!.scale);
+      const edgeId = edgeAtPoint(this.model, p.x, p.y, EDGE_HIT_TOLERANCE / this.viewport!.scale);
       if (edgeId === undefined) { return; }
       const edge = this.model.edges.find((ed) => ed.id === edgeId);
       const from = edge && this.model.nodes.find((n) => n.id === edge.from);

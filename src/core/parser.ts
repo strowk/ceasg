@@ -306,6 +306,7 @@ function parseEdgeStyleProps(propStr: string): EdgeStyle {
 	return parseProps<EdgeStyle>(propStr, {
 		stroke: (v, s) => (s.strokeColor = v),
 		"stroke-width": (v, s) => parsePx(v, (n) => (s.strokeWidth = n)),
+		"stroke-dasharray": (v, s) => (s.strokeDasharray = v),
 		color: (v, s) => (s.textColor = v),
 		"font-size": (v, s) => parsePx(v, (n) => (s.fontSize = n)),
 	});

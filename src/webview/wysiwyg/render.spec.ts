@@ -34,6 +34,27 @@ describe('renderDiagram', () => {
     // jsdom normalizes the hex to rgb(), as browsers do.
     expect(shape.style.fill).toBe('rgb(255, 0, 0)');
   });
+
+  it('applies edge stroke color, width, and dasharray from style', () => {
+    const { model } = mermaidToModel('flowchart LR\nA-->B\n');
+    model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
+    model.edges[0].style = { strokeColor: '#ff0000', strokeWidth: 4, strokeDasharray: '6 4' };
+    const { refs } = renderDiagram(model);
+    const line = refs.edgeEls.get(model.edges[0].id)!.querySelector<SVGElement>('.ceasg-edge-line')!;
+    expect(line.style.stroke).toBe('rgb(255, 0, 0)');
+    expect(line.style.strokeWidth).toBe('4');
+    expect(line.style.strokeDasharray).toBe('6 4');
+  });
+
+  it('applies edge label color and font size from style', () => {
+    const { model } = mermaidToModel('flowchart LR\nA -->|hi| B\n');
+    model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
+    model.edges[0].style = { textColor: '#00ff00', fontSize: 20 };
+    const { refs } = renderDiagram(model);
+    const label = refs.edgeEls.get(model.edges[0].id)!.querySelector<SVGElement>('.ceasg-edge-label')!;
+    expect(label.style.fill).toBe('rgb(0, 255, 0)');
+    expect(label.style.fontSize).toBe('20px');
+  });
 });
 
 describe('renderDiagram groups', () => {

@@ -85,6 +85,26 @@ export class PropertiesPanel {
     lineColor.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, strokeColor: lineColor.value }; }, { commit: true }));
     this.host.appendChild(this.row('Line color', lineColor));
 
+    const lineWidth = document.createElement('input'); lineWidth.type = 'number'; lineWidth.min = '0'; lineWidth.step = '0.5'; lineWidth.value = edge().style?.strokeWidth !== undefined ? String(edge().style!.strokeWidth) : '';
+    lineWidth.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = parseFloat(lineWidth.value); e.style = { ...e.style, strokeWidth: Number.isFinite(v) ? v : undefined }; }, { commit: true }));
+    this.host.appendChild(this.row('Line width', lineWidth));
+
+    const DASH_PRESETS: Record<string, string> = { Solid: '', Dashed: '6 4', Dotted: '2 4' };
+    const dash = document.createElement('select');
+    for (const name of Object.keys(DASH_PRESETS)) { const o = document.createElement('option'); o.value = name; o.textContent = name; dash.appendChild(o); }
+    const currentDash = edge().style?.strokeDasharray ?? '';
+    dash.value = Object.keys(DASH_PRESETS).find((k) => DASH_PRESETS[k] === currentDash) ?? 'Solid';
+    dash.addEventListener('change', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = DASH_PRESETS[dash.value]; e.style = { ...e.style, strokeDasharray: v || undefined }; }, { commit: true }));
+    this.host.appendChild(this.row('Dash', dash));
+
+    const labelSize = document.createElement('input'); labelSize.type = 'number'; labelSize.min = '1'; labelSize.step = '1'; labelSize.value = edge().style?.fontSize !== undefined ? String(edge().style!.fontSize) : '';
+    labelSize.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; const v = parseFloat(labelSize.value); e.style = { ...e.style, fontSize: Number.isFinite(v) ? v : undefined }; }, { commit: true }));
+    this.host.appendChild(this.row('Label size', labelSize));
+
+    const labelColor = document.createElement('input'); labelColor.type = 'color'; labelColor.value = edge().style?.textColor ?? '#888888';
+    labelColor.addEventListener('input', () => this.editor.mutate((m) => { const e = m.edges.find((e) => e.id === id)!; e.style = { ...e.style, textColor: labelColor.value }; }, { commit: true }));
+    this.host.appendChild(this.row('Label color', labelColor));
+
     const animated = document.createElement('input'); animated.type = 'checkbox'; animated.checked = !!edge().animated;
     animated.addEventListener('change', () => this.editor.mutate((m) => { m.edges.find((e) => e.id === id)!.animated = animated.checked; }, { commit: true }));
     this.host.appendChild(this.row('Animated', animated));

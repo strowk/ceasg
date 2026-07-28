@@ -2,7 +2,6 @@ import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElemen
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const EDGE_LABEL_FONT = '12px "trebuchet ms", verdana, arial, sans-serif';
 
 export interface RenderRefs {
   nodeEls: Map<string, SVGGElement>;
@@ -71,6 +70,13 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
   line.setAttribute('fill', 'none');
   if (edge.kind !== 'open' && edge.kind !== 'invisible') { line.setAttribute('marker-end', 'url(#ceasg-arrow)'); }
   if (edge.kind === 'bidirectional') { line.setAttribute('marker-start', 'url(#ceasg-arrow)'); }
+  // Apply per-edge style inline: inline beats the `.ceasg-edge-line` stylesheet
+  // rule (a presentation attribute would be overridden by it). The
+  // `.ceasg-edge-selected` rule uses `!important` so selection still shows.
+  const style = edge.style;
+  if (style?.strokeColor) { line.style.stroke = style.strokeColor; }
+  if (style?.strokeWidth) { line.style.strokeWidth = String(style.strokeWidth); }
+  if (style?.strokeDasharray) { line.style.strokeDasharray = style.strokeDasharray; }
   g.appendChild(hit);
   g.appendChild(line);
 
@@ -78,8 +84,10 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
     const mid = bezierMidpoint(d);
     // Background rect so the label reads clearly over the edge line. Sized from
     // measured text width (getBBox isn't available on a detached SVG at build time).
-    const boxW = measureTextWidth(edge.label, EDGE_LABEL_FONT) + 8;
-    const boxH = 18;
+    const fontSize = style?.fontSize ?? 12;
+    const labelFont = `${fontSize}px "trebuchet ms", verdana, arial, sans-serif`;
+    const boxW = measureTextWidth(edge.label, labelFont) + 8;
+    const boxH = fontSize + 6;
     const bg = el('rect');
     bg.setAttribute('class', 'ceasg-edge-label-bg');
     bg.setAttribute('x', String(mid.x - boxW / 2));
@@ -94,6 +102,8 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
     label.setAttribute('y', String(mid.y));
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('dominant-baseline', 'central');
+    if (style?.textColor) { label.style.fill = style.textColor; }
+    if (style?.fontSize) { label.style.fontSize = `${style.fontSize}px`; }
     label.textContent = edge.label;
     g.appendChild(label);
   }
