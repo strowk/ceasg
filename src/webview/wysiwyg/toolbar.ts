@@ -15,6 +15,14 @@ export class Toolbar {
   private build(): void {
     const bar = document.createElement('div');
     bar.className = 'ceasg-toolbar';
+
+    const sidebarBtn = this.btn('◧', 'Toggle shape palette', () => {});
+    sidebarBtn.classList.add('is-active'); // sidebar starts open
+    sidebarBtn.addEventListener('click', () => {
+      sidebarBtn.classList.toggle('is-active', this.editor.toggleSidebar());
+    });
+    bar.appendChild(sidebarBtn);
+
     bar.appendChild(this.btn('↶', 'Undo (Ctrl+Z)', () => this.editor.undo()));
     bar.appendChild(this.btn('↷', 'Redo (Ctrl+Shift+Z)', () => this.editor.redo()));
     bar.appendChild(this.btn('＋', 'Add node', () => this.addNode()));

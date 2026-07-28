@@ -9,6 +9,7 @@ import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
 import { PropertiesPanel } from './properties';
+import { ShapeSidebar } from './sidebar';
 
 /** Must match the .ceasg-group-title font in media/diagram.css so the rename
  *  editor is sized to the same text the box renders. */
@@ -79,13 +80,15 @@ export class WysiwygEditor {
   private toolbarBuilt = false;
   private panelBuilt = false;
   private panel: PropertiesPanel | null = null;
+  private sidebarBuilt = false;
+  private sidebar: ShapeSidebar | null = null;
   viewport: Viewport | null = null;
   overlay: Overlay | null = null;
   selection: SelectionState | null = null;
   controller: PointerController | null = null;
 
   constructor(private readonly root: HTMLElement, private readonly api: VsCodeApi) {
-    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-body"><div class="ceasg-canvas" id="canvas"></div><div id="panel"></div></div></div>';
+    this.root.innerHTML = '<div class="ceasg-wysiwyg"><div id="toolbar"></div><div class="ceasg-body"><div id="sidebar"></div><div class="ceasg-canvas" id="canvas"></div><div id="panel"></div></div></div>';
     this.canvasHost = this.root.querySelector('#canvas') as HTMLElement;
 
     this.canvasHost.addEventListener('dragover', (e) => { e.preventDefault(); });
@@ -133,6 +136,14 @@ export class WysiwygEditor {
       new Toolbar(toolbarHost, this);
     }
 
+    // Built once per editor instance, like the toolbar and panel — init() runs
+    // again on every applyExternal.
+    if (!this.sidebarBuilt) {
+      this.sidebarBuilt = true;
+      const sidebarHost = this.root.querySelector('#sidebar') as HTMLElement;
+      this.sidebar = new ShapeSidebar(sidebarHost, this);
+    }
+
     // Build panel once per editor instance; guard against re-creation on applyExternal→init
     if (!this.panelBuilt) {
       this.panelBuilt = true;
@@ -163,6 +174,9 @@ export class WysiwygEditor {
     const p = findFreeSpot(this.model, c.x, c.y, shape);
     this.addNodeAt(shape, p.x, p.y);
   }
+
+  /** Show/hide the shape palette sidebar. Returns the resulting open state. */
+  toggleSidebar(force?: boolean): boolean { return this.sidebar?.toggle(force) ?? false; }
 
   /** Shared tail of every add path: insert, then select so the properties panel
    *  targets the new node immediately. Select after mutate — the repaint inside
