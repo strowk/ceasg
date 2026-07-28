@@ -69,6 +69,10 @@ export class Viewport {
   setTransform(t: { zoom: number; vbX: number; vbY: number }): void {
     this.zoom = t.zoom; this.vbX = t.vbX; this.vbY = t.vbY; this.apply();
   }
+  /** Re-derive the viewBox from the host's current size, keeping pan and zoom.
+   *  Nothing else recomputes it when the host resizes, which otherwise
+   *  letterboxes the diagram and desyncs screenToSvg. */
+  resize(): void { this.apply(); }
   reset(): void { this.zoom = 1; this.apply(); }
   get scale(): number { return this.zoom; }
 }

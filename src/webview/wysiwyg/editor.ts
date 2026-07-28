@@ -73,6 +73,7 @@ export class WysiwygEditor {
   private syncTimer: ReturnType<typeof setTimeout> | undefined;
   private historyTimer: ReturnType<typeof setTimeout> | undefined;
   private canvasHost: HTMLElement;
+  private resizeObserver: ResizeObserver | null = null;
   private refs: RenderRefs = { nodeEls: new Map(), edgeEls: new Map(), groupEls: new Map() };
   private keyboardAttached = false;
   private toolbarBuilt = false;
@@ -93,6 +94,18 @@ export class WysiwygEditor {
       const shape = e.dataTransfer?.getData('text/ceasg-shape');
       if (shape) { this.addNodeOfShape(shape as NodeShape, e.clientX, e.clientY); }
     });
+
+    // The viewBox is derived from the host's size and nothing else recomputes it,
+    // so a pane resize (or toggling the palette sidebar) would letterbox the
+    // diagram and desync screenToSvg. Observe once here rather than in repaint(),
+    // which recreates the Viewport on every paint and would leak observers.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => {
+        if (!this.canvasHost.clientWidth || !this.canvasHost.clientHeight) { return; }
+        this.viewport?.resize();
+      });
+      this.resizeObserver.observe(this.canvasHost);
+    }
   }
 
   init(source: string): void {

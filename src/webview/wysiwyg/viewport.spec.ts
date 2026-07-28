@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeContentBounds } from './viewport';
+import { computeContentBounds, Viewport } from './viewport';
 import { emptyModel, groupBounds } from '../../core';
 
 describe('computeContentBounds', () => {
@@ -23,5 +23,23 @@ describe('computeContentBounds', () => {
     // there is real padding beyond it — the reported viewport spill).
     expect(b.minY).toBeLessThan(gb.y);
     expect(gb.y - b.minY).toBeGreaterThanOrEqual(40);
+  });
+});
+
+describe('Viewport.resize', () => {
+  it('recomputes the viewBox from the new host size, preserving pan and zoom', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+
+    vp.setTransform({ zoom: 2, vbX: 10, vbY: 20 });
+    expect(svg.getAttribute('viewBox')).toBe('10 20 400 300');
+
+    host.clientWidth = 1000;
+    vp.resize();
+
+    // Same pan origin and zoom; only the visible extent grew.
+    expect(svg.getAttribute('viewBox')).toBe('10 20 500 300');
+    expect(vp.scale).toBe(2);
   });
 });
