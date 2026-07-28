@@ -1,5 +1,5 @@
-import { NODE_SHAPES, NodeShape, SHAPE_LABELS, createShapeIcon } from '../../core';
 import type { WysiwygEditor } from './editor';
+import { PALETTE_GROUPS, createPaletteItemButton } from './paletteModel';
 
 export class ShapePalette {
   private popover: HTMLElement;
@@ -8,18 +8,13 @@ export class ShapePalette {
     this.popover = document.createElement('div');
     this.popover.className = 'ceasg-palette';
     this.popover.style.display = 'none';
-    for (const shape of NODE_SHAPES) {
-      const item = document.createElement('button');
-      item.className = 'ceasg-palette-item';
-      item.title = SHAPE_LABELS[shape];
-      item.draggable = true;
-      item.appendChild(createShapeIcon(shape));
-      item.addEventListener('click', () => {
-        this.editor.addNodeOfShape(shape, window.innerWidth / 2, window.innerHeight / 2);
+    // The dropdown is a flat grid — it ignores group structure by design and
+    // shows every item from every group.
+    for (const item of PALETTE_GROUPS.flatMap((g) => g.items)) {
+      this.popover.appendChild(createPaletteItemButton(item, (it) => {
+        it.add(this.editor);
         this.toggle(false);
-      });
-      item.addEventListener('dragstart', (e) => { e.dataTransfer?.setData('text/ceasg-shape', shape); });
-      this.popover.appendChild(item);
+      }));
     }
     document.body.appendChild(this.popover);
   }
