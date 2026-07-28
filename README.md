@@ -15,7 +15,7 @@ A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on a
   - Edits in the visual editor write back to the Markdown file instantly.
   - External changes (save in the Markdown editor) pull into the visual editor automatically.
 - **Layout persistence** — Node positions are stored in hidden `%% mermaid-flow:pos %%` comments and survive round-trips.
-- **Block identity** — Flowchart nodes carry hidden `%% ceasg:{"id":...} %%` markers to maintain identity across edits (compatible with the Obsidian mermaid-flow plugin).
+- **Block identity** — Flowchart nodes carry hidden `%% ceasg:{"id":...} %%` markers to maintain identity across edits.
 
 ## Workflow
 
@@ -33,8 +33,6 @@ The extension preserves two lightweight comment formats for interoperability:
 - `%% ceasg:{"id":"....."} %%` — Marks a flowchart node with a stable identity. Safe to edit or remove (if removed, a new ID is assigned on next save).
 - `%% mermaid-flow:pos id=x,y id=x,y ... %%` — Records node layout positions. Updated on every edit; safe to ignore or delete (layout resets to auto-layout on next save).
 - `%% mermaid-flow:gpos id=x,y,w,h ... %%` — Records subgraph box geometry. Updated on every edit; safe to ignore or delete (boxes re-derive from their members on next open).
-
-Both are cross-compatible with the Obsidian **mermaid-flow** plugin.
 
 ## Known Limitations (v1)
 
