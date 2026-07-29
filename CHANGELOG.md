@@ -4,7 +4,7 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.6.0] - 2026-07-28
+## [0.6.0] - 2026-07-29
 
 ### Added
 - A collapsible **shape palette sidebar** on the left of the visual editor, showing shapes in expandable groups (one group, **Basic**, for now). Click a shape to add it, or drag it onto the canvas. Toggle the whole sidebar with the `◧` toolbar button. The toolbar's shapes dropdown is unchanged and still available.
