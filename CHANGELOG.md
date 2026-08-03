@@ -4,6 +4,18 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.7.0] - Unreleased
+
+### Added
+- **Wheel and trackpad panning** on the visual editor canvas. Scroll or swipe with two fingers to pan in any direction; hold `Shift` to pan horizontally with a mouse wheel. `Ctrl`/`Cmd` + wheel still zooms, and trackpad pinch-to-zoom now works too.
+- The canvas shows a **grab cursor** while space-drag or middle-button panning is armed, so the existing drag-to-pan gestures are discoverable.
+
+### Changed
+- Panning now stops at the edge of the diagram instead of scrolling it off-screen. Push past the edge and the canvas resists, then springs back, always leaving part of the diagram in view. Applies to every pan gesture, including the existing space-drag and middle-button drag.
+
+### Fixed
+- Holding space and switching away from the editor no longer leaves the canvas stuck in pan mode.
+
 ## [0.6.0] - 2026-07-29
 
 ### Added

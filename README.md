@@ -23,7 +23,7 @@ A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on a
 1. Open a Markdown file with one or more `` ```mermaid `` code blocks.
 2. Click "Mermaid: Open Visual Editor" in the CodeLens above a block.
 3. The editor pane opens beside your Markdown.
-4. For **flowchart** blocks: drag to move, click to select, click endpoints to connect edges, right-click to delete, use the properties panel to change shape/color/label.
+4. For **flowchart** blocks: drag to move, click to select, click endpoints to connect edges, right-click to delete, use the properties panel to change shape/color/label. Pan with the wheel or a two-finger swipe (hold `Shift` for horizontal), zoom with `Ctrl`/`Cmd` + wheel or pinch, or drag with the middle button.
 5. For **other diagram types**: edit the text in the Markdown editor (left), see live preview updates in the editor pane (right).
 6. Save the Markdown file (`Ctrl+S` / `Cmd+S`). External changes sync back into the visual editor automatically.
 
