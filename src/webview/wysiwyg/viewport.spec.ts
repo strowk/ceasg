@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { computeContentBounds, Viewport } from './viewport';
 import { emptyModel, groupBounds } from '../../core';
+import { VISIBLE_MARGIN } from './panLimits';
 
 describe('computeContentBounds', () => {
   it('covers all node boxes with padding', () => {
@@ -245,5 +246,62 @@ describe('Viewport.zoomBy', () => {
     const t = vp.getTransform();
     const hi = 2000 - 80 / t.zoom;
     expect(t.vbX).toBeLessThanOrEqual(hi + 0.001);
+  });
+});
+
+describe('Viewport pan clamp vs. fit() padding (high-zoom regression)', () => {
+  // At zoom >= VISIBLE_MARGIN / PAD (here 80/40 = 2), 40 padding units alone
+  // cover the full 80-screen-px margin, so a clamp measured against PADDED bounds is
+  // satisfied by empty space — the diagram can spring back fully off-screen.
+  // fit() must hand the clamp UNPADDED bounds so the margin is real content.
+  function svgHost() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = {
+      clientWidth: 800,
+      clientHeight: 600,
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    };
+    return { svg, host };
+  }
+
+  it('at zoom 4, the settled boundary still shows real node pixels, not just padding', () => {
+    const { svg, host } = svgHost();
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    const m = emptyModel();
+    m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 100, y: 100, w: 80, h: 44 });
+    const realMaxX = 100 + 80 / 2; // node's actual right edge = 140
+
+    vp.fit(m); // sets content bounds via the real fit() code path
+    vp.setTransform({ zoom: 4, vbX: 0, vbY: 0 });
+    vp.panBy(-100000, 0); // shove far past the right boundary
+    vp.clampToBounds(); // stand-in for the spring's settled resting position
+
+    const t = vp.getTransform();
+    const visibleRealPx = (realMaxX - t.vbX) * t.zoom;
+    // Exactly VISIBLE_MARGIN of the real node must remain on screen at the
+    // boundary — today this comes out <= 0 because the clamp is measured
+    // against padded bounds and the padding alone satisfies the margin.
+    expect(visibleRealPx).toBeCloseTo(VISIBLE_MARGIN);
+    expect(visibleRealPx).toBeGreaterThan(0);
+  });
+
+  it('fit() frames with padded bounds but clamps against unpadded bounds', () => {
+    const { svg, host } = svgHost();
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    const m = emptyModel();
+    m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 100, y: 100, w: 80, h: 44 });
+    const padded = computeContentBounds(m);
+    const unpadded = computeContentBounds(m, 0);
+
+    vp.fit(m);
+    const afterFit = vp.getTransform();
+    // Framing is unchanged: vbX is still the padded origin.
+    expect(afterFit.vbX).toBeCloseTo(padded.minX);
+
+    // But the clamp range comes from the unpadded bounds.
+    vp.setTransform({ zoom: afterFit.zoom, vbX: 5000, vbY: 0 });
+    vp.clampToBounds();
+    const hi = unpadded.maxX - VISIBLE_MARGIN / afterFit.zoom;
+    expect(vp.getTransform().vbX).toBeCloseTo(hi);
   });
 });

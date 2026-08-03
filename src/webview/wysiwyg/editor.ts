@@ -219,7 +219,8 @@ export class WysiwygEditor {
     this.canvasHost.innerHTML = '';
     this.canvasHost.appendChild(svg);
     this.viewport = new Viewport(svg, this.canvasHost);
-    this.viewport.setContentBounds(computeContentBounds(this.model));
+    // Unpadded: the pan clamp measures real content pixels, not fit()'s framing padding.
+    this.viewport.setContentBounds(computeContentBounds(this.model, 0));
     if (prevTransform) { this.viewport.setTransform(prevTransform); }
     this.viewport.clampToBounds();
 

@@ -3,7 +3,14 @@ import { allowedRange, overshootOf, dampenDelta, springStep, VISIBLE_MARGIN, OVE
 
 const PAD = 40;
 
-export function computeContentBounds(model: DiagramModel): { minX: number; minY: number; maxX: number; maxY: number } {
+/** Real geometry (nodes + subgraph boxes) padded by `pad` diagram units on
+ *  every side. The default `PAD` is framing padding for `fit()` and the
+ *  static preview — room so the diagram isn't flush against the pane edge.
+ *  The pan clamp needs the UNPADDED bounds instead: it measures how much real
+ *  content stays on screen, and padding (which scales with zoom while the
+ *  clamp's margin is a fixed screen-px amount) would let empty space satisfy
+ *  the guarantee at high zoom. Callers doing the clamp must pass `pad: 0`. */
+export function computeContentBounds(model: DiagramModel, pad: number = PAD): { minX: number; minY: number; maxX: number; maxY: number } {
   if (model.nodes.length === 0 && model.groups.length === 0) { return { minX: 0, minY: 0, maxX: 400, maxY: 300 }; }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of model.nodes) {
@@ -22,7 +29,7 @@ export function computeContentBounds(model: DiagramModel): { minX: number; minY:
     maxX = Math.max(maxX, b.x + b.w);
     maxY = Math.max(maxY, b.y + b.h);
   }
-  return { minX: minX - PAD, minY: minY - PAD, maxX: maxX + PAD, maxY: maxY + PAD };
+  return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
 }
 
 export class Viewport {
@@ -40,8 +47,12 @@ export class Viewport {
     this.svg.setAttribute('viewBox', `${this.vbX} ${this.vbY} ${w} ${h}`);
   }
   fit(model: DiagramModel): void {
+    // Two different bounds here on purpose: `b` (padded) frames the view with
+    // breathing room around the diagram; `unpadded` is what the pan clamp
+    // measures against, so the guarantee is real-content pixels, not padding.
     const b = computeContentBounds(model);
-    this.setContentBounds(b);
+    const unpadded = computeContentBounds(model, 0);
+    this.setContentBounds(unpadded);
     const cw = this.host.clientWidth || 800;
     const ch = this.host.clientHeight || 600;
     const zx = cw / (b.maxX - b.minX);
@@ -60,8 +71,11 @@ export class Viewport {
     this.snapIntoBounds();
   }
 
-  /** Bounds the pan clamp is measured against. Until this is set the viewport
-   *  pans unbounded — an unclamped fallback beats throwing on a stub host. */
+  /** Bounds the pan clamp is measured against. Callers MUST pass unpadded
+   *  bounds (computeContentBounds(model, 0)) — the clamp's margin is real
+   *  screen pixels of content, and framing padding would let empty space
+   *  count toward it. Until this is set the viewport pans unbounded — an
+   *  unclamped fallback beats throwing on a stub host. */
   setContentBounds(b: { minX: number; minY: number; maxX: number; maxY: number }): void {
     this.contentBounds = b;
   }
