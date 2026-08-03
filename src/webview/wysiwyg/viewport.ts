@@ -184,8 +184,11 @@ export class Viewport {
   }
   /** Re-derive the viewBox from the host's current size, keeping pan and zoom.
    *  Nothing else recomputes it when the host resizes, which otherwise
-   *  letterboxes the diagram and desyncs screenToSvg. */
-  resize(): void { this.apply(); }
+   *  letterboxes the diagram and desyncs screenToSvg. Also reclamps: `lo`
+   *  moves with viewSize, so an origin parked at the boundary before a shrink
+   *  (e.g. toggling the 141px-wide shape palette) would otherwise be left
+   *  stranded outside the new, tighter range — up to fully off-screen. */
+  resize(): void { this.snapIntoBounds(); }
   reset(): void { this.zoom = 1; this.apply(); }
   get scale(): number { return this.zoom; }
 }

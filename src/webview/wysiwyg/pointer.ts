@@ -49,6 +49,13 @@ export class PointerController {
   private svg: SVGSVGElement | null = null;
 
   private boundKeyDown = (e: KeyboardEvent): void => {
+    // Mirror editor.ts's attachKeyboard: a space typed while editing a label
+    // or a properties-panel field must not arm pan mode. Only guard keydown —
+    // if keyup were guarded too, a space typed inside a field (which never set
+    // spaceDown) could leave spaceDown stuck true once focus left the field,
+    // which is worse than the bug being fixed.
+    const target = e.target as HTMLElement;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) { return; }
     if (e.code === 'Space') { this.spaceDown = true; this.syncCursor(); }
   };
   private boundKeyUp = (e: KeyboardEvent): void => {
@@ -101,7 +108,14 @@ export class PointerController {
     this.groupDragId = null;
     this.moved = false;
 
-    if (this.spaceDown || e.button === 1) { this.panning = true; this.syncCursor(); return; }
+    if (this.spaceDown || e.button === 1) {
+      // A live drag-pan must win outright over a pending wheel settle — if the
+      // spring fires mid-drag it would yank the canvas out from under the
+      // held pointer. panBy's cancelSpring() would self-correct on the next
+      // move, but a spring should never get to fight a live gesture at all.
+      if (this.settleTimer !== null) { clearTimeout(this.settleTimer); this.settleTimer = null; }
+      this.panning = true; this.syncCursor(); return;
+    }
 
     // Connection handles: drag from one of the selected node's four circles to
     // another node to create an edge. Handles only exist on the selected node,

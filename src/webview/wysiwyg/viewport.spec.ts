@@ -42,6 +42,32 @@ describe('Viewport.resize', () => {
     expect(svg.getAttribute('viewBox')).toBe('10 20 500 300');
     expect(vp.scale).toBe(2);
   });
+
+  it('reclamps an origin the shrink strands outside the new range', () => {
+    // lo moves with viewSize (lo = contentMin + margin - viewSize), so parking
+    // at lo and then shrinking the host (e.g. opening the 141px-wide shape
+    // palette) must pull the origin to the NEW lo, not leave it stranded past
+    // the old one — which could push the diagram fully off-screen.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    vp.setContentBounds({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: -720, vbY: 0 }); // lo = 0 + 80 - 800 = -720
+    host.clientWidth = 659; // -141px, e.g. the shape palette opening
+    vp.resize();
+    // new lo = 0 + 80 - 659 = -579
+    expect(vp.getTransform().vbX).toBeCloseTo(-579);
+  });
+
+  it('leaves the origin untouched on resize when content bounds were never set', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    vp.setTransform({ zoom: 1, vbX: -720, vbY: 0 });
+    host.clientWidth = 659;
+    vp.resize();
+    expect(vp.getTransform().vbX).toBeCloseTo(-720);
+  });
 });
 
 function vpWith(bounds: { minX: number; minY: number; maxX: number; maxY: number }) {
