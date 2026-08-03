@@ -11,8 +11,9 @@
 ## Global Constraints
 
 - Source spec: `docs/superpowers/specs/2026-08-03-wheel-pan-viewport-design.md`. Every decision in its Decisions table is settled — do not re-litigate.
-- Unit tests: `pnpm test:unit` (runs `vitest run`). A single file: `pnpm vitest run <path>`.
-- Types: `pnpm check-types`. Lint: `pnpm lint`. Both must pass before every commit.
+- **Every command must be prefixed with `fnm exec --`** (e.g. `fnm exec -- pnpm test:unit`). The repo pins Node 22 via `.node-version`; the system node is 18, and vitest 4 and eslint 10 both hard-fail on it. Interactive shells auto-switch via `fnm env --use-on-cd`, but non-interactive tool shells do not.
+- Unit tests: `fnm exec -- pnpm test:unit` (runs `vitest run`). A single file: `fnm exec -- pnpm vitest run <path>`.
+- Types: `fnm exec -- pnpm check-types`. Lint: `fnm exec -- pnpm lint`. Both must pass before every commit. `pnpm lint` reports ~158 pre-existing warnings repo-wide and exits 0; your own files must add none — check with `fnm exec -- pnpm exec eslint <your files>`, which must exit 0 with no output.
 - ESLint enforces `curly` (always brace `if` bodies), `eqeqeq`, and `semi`. Match the surrounding one-line `if (x) { return; }` style used throughout `src/webview/wysiwyg/`.
 - Test files live beside their source as `<name>.spec.ts` and are picked up by `src/**/*.spec.ts`.
 - `VISIBLE_MARGIN = 80` and `OVERSHOOT_CAP = 120`, both in **screen pixels**. Any comparison against viewBox coordinates must divide by `zoom` first.
