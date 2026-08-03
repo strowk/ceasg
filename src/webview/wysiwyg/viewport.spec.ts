@@ -43,3 +43,108 @@ describe('Viewport.resize', () => {
     expect(vp.scale).toBe(2);
   });
 });
+
+function vpWith(bounds: { minX: number; minY: number; maxX: number; maxY: number }) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+  // zoomBy routes through screenToSvg, which needs a rect — the pre-existing
+  // resize test's stub has no getBoundingClientRect because panBy never calls it.
+  const host = {
+    clientWidth: 800,
+    clientHeight: 600,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+  };
+  const vp = new Viewport(svg, host as unknown as HTMLElement);
+  vp.setContentBounds(bounds);
+  return vp;
+}
+
+describe('Viewport pan bounds', () => {
+  const BOUNDS = { minX: 0, minY: 0, maxX: 2000, maxY: 2000 };
+
+  it('pans freely well inside the allowed range', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 1, vbX: 500, vbY: 500 });
+    vp.panBy(-100, -50); // panBy subtracts, so this moves vb positively
+    expect(vp.getTransform().vbX).toBeCloseTo(600);
+    expect(vp.getTransform().vbY).toBeCloseTo(550);
+  });
+
+  it('does not clamp at all when content bounds were never set', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    vp.setTransform({ zoom: 1, vbX: 0, vbY: 0 });
+    vp.panBy(-100000, -100000);
+    expect(vp.getTransform().vbX).toBeCloseTo(100000);
+  });
+
+  it('never lets a single huge delta push further than the overshoot cap', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 1, vbX: 0, vbY: 0 });
+    vp.panBy(-100000, 0);
+    // hi = maxX - VISIBLE_MARGIN = 1920; cap adds 120 at zoom 1
+    expect(vp.getTransform().vbX).toBeCloseTo(2040);
+  });
+
+  it('applies the cap in screen pixels, so it shrinks in viewBox units as zoom rises', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 2, vbX: 0, vbY: 0 });
+    vp.panBy(-100000, 0);
+    // margin 80px and cap 120px are both halved in viewBox units at zoom 2
+    expect(vp.getTransform().vbX).toBeCloseTo(2000 - 40 + 60);
+  });
+
+  it('resists further outward motion once past the boundary', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 1, vbX: 1980, vbY: 0 }); // 60px past hi of 1920
+    vp.panBy(-100, 0);
+    const moved = vp.getTransform().vbX - 1980;
+    expect(moved).toBeGreaterThan(0);
+    expect(moved).toBeLessThan(100); // dampened, not 1:1
+  });
+
+  it('lets motion back toward the content apply at full strength', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 1, vbX: 1980, vbY: 0 });
+    vp.panBy(100, 0); // inward
+    expect(vp.getTransform().vbX).toBeCloseTo(1880);
+  });
+
+  it('clamps both axes independently', () => {
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 1, vbX: 500, vbY: 0 });
+    vp.panBy(0, 100000); // far negative on y only
+    expect(vp.getTransform().vbX).toBeCloseTo(500);
+    // lo = minY + 80 - 600 = -520; cap 120 below that
+    expect(vp.getTransform().vbY).toBeCloseTo(-640);
+  });
+});
+
+describe('Viewport.dispose', () => {
+  it('snaps an overshoot back inside the allowed range', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 1, vbY: 0 });
+    vp.panBy(-100000, 0);
+    expect(vp.getTransform().vbX).toBeCloseTo(2040); // past the boundary
+    vp.dispose();
+    expect(vp.getTransform().vbX).toBeCloseTo(1920); // exactly hi
+  });
+
+  it('is safe to call when nothing is in flight and nothing is out of bounds', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 500, vbY: 500 });
+    vp.dispose();
+    expect(vp.getTransform().vbX).toBeCloseTo(500);
+  });
+});
+
+describe('Viewport.zoomBy', () => {
+  it('hard-clamps into bounds, since zoom-at-cursor translates the viewBox', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 1900, vbY: 0 });
+    vp.zoomBy(4, 790, 590);
+    const t = vp.getTransform();
+    const hi = 2000 - 80 / t.zoom;
+    expect(t.vbX).toBeLessThanOrEqual(hi + 0.001);
+  });
+});

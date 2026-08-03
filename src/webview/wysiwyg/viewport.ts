@@ -1,4 +1,5 @@
 import { DiagramModel, nodeSize, groupBounds } from '../../core';
+import { allowedRange, overshootOf, dampenDelta, springStep, VISIBLE_MARGIN, OVERSHOOT_CAP } from './panLimits';
 
 const PAD = 40;
 
@@ -28,6 +29,9 @@ export class Viewport {
   private zoom = 1;
   private vbX = 0;
   private vbY = 0;
+  private contentBounds: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+  private springHandle: number | null = null;
+  private lastSpringTs = 0;
   constructor(private readonly svg: SVGSVGElement, private readonly host: HTMLElement) {}
 
   private apply(): void {
@@ -37,6 +41,7 @@ export class Viewport {
   }
   fit(model: DiagramModel): void {
     const b = computeContentBounds(model);
+    this.setContentBounds(b);
     const cw = this.host.clientWidth || 800;
     const ch = this.host.clientHeight || 600;
     const zx = cw / (b.maxX - b.minX);
@@ -52,11 +57,106 @@ export class Viewport {
     const after = this.screenToSvg(cx, cy);
     this.vbX += p.x - after.x;
     this.vbY += p.y - after.y;
+    this.snapIntoBounds();
+  }
+
+  /** Bounds the pan clamp is measured against. Until this is set the viewport
+   *  pans unbounded — an unclamped fallback beats throwing on a stub host. */
+  setContentBounds(b: { minX: number; minY: number; maxX: number; maxY: number }): void {
+    this.contentBounds = b;
+  }
+
+  get hostHeight(): number { return this.host.clientHeight; }
+
+  /** Allowed viewBox-origin range on one axis, or null when unbounded. */
+  private rangeFor(axis: 'x' | 'y'): { lo: number; hi: number } | null {
+    const b = this.contentBounds;
+    if (!b) { return null; }
+    const margin = VISIBLE_MARGIN / this.zoom;
+    return axis === 'x'
+      ? allowedRange(b.minX, b.maxX, this.host.clientWidth / this.zoom, margin)
+      : allowedRange(b.minY, b.maxY, this.host.clientHeight / this.zoom, margin);
+  }
+
+  /** Move one axis by a viewBox-space delta, damping motion that pushes further
+   *  out of bounds and hard-stopping at the overshoot cap. Inward motion is
+   *  never damped, so escaping the boundary feels immediate. */
+  private axisPan(v: number, deltaVb: number, axis: 'x' | 'y'): number {
+    const r = this.rangeFor(axis);
+    if (!r) { return v + deltaVb; }
+    const over = overshootOf(v, r.lo, r.hi);
+    const outward = (over > 0 && deltaVb > 0) || (over < 0 && deltaVb < 0);
+    const applied = outward
+      ? dampenDelta(deltaVb, Math.abs(over) * this.zoom, OVERSHOOT_CAP)
+      : deltaVb;
+    // A single very large delta could clear the asymptote in one step, so the
+    // cap is also enforced as a hard stop.
+    const cap = OVERSHOOT_CAP / this.zoom;
+    return Math.min(r.hi + cap, Math.max(r.lo - cap, v + applied));
+  }
+
+  panBy(dxScreen: number, dyScreen: number): void {
+    this.vbX = this.axisPan(this.vbX, -dxScreen / this.zoom, 'x');
+    this.vbY = this.axisPan(this.vbY, -dyScreen / this.zoom, 'y');
     this.apply();
   }
-  panBy(dxScreen: number, dyScreen: number): void {
-    this.vbX -= dxScreen / this.zoom;
-    this.vbY -= dyScreen / this.zoom;
+
+  /** Animate any overshoot back to the boundary. Callers arm this once the
+   *  gesture has gone idle — the wheel has no release event. */
+  settle(): void {
+    if (this.springHandle !== null) { return; }
+    if (typeof requestAnimationFrame === 'undefined') { this.snapIntoBounds(); return; }
+    const step = (ts: number): void => {
+      const dt = this.lastSpringTs === 0 ? 16 : ts - this.lastSpringTs;
+      this.lastSpringTs = ts;
+      let moving = false;
+      const rx = this.rangeFor('x');
+      if (rx) {
+        const over = overshootOf(this.vbX, rx.lo, rx.hi);
+        if (over !== 0) {
+          const next = springStep(Math.abs(over) * this.zoom, dt) / this.zoom;
+          this.vbX = (over > 0 ? rx.hi : rx.lo) + (over > 0 ? next : -next);
+          moving = moving || next !== 0;
+        }
+      }
+      const ry = this.rangeFor('y');
+      if (ry) {
+        const over = overshootOf(this.vbY, ry.lo, ry.hi);
+        if (over !== 0) {
+          const next = springStep(Math.abs(over) * this.zoom, dt) / this.zoom;
+          this.vbY = (over > 0 ? ry.hi : ry.lo) + (over > 0 ? next : -next);
+          moving = moving || next !== 0;
+        }
+      }
+      this.apply();
+      if (moving) {
+        this.springHandle = requestAnimationFrame(step);
+      } else {
+        this.springHandle = null;
+        this.lastSpringTs = 0;
+      }
+    };
+    this.springHandle = requestAnimationFrame(step);
+  }
+
+  /** Stop any animation and hard-snap into bounds. repaint() throws this
+   *  Viewport away and builds a new one from getTransform(), so an in-flight
+   *  spring would otherwise tick against a detached svg and the replacement
+   *  would inherit an out-of-bounds origin. */
+  dispose(): void {
+    if (this.springHandle !== null && typeof cancelAnimationFrame !== 'undefined') {
+      cancelAnimationFrame(this.springHandle);
+    }
+    this.springHandle = null;
+    this.lastSpringTs = 0;
+    this.snapIntoBounds();
+  }
+
+  private snapIntoBounds(): void {
+    const rx = this.rangeFor('x');
+    if (rx) { this.vbX = Math.min(rx.hi, Math.max(rx.lo, this.vbX)); }
+    const ry = this.rangeFor('y');
+    if (ry) { this.vbY = Math.min(ry.hi, Math.max(ry.lo, this.vbY)); }
     this.apply();
   }
   screenToSvg(px: number, py: number): { x: number; y: number } {
