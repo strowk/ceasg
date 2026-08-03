@@ -3,6 +3,8 @@ import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint,
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
+import { wheelToGesture } from './wheel';
+import { isLabelEditorOpen } from './labelEditor';
 
 export class SelectionState {
   single: string | null = null;
@@ -34,6 +36,11 @@ export class PointerController {
   /** true when connectFrom is set via click-click mode (waiting for second click), not anchor-drag */
   private connectClickWaiting = false;
   private panning = false;
+  /** Fires viewport.settle() once the wheel stream has gone quiet. The wheel has
+   *  no release event, and macOS momentum keeps delivering events after the
+   *  fingers lift — springing back on the first event past the boundary would
+   *  bounce mid-fling. */
+  private settleTimer: ReturnType<typeof setTimeout> | null = null;
   private spaceDown = false;
   private capturedPointerId: number | null = null;
   private resize: { groupId: string; corner: import('./hitTest').Corner } | null = null;
@@ -304,9 +311,27 @@ export class PointerController {
   }
 
   private onWheel(e: WheelEvent): void {
-    if (!(e.ctrlKey || e.metaKey)) { return; }
+    // Always consume it: an unhandled wheel in a VS Code webview can reach
+    // webview-level zoom or scroll an ancestor pane.
     e.preventDefault();
-    this.editor.viewport!.zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX, e.clientY);
+    // A viewport shift mid-gesture would teleport whatever is being dragged,
+    // and would strand the in-place label editor over the wrong node.
+    if (this.dragging || this.resize || this.marqueeStart || this.connectFrom) { return; }
+    if (isLabelEditorOpen()) { return; }
+
+    const vp = this.editor.viewport;
+    if (!vp) { return; }
+    const g = wheelToGesture(e, vp.hostHeight);
+    if (g.kind === 'zoom') {
+      vp.zoomBy(g.factor, e.clientX, e.clientY);
+      return;
+    }
+    vp.panBy(g.dx, g.dy);
+    if (this.settleTimer !== null) { clearTimeout(this.settleTimer); }
+    this.settleTimer = setTimeout(() => {
+      this.settleTimer = null;
+      this.editor.viewport?.settle();
+    }, 150);
   }
 
   // overlay is recreated on each repaint(); fetch the live one from the editor
