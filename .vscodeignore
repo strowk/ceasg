@@ -20,5 +20,7 @@ media/demo.gif
 .vscodeignore
 .superpowers/**
 docs/superpowers/**
+.claude/**
+drafts/**
 docs/INSTALL-DEV.md
 *.vsix
