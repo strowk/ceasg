@@ -221,6 +221,7 @@ export class WysiwygEditor {
     this.viewport = new Viewport(svg, this.canvasHost);
     this.viewport.setContentBounds(computeContentBounds(this.model));
     if (prevTransform) { this.viewport.setTransform(prevTransform); }
+    this.viewport.clampToBounds();
 
     // Overlay is recreated fresh on each repaint (after svg is in DOM)
     this.overlay = new Overlay(svg);

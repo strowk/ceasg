@@ -147,6 +147,42 @@ describe('Viewport.dispose', () => {
   });
 });
 
+describe('Viewport.clampToBounds', () => {
+  it('snaps an origin well outside the allowed range back to the boundary', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 5000, vbY: 0 }); // far past hi of 1920
+    vp.clampToBounds();
+    expect(vp.getTransform().vbX).toBeCloseTo(1920); // exactly hi
+  });
+
+  it('snaps the y-axis independently', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 500, vbY: -5000 }); // far past lo on y
+    vp.clampToBounds();
+    expect(vp.getTransform().vbX).toBeCloseTo(500); // unchanged
+    expect(vp.getTransform().vbY).toBeCloseTo(-520); // exactly lo
+  });
+
+  it('leaves an in-bounds origin untouched', () => {
+    const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+    vp.setTransform({ zoom: 1, vbX: 500, vbY: 500 });
+    vp.clampToBounds();
+    expect(vp.getTransform().vbX).toBeCloseTo(500);
+    expect(vp.getTransform().vbY).toBeCloseTo(500);
+  });
+
+  it('does not clamp when content bounds were never set', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    vp.setTransform({ zoom: 1, vbX: 5000, vbY: 5000 }); // far out of any bounds
+    vp.clampToBounds();
+    // With no bounds set, it should remain unchanged
+    expect(vp.getTransform().vbX).toBeCloseTo(5000);
+    expect(vp.getTransform().vbY).toBeCloseTo(5000);
+  });
+});
+
 describe('Viewport.panBy', () => {
   it('cancels an in-flight spring so it cannot later overwrite the gesture', () => {
     // requestAnimationFrame/cancelAnimationFrame are mocked rather than driven —

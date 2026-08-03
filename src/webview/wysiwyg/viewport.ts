@@ -168,6 +168,10 @@ export class Viewport {
     if (ry) { this.vbY = Math.min(ry.hi, Math.max(ry.lo, this.vbY)); }
     this.apply();
   }
+  /** Snap the origin back inside the allowed range. repaint() restores a
+   *  carried-over transform that may no longer be in bounds after the model
+   *  changed under it. */
+  clampToBounds(): void { this.snapIntoBounds(); }
   screenToSvg(px: number, py: number): { x: number; y: number } {
     const rect = this.host.getBoundingClientRect();
     return { x: this.vbX + (px - rect.left) / this.zoom, y: this.vbY + (py - rect.top) / this.zoom };
