@@ -1,6 +1,6 @@
 import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth, findFreeSpot } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
-import { Viewport } from './viewport';
+import { Viewport, computeContentBounds } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
@@ -209,12 +209,17 @@ export class WysiwygEditor {
   }
 
   repaint(): void {
+    // Dispose BEFORE reading the transform: dispose() cancels any in-flight
+    // rubber-band frame and snaps an overshoot back in bounds, and the
+    // replacement Viewport must inherit the snapped origin, not the overshoot.
+    this.viewport?.dispose();
     const prevTransform = this.viewport ? this.viewport.getTransform() : null;
     const { svg, refs } = renderDiagram(this.model);
     this.refs = refs;
     this.canvasHost.innerHTML = '';
     this.canvasHost.appendChild(svg);
     this.viewport = new Viewport(svg, this.canvasHost);
+    this.viewport.setContentBounds(computeContentBounds(this.model));
     if (prevTransform) { this.viewport.setTransform(prevTransform); }
 
     // Overlay is recreated fresh on each repaint (after svg is in DOM)
