@@ -866,7 +866,7 @@ Expected: PASS, unchanged.
 
 - [ ] **Step 6: Verify in the running extension**
 
-Run: `pnpm compile`, then launch the extension host (F5 in VS Code) and open `sample.md`. Click the CodeLens on a flowchart block, then check by hand:
+Run: `fnm exec -- pnpm compile`, then launch the extension host (F5 in VS Code) and open `sample.md`. Click the CodeLens on a flowchart block, then check by hand:
 
 1. Two-finger swipe up/down/left/right pans the canvas; direction follows the fingers.
 2. Swiping hard past the edge slows to a stop and springs back — it does not snap instantly, and the diagram never fully leaves the screen.
@@ -874,6 +874,7 @@ Run: `pnpm compile`, then launch the extension host (F5 in VS Code) and open `sa
 4. Shift + wheel pans horizontally.
 5. Wheeling while dragging a node does nothing, and the node does not jump.
 6. Double-click a node to rename, then wheel — the canvas stays put and the textarea stays on the node.
+7. Pan so one node sits at the edge of the view, select it, and delete it. The view must snap back so the remaining diagram is still on screen — it must not leave you staring at empty canvas. This exercises `repaint()`'s `clampToBounds()` call, which no unit test can reach (verified: deleting that call leaves the whole suite green), so this step is its only guard.
 
 - [ ] **Step 7: Commit**
 
