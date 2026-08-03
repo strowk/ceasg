@@ -45,9 +45,24 @@ export class PointerController {
   private capturedPointerId: number | null = null;
   private resize: { groupId: string; corner: import('./hitTest').Corner } | null = null;
   mode: Mode = 'select';
+  /** Refreshed on every attach(); repaint() builds a new svg each time. */
+  private svg: SVGSVGElement | null = null;
 
-  private boundKeyDown = (e: KeyboardEvent): void => { if (e.code === 'Space') { this.spaceDown = true; } };
-  private boundKeyUp = (e: KeyboardEvent): void => { if (e.code === 'Space') { this.spaceDown = false; } };
+  private boundKeyDown = (e: KeyboardEvent): void => {
+    if (e.code === 'Space') { this.spaceDown = true; this.syncCursor(); }
+  };
+  private boundKeyUp = (e: KeyboardEvent): void => {
+    if (e.code === 'Space') { this.spaceDown = false; this.syncCursor(); }
+  };
+  /** Leaving the webview with space held loses the keyup, which would strand
+   *  the editor in pan mode. */
+  private boundBlur = (): void => { this.spaceDown = false; this.syncCursor(); };
+
+  private syncCursor(): void {
+    if (!this.svg) { return; }
+    this.svg.classList.toggle('ceasg-pan-armed', this.spaceDown && !this.panning);
+    this.svg.classList.toggle('ceasg-pan-active', this.panning);
+  }
 
   constructor(
     private readonly editor: WysiwygEditor,
@@ -60,10 +75,14 @@ export class PointerController {
     svg.addEventListener('pointermove', (e) => this.onMove(e));
     svg.addEventListener('pointerup', (e) => this.onUp(e));
     svg.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+    this.svg = svg;
     window.removeEventListener('keydown', this.boundKeyDown);
     window.removeEventListener('keyup', this.boundKeyUp);
+    window.removeEventListener('blur', this.boundBlur);
     window.addEventListener('keydown', this.boundKeyDown);
     window.addEventListener('keyup', this.boundKeyUp);
+    window.addEventListener('blur', this.boundBlur);
+    this.syncCursor();
     if (this.capturedPointerId !== null) {
       svg.setPointerCapture(this.capturedPointerId);
     }
@@ -82,7 +101,7 @@ export class PointerController {
     this.groupDragId = null;
     this.moved = false;
 
-    if (this.spaceDown || e.button === 1) { this.panning = true; return; }
+    if (this.spaceDown || e.button === 1) { this.panning = true; this.syncCursor(); return; }
 
     // Connection handles: drag from one of the selected node's four circles to
     // another node to create an edge. Handles only exist on the selected node,
@@ -263,6 +282,7 @@ export class PointerController {
     }
     if (this.panning) {
       this.panning = false; this.down = null;
+      this.syncCursor();
     } else if (this.dragging) {
       this.dragging = false;
       // Only a real drag reassigns membership / repaints. A plain click (no
