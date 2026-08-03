@@ -95,10 +95,27 @@ export class Viewport {
     return Math.min(r.hi + cap, Math.max(r.lo - cap, v + applied));
   }
 
+  /** A wheel event mid-settle must win over the spring — otherwise the very
+   *  next animation frame overwrites the user's pan with `hi + next` and the
+   *  gesture is silently swallowed. Resetting lastSpringTs too means a later
+   *  settle() starts from the synthetic first frame, not a stale timestamp. */
   panBy(dxScreen: number, dyScreen: number): void {
+    this.cancelSpring();
     this.vbX = this.axisPan(this.vbX, -dxScreen / this.zoom, 'x');
     this.vbY = this.axisPan(this.vbY, -dyScreen / this.zoom, 'y');
     this.apply();
+  }
+
+  /** One axis's worth of spring decay for the current frame: the new value,
+   *  and whether it's still moving (so the caller knows to schedule another
+   *  frame). Returns unchanged/not-moving when unbounded or already at rest. */
+  private axisSpring(v: number, axis: 'x' | 'y', dt: number): { v: number; moving: boolean } {
+    const r = this.rangeFor(axis);
+    if (!r) { return { v, moving: false }; }
+    const over = overshootOf(v, r.lo, r.hi);
+    if (over === 0) { return { v, moving: false }; }
+    const next = springStep(Math.abs(over) * this.zoom, dt) / this.zoom;
+    return { v: (over > 0 ? r.hi : r.lo) + (over > 0 ? next : -next), moving: next !== 0 };
   }
 
   /** Animate any overshoot back to the boundary. Callers arm this once the
@@ -109,27 +126,12 @@ export class Viewport {
     const step = (ts: number): void => {
       const dt = this.lastSpringTs === 0 ? 16 : ts - this.lastSpringTs;
       this.lastSpringTs = ts;
-      let moving = false;
-      const rx = this.rangeFor('x');
-      if (rx) {
-        const over = overshootOf(this.vbX, rx.lo, rx.hi);
-        if (over !== 0) {
-          const next = springStep(Math.abs(over) * this.zoom, dt) / this.zoom;
-          this.vbX = (over > 0 ? rx.hi : rx.lo) + (over > 0 ? next : -next);
-          moving = moving || next !== 0;
-        }
-      }
-      const ry = this.rangeFor('y');
-      if (ry) {
-        const over = overshootOf(this.vbY, ry.lo, ry.hi);
-        if (over !== 0) {
-          const next = springStep(Math.abs(over) * this.zoom, dt) / this.zoom;
-          this.vbY = (over > 0 ? ry.hi : ry.lo) + (over > 0 ? next : -next);
-          moving = moving || next !== 0;
-        }
-      }
+      const rx = this.axisSpring(this.vbX, 'x', dt);
+      this.vbX = rx.v;
+      const ry = this.axisSpring(this.vbY, 'y', dt);
+      this.vbY = ry.v;
       this.apply();
-      if (moving) {
+      if (rx.moving || ry.moving) {
         this.springHandle = requestAnimationFrame(step);
       } else {
         this.springHandle = null;
@@ -139,16 +141,23 @@ export class Viewport {
     this.springHandle = requestAnimationFrame(step);
   }
 
-  /** Stop any animation and hard-snap into bounds. repaint() throws this
-   *  Viewport away and builds a new one from getTransform(), so an in-flight
-   *  spring would otherwise tick against a detached svg and the replacement
-   *  would inherit an out-of-bounds origin. */
-  dispose(): void {
+  /** Cancel any in-flight spring frame and reset its timing state, without
+   *  touching vbX/vbY. Shared by panBy (which then applies a fresh pan) and
+   *  dispose (which then hard-snaps). */
+  private cancelSpring(): void {
     if (this.springHandle !== null && typeof cancelAnimationFrame !== 'undefined') {
       cancelAnimationFrame(this.springHandle);
     }
     this.springHandle = null;
     this.lastSpringTs = 0;
+  }
+
+  /** Stop any animation and hard-snap into bounds. repaint() throws this
+   *  Viewport away and builds a new one from getTransform(), so an in-flight
+   *  spring would otherwise tick against a detached svg and the replacement
+   *  would inherit an out-of-bounds origin. */
+  dispose(): void {
+    this.cancelSpring();
     this.snapIntoBounds();
   }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { computeContentBounds, Viewport } from './viewport';
 import { emptyModel, groupBounds } from '../../core';
 
@@ -98,9 +98,18 @@ describe('Viewport pan bounds', () => {
     const vp = vpWith(BOUNDS);
     vp.setTransform({ zoom: 1, vbX: 1980, vbY: 0 }); // 60px past hi of 1920
     vp.panBy(-100, 0);
-    const moved = vp.getTransform().vbX - 1980;
-    expect(moved).toBeGreaterThan(0);
-    expect(moved).toBeLessThan(100); // dampened, not 1:1
+    // over = 60, delta = 100, factor = 1 - 60/120 = 0.5 -> applied = 50
+    expect(vp.getTransform().vbX).toBeCloseTo(2030);
+  });
+
+  it('scales the damping overshoot term by zoom, not just the delta', () => {
+    // A delta-only reading of dampenDelta's second argument would still land
+    // inside the hard cap at zoom 1, hiding the bug; this starts well inside
+    // the cap band at zoom 2, where the two readings diverge, to expose it.
+    const vp = vpWith(BOUNDS);
+    vp.setTransform({ zoom: 2, vbX: 1970, vbY: 0 }); // hi=1960; 10 vb units (20 screen px) over
+    vp.panBy(-100, 0); // deltaVb = 50; screen-px overshoot = 20; factor = 1 - 20/120
+    expect(vp.getTransform().vbX).toBeCloseTo(2011.667, 2);
   });
 
   it('lets motion back toward the content apply at full strength', () => {
@@ -135,6 +144,34 @@ describe('Viewport.dispose', () => {
     vp.setTransform({ zoom: 1, vbX: 500, vbY: 500 });
     vp.dispose();
     expect(vp.getTransform().vbX).toBeCloseTo(500);
+  });
+});
+
+describe('Viewport.panBy', () => {
+  it('cancels an in-flight spring so it cannot later overwrite the gesture', () => {
+    // requestAnimationFrame/cancelAnimationFrame are mocked rather than driven —
+    // the point is to observe whether panBy resets springHandle, not to
+    // execute the spring's animation loop (see the no-rAF-testing constraint).
+    const raf = vi.spyOn(globalThis, 'requestAnimationFrame').mockReturnValue(1 as unknown as number);
+    const caf = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+    try {
+      const vp = vpWith({ minX: 0, minY: 0, maxX: 2000, maxY: 2000 });
+      vp.setTransform({ zoom: 1, vbX: 1980, vbY: 0 }); // past hi of 1920, so settle() arms
+      vp.settle();
+      expect(raf).toHaveBeenCalledTimes(1);
+
+      vp.panBy(-10, 0);
+      expect(caf).toHaveBeenCalledTimes(1); // the stale spring got cancelled
+
+      // If panBy had left springHandle set, this settle() would be a no-op
+      // (settle() bails when a handle is already in flight) and rAF would not
+      // be called again — so a second call proves the handle was cleared.
+      vp.settle();
+      expect(raf).toHaveBeenCalledTimes(2);
+    } finally {
+      raf.mockRestore();
+      caf.mockRestore();
+    }
   });
 });
 
