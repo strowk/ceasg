@@ -9,11 +9,31 @@ describe('allowedRange', () => {
     expect(r.hi).toBe(920);  // 1000 - 80
   });
 
-  it('collapses to the midpoint when the viewport is too small to satisfy the margin', () => {
-    // contentW + viewSize < 2 * margin -> no position satisfies the rule
+  it('caps the margin at the content extent when the content is narrower than the margin', () => {
+    // content extent is only 40, less than the requested 80px margin -> effective margin = 40
+    const r = allowedRange(100, 140, 500, 80);
+    expect(r.lo).toBe(-360); // 100 + 40 - 500
+    expect(r.hi).toBe(100);  // 140 - 40
+  });
+
+  it('no longer collapses once the margin is capped at the content extent, if the viewport can still hold it', () => {
+    // Content extent is 10, so effective margin = min(80, 10) = 10 (not 80).
+    // With the pre-fix, uncapped margin this scenario collapsed to a midpoint;
+    // with the capped margin, viewSize (20) exceeds the content extent (10),
+    // so a real, non-degenerate range exists.
     const r = allowedRange(0, 10, 20, 80);
+    expect(r.lo).toBe(-10); // 0 + 10 - 20
+    expect(r.hi).toBe(0);   // 10 - 10
+  });
+
+  it('still collapses to the midpoint when the viewport is too small to satisfy even the capped margin', () => {
+    // content extent 10 -> effective margin = min(80, 10) = 10; a 4-unit
+    // viewport is smaller than the content itself, so no position satisfies
+    // even the capped rule and the range must collapse rather than invert.
+    const r = allowedRange(0, 10, 4, 80);
     expect(r.lo).toBe(r.hi);
-    expect(r.lo).toBe((80 - 20 + (10 - 80)) / 2);
+    expect(r.lo).toBe((0 + 10 - 4 + (10 - 10)) / 2);
+    expect(r.lo).toBe(3);
   });
 });
 

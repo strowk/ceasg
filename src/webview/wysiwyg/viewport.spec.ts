@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { computeContentBounds, Viewport } from './viewport';
 import { emptyModel, groupBounds } from '../../core';
-import { VISIBLE_MARGIN } from './panLimits';
+import { VISIBLE_MARGIN, allowedRange } from './panLimits';
 
 describe('computeContentBounds', () => {
   it('covers all node boxes with padding', () => {
@@ -303,5 +303,34 @@ describe('Viewport pan clamp vs. fit() padding (high-zoom regression)', () => {
     vp.clampToBounds();
     const hi = unpadded.maxX - VISIBLE_MARGIN / afterFit.zoom;
     expect(vp.getTransform().vbX).toBeCloseTo(hi);
+  });
+});
+
+describe('Viewport.fit() vs. pan bounds (lopsided-aspect regression)', () => {
+  it('lands fit()\'s origin inside allowedRange on BOTH axes for a very wide model', () => {
+    // Two small nodes ~3000 units apart horizontally: content is very wide but
+    // barely tall. fit() picks a zoom driven by the X extent, which leaves the
+    // Y extent tiny relative to the viewport at that zoom -- the shape that
+    // made an uncapped margin unsatisfiable on the short axis (margin bigger
+    // than the content itself). Without the cap in allowedRange, fit()'s vbY
+    // lands outside the range this test computes below.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
+    const host = { clientWidth: 800, clientHeight: 600 };
+    const vp = new Viewport(svg, host as unknown as HTMLElement);
+    const m = emptyModel();
+    m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0, w: 80, h: 44 });
+    m.nodes.push({ id: 'B', label: 'B', shape: 'rect', x: 3000, y: 0, w: 80, h: 44 });
+
+    vp.fit(m);
+    const t = vp.getTransform();
+    const unpadded = computeContentBounds(m, 0);
+    const margin = VISIBLE_MARGIN / t.zoom;
+    const rx = allowedRange(unpadded.minX, unpadded.maxX, host.clientWidth / t.zoom, margin);
+    const ry = allowedRange(unpadded.minY, unpadded.maxY, host.clientHeight / t.zoom, margin);
+
+    expect(t.vbX).toBeGreaterThanOrEqual(rx.lo);
+    expect(t.vbX).toBeLessThanOrEqual(rx.hi);
+    expect(t.vbY).toBeGreaterThanOrEqual(ry.lo);
+    expect(t.vbY).toBeLessThanOrEqual(ry.hi);
   });
 });

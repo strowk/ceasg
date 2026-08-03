@@ -7,14 +7,19 @@ export const VISIBLE_MARGIN = 80;
 export const OVERSHOOT_CAP = 120;
 
 /** The closed range a viewBox origin may occupy on one axis while keeping at
- *  least `margin` of overlap with the content. When the viewport is so small
- *  that no position satisfies the rule, the range collapses to its midpoint
- *  rather than inverting. */
+ *  least `margin` of overlap with the content. `margin` is capped at the
+ *  content's own extent on this axis first — a content span of 40 units
+ *  cannot supply 80 units of overlap, so demanding `margin` unmodified would
+ *  make the rule unsatisfiable even when the viewport has plenty of room,
+ *  excluding otherwise-sensible centred positions. When the (capped) margin
+ *  still can't be satisfied because the viewport itself is too small, the
+ *  range collapses to its midpoint rather than inverting. */
 export function allowedRange(
   contentMin: number, contentMax: number, viewSize: number, margin: number,
 ): { lo: number; hi: number } {
-  const lo = contentMin + margin - viewSize;
-  const hi = contentMax - margin;
+  const effective = Math.min(margin, contentMax - contentMin);
+  const lo = contentMin + effective - viewSize;
+  const hi = contentMax - effective;
   if (lo > hi) {
     const mid = (lo + hi) / 2;
     return { lo: mid, hi: mid };
