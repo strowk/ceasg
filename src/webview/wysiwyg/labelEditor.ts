@@ -1,5 +1,12 @@
 import { Viewport } from './viewport';
 
+/** Number of in-place label editors currently open. The wheel handler stands
+ *  down while one is up: the textarea is positioned from the viewport once and
+ *  never repositioned, so panning would strand it over the wrong node. */
+let openCount = 0;
+
+export function isLabelEditorOpen(): boolean { return openCount > 0; }
+
 /** Open an in-place textarea over a canvas point (node center or edge-label midpoint).
  *  `w`/`h` are the target size in canvas units (scaled to screen); `minW`/`minH`
  *  are absolute screen-px floors (default 120×28) so callers that already size to
@@ -27,12 +34,14 @@ export function openLabelEditor(
   ta.style.width = `${w}px`;
   ta.style.height = `${h}px`;
   document.body.appendChild(ta);
+  openCount += 1;
   ta.focus(); ta.select();
 
   let done = false;
   const finish = (commit: boolean) => {
     if (done) { return; }
     done = true;
+    openCount -= 1;
     if (commit) { onCommit(ta.value); }
     ta.remove();
   };
