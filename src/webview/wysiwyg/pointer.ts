@@ -283,6 +283,9 @@ export class PointerController {
     if (this.panning) {
       this.panning = false; this.down = null;
       this.syncCursor();
+      // A drag has a real release event, unlike the wheel, so it can settle
+      // immediately instead of waiting on an idle timer.
+      this.editor.viewport?.settle();
     } else if (this.dragging) {
       this.dragging = false;
       // Only a real drag reassigns membership / repaints. A plain click (no

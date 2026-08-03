@@ -8,7 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Added
 - **Wheel and trackpad panning** on the visual editor canvas. Scroll or swipe with two fingers to pan in any direction; hold `Shift` to pan horizontally with a mouse wheel. `Ctrl`/`Cmd` + wheel still zooms, and trackpad pinch-to-zoom now works too.
-- The canvas shows a **grab cursor** while space-drag or middle-button panning is armed, so the existing drag-to-pan gestures are discoverable.
+- The canvas shows a **grab cursor** while space-drag panning is armed, and a grabbing cursor once panning is active (including middle-button drag, which has no separate armed phase).
 
 ### Changed
 - Panning now stops at the edge of the diagram instead of scrolling it off-screen. Push past the edge and the canvas resists, then springs back, always leaving part of the diagram in view. Applies to every pan gesture, including the existing space-drag and middle-button drag.
