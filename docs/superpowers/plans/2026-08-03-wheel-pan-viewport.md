@@ -875,6 +875,8 @@ Run: `fnm exec -- pnpm compile`, then launch the extension host (F5 in VS Code) 
 5. Wheeling while dragging a node does nothing, and the node does not jump.
 6. Double-click a node to rename, then wheel — the canvas stays put and the textarea stays on the node.
 7. Pan so one node sits at the edge of the view, select it, and delete it. The view must snap back so the remaining diagram is still on screen — it must not leave you staring at empty canvas. This exercises `repaint()`'s `clampToBounds()` call, which no unit test can reach (verified: deleting that call leaves the whole suite green), so this step is its only guard.
+8. Hold space and drag hard past the diagram edge, then release the mouse without moving. The view must spring back over ~200ms rather than staying parked off-centre. Repeat with a middle-button drag. This exercises `onUp`'s `settle()` call, which no unit test can reach.
+9. Pan to the far edge of the diagram so it is only just visible, then toggle the shape palette sidebar with the `◧` toolbar button. The diagram must stay on screen. Before this fix the 141px width change could push it fully out of view.
 
 - [ ] **Step 7: Commit**
 
