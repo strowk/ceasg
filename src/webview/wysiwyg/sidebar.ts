@@ -1,11 +1,13 @@
+import { SHAPE_GROUPS, ShapeGroupId } from '../../core';
 import type { WysiwygEditor } from './editor';
 import { PALETTE_GROUPS, PaletteGroup, createPaletteItemButton } from './paletteModel';
 
 /** Groups collapsed on first open. Basic stays expanded; 48 shapes expanded at
- *  once is an unusable sidebar. */
-const DEFAULT_COLLAPSED = ['process', 'data', 'documents', 'flow', 'annotations'];
+ *  once is an unusable sidebar. Derived from the registry so a renamed,
+ *  reordered or added group can't silently fall out of this set. */
+const DEFAULT_COLLAPSED: ShapeGroupId[] = SHAPE_GROUPS.filter((g) => g.id !== 'basic').map((g) => g.id);
 
-interface SidebarState { collapsedGroups?: string[] }
+interface SidebarState { collapsedGroups?: ShapeGroupId[] }
 
 /** Persistent left palette: shapes in collapsible groups, alongside (not
  *  replacing) the toolbar dropdown. Which groups are collapsed persists
