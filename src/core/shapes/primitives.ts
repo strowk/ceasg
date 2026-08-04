@@ -14,6 +14,9 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /** Smallest box any shape is drawn in; keeps degenerate input off the render path. */
 const MIN_EXTENT = 1;
 
+/** Offset between copies in a stacked shape. */
+export const STACK_DEPTH = 5;
+
 export function el<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
   return getDocument().createElementNS(SVG_NS, name);
 }

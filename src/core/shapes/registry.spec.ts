@@ -7,7 +7,7 @@ describe('registry', () => {
       'dbl-circ', 'diam', 'hex', 'lean-r', 'lean-l', 'trap-b', 'trap-t', 'odd']) {
       expect(SHAPES[name], `missing ${name}`).toBeDefined();
     }
-    expect(ALL_SHAPES).toHaveLength(45);
+    expect(ALL_SHAPES).toHaveLength(48);
   });
 
   it('resolves historical ceasg names through aliases', () => {
@@ -45,6 +45,9 @@ describe('registry', () => {
       // none has a classic bracket handler to fall back to.
       'doc', 'lin-doc', 'tag-doc', 'tag-rect', 'delay', 'curv-trap',
       'h-cyl', 'datastore', 'flag', 'brace', 'brace-r', 'braces',
+      // Task 14's 3 stacked shapes: same story again — no `internalAliases`
+      // entry for st-rect, docs or cloud in the vendored shapesDefs.
+      'st-rect', 'docs', 'cloud',
     ]);
     for (const def of ALL_SHAPES) {
       if (attrOnly.has(def.name)) { continue; }
@@ -96,8 +99,7 @@ describe('registry invariants', () => {
     for (const def of ALL_SHAPES) { expect(ids.has(def.group), def.name).toBe(true); }
   });
 
-  // unskip in Task 14, once every group has members
-  it.skip('no group is empty', () => {
+  it('no group is empty', () => {
     for (const g of SHAPE_GROUPS) { expect(g.shapes.length, g.id).toBeGreaterThan(0); }
   });
 

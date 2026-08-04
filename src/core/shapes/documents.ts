@@ -1,4 +1,4 @@
-import { path, polygon, unfilled, vline, wavyBottom } from './primitives';
+import { STACK_DEPTH, path, polygon, unfilled, vline, wavyBottom } from './primitives';
 import type { ShapeDef, ShapeGeom } from './types';
 
 /** Wave height, and therefore the extra bottom room every document needs. */
@@ -41,5 +41,31 @@ export const DOCUMENT_SHAPES: ShapeDef[] = [
     aliases: ['tagged-document'],
     size: (b) => ({ w: b.w + 14, h: b.h + DOC_WAVE + 6 }),
     render: (g) => [path(docBody(g)), cornerTag(g)],
+  },
+  {
+    name: 'docs',
+    label: 'Multi-document',
+    group: 'documents',
+    aliases: ['documents', 'st-doc', 'stacked-document'],
+    size: (b) => ({ w: b.w + STACK_DEPTH * 2, h: b.h + DOC_WAVE + 6 + STACK_DEPTH * 2 }),
+    render: (g) => {
+      const d = STACK_DEPTH;
+      const inner = (dx: number, dy: number): ShapeGeom => {
+        const w = g.w - d * 2;
+        const h = g.h - d * 2;
+        const cx = g.left + dx + w / 2;
+        const cy = g.top + dy + h / 2;
+        return {
+          cx, cy, w, h,
+          left: cx - w / 2, right: cx + w / 2, top: cy - h / 2, bottom: cy + h / 2,
+          hw: w / 2, hh: h / 2,
+        };
+      };
+      return [
+        path(docBody(inner(d * 2, 0))),
+        path(docBody(inner(d, d))),
+        path(docBody(inner(0, d * 2))),
+      ];
+    },
   },
 ];

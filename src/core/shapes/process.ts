@@ -1,4 +1,4 @@
-import { hline, polygon, rect, vline } from './primitives';
+import { STACK_DEPTH, hline, polygon, rect, vline } from './primitives';
 import { cornerTag } from './documents';
 import type { ShapeDef, ShapeGeom } from './types';
 
@@ -93,5 +93,24 @@ export const PROCESS_SHAPES: ShapeDef[] = [
     aliases: ['tag-proc', 'tagged-process', 'tagged-rectangle'],
     size: (b) => ({ w: b.w + 14, h: b.h }),
     render: (g) => [rect(g.left, g.top, g.w, g.h, 0), cornerTag(g)],
+  },
+  {
+    name: 'st-rect',
+    label: 'Multi-process',
+    group: 'process',
+    aliases: ['processes', 'procs', 'stacked-rectangle'],
+    size: (b) => ({ w: b.w + STACK_DEPTH * 2, h: b.h + STACK_DEPTH * 2 }),
+    render: (g) => {
+      // Drawn back-to-front. The body is inset by the full stack depth so the
+      // copies fill the space toward the box edges rather than escaping it.
+      const d = STACK_DEPTH;
+      const w = g.w - d * 2;
+      const h = g.h - d * 2;
+      return [
+        rect(g.left + d * 2, g.top, w, h, 0),
+        rect(g.left + d, g.top + d, w, h, 0),
+        rect(g.left, g.top + d * 2, w, h, 0),
+      ];
+    },
   },
 ];

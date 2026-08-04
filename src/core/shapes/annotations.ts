@@ -49,4 +49,26 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
       unfilled(path(braceD(g.right - 10, g.top, g.bottom, 'right'))),
     ],
   },
+  {
+    name: 'cloud',
+    label: 'Cloud',
+    group: 'annotations',
+    aliases: ['cloud-shape'],
+    size: (b) => ({ w: b.w + 46, h: b.h + 26 }),
+    render: (g) => {
+      // Five arcs around the box, each bulging out to the edge and no further.
+      const rx = g.w / 6;
+      const ry = g.h / 4;
+      const y0 = g.top + ry;
+      const y1 = g.bottom - ry;
+      return [path(
+        `M${g.left + rx},${y1}` +
+        ` A${rx},${ry} 0 0 1 ${g.left + rx},${y0}` +
+        ` A${rx},${ry} 0 0 1 ${g.cx},${g.top}` +
+        ` A${rx},${ry} 0 0 1 ${g.right - rx},${y0}` +
+        ` A${rx},${ry} 0 0 1 ${g.right - rx},${y1}` +
+        ` A${rx},${ry} 0 0 1 ${g.cx},${g.bottom} Z`,
+      )];
+    },
+  },
 ];

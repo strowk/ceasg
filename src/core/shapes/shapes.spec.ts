@@ -217,3 +217,28 @@ describe('curve shapes', () => {
     }
   });
 });
+
+describe('stacked shapes', () => {
+  it('st-rect draws three offset rectangles', () => {
+    const els = SHAPES['st-rect']!.render(geom(200, 120, 160, 80));
+    expect(els.map((e) => e.tagName.toLowerCase())).toEqual(['rect', 'rect', 'rect']);
+    const xs = els.map((e) => Number(e.getAttribute('x')));
+    expect(new Set(xs).size).toBe(3);
+  });
+
+  it('docs draws three offset document bodies', () => {
+    const els = SHAPES['docs']!.render(geom(200, 120, 160, 80));
+    expect(els).toHaveLength(3);
+    expect(new Set(els.map((e) => e.getAttribute('d'))).size).toBe(3);
+  });
+
+  it('cloud is a single closed path', () => {
+    const els = SHAPES['cloud']!.render(geom(200, 120, 160, 80));
+    expect(els).toHaveLength(1);
+    expect(els[0]!.getAttribute('d')).toMatch(/Z$/);
+  });
+
+  it('the registry now holds all 48 shapes', () => {
+    expect(ALL_SHAPES).toHaveLength(48);
+  });
+});
