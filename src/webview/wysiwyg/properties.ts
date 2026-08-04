@@ -1,4 +1,4 @@
-import { BASE_FONT_SIZE, NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
+import { BASE_FONT_SIZE, NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
 
@@ -101,7 +101,10 @@ export class PropertiesPanel {
     const shape = document.createElement('select');
     for (const s of NODE_SHAPES) { const o = document.createElement('option'); o.value = s; o.textContent = SHAPE_LABELS[s]; shape.appendChild(o); }
     shape.value = node().shape;
-    shape.addEventListener('change', () => this.editor.mutate((m) => { m.nodes.find((n) => n.id === id)!.shape = shape.value as NodeShape; }, { commit: true }));
+    shape.addEventListener('change', () => this.editor.mutate((m) => {
+      const target = m.nodes.find((n) => n.id === id);
+      if (target) { setNodeShape(target, shape.value as NodeShape); }
+    }, { commit: true }));
     this.host.appendChild(this.row('Shape', shape));
 
     const mkColor = (get: () => string | undefined, set: (v: string) => void) => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { mermaidToModel } from './parser';
 import { modelToMermaid } from './serializer';
-import { emptyModel } from './model';
+import { emptyModel, setNodeShape } from './model';
 import { ALL_SHAPES } from './shapes';
 
 function roundtrip(src: string): string {
@@ -139,5 +139,49 @@ describe('bracket serialization comes from the registry', () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+const rt = (src: string) => modelToMermaid(mermaidToModel(src).model);
+
+describe('serialization fidelity', () => {
+  it('keeps a bracket-authored node in bracket form', () => {
+    expect(rt('flowchart TD\n  A[Process]\n')).toContain('A["Process"]');
+  });
+
+  it('keeps an attr-authored node in attr form', () => {
+    const out = rt('flowchart TD\n  A@{ shape: rect, label: "Process" }\n');
+    expect(out).toContain('A@{ shape: rect, label: "Process" }');
+    expect(out).not.toContain('A["Process"]');
+  });
+
+  it('preserves @{} keys ceasg does not model', () => {
+    const out = rt('flowchart TD\n  A@{ shape: rect, label: "P", pos: "t", constraint: "on" }\n');
+    expect(out).toContain('pos: "t"');
+    expect(out).toContain('constraint: "on"');
+  });
+
+  it('preserves an unrecognised shape name verbatim', () => {
+    const out = rt('flowchart TD\n  A@{ shape: not-a-shape, label: "P" }\n');
+    expect(out).toContain('shape: not-a-shape');
+  });
+
+  it('draws an unrecognised shape as a rect', () => {
+    expect(mermaidToModel('flowchart TD\n  A@{ shape: not-a-shape }\n').model.nodes[0]?.shape)
+      .toBe('rect');
+  });
+
+  it('promotes a bracket node to attr form when the new shape has no bracket', () => {
+    const model = mermaidToModel('flowchart TD\n  A[Process]\n').model;
+    setNodeShape(model.nodes[0]!, 'fake-bracketless');
+    // A registered bracketless shape arrives in Task 11; until then assert the
+    // rule directly on the syntax field.
+    expect(model.nodes[0]!.syntax).toBe('attr');
+  });
+
+  it('never demotes an attr node back to bracket form', () => {
+    const model = mermaidToModel('flowchart TD\n  A@{ shape: diam, label: "D" }\n').model;
+    setNodeShape(model.nodes[0]!, 'rect');
+    expect(modelToMermaid(model)).toContain('A@{ shape: rect');
   });
 });

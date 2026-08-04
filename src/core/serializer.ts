@@ -59,9 +59,25 @@ function nodeDeclaration(node: DiagramNode): string {
 	const label = quoteLabel(node.label);
 	const id = sanitizeId(node.id);
 	const def = SHAPES[node.shape];
-	// A shape with no bracket form cannot be written in the classic syntax;
-	// Task 9 routes those to the @{} attribute form instead.
-	return def?.bracket ? def.bracket(id, label) : `${id}[${label}]`;
+	if (node.syntax !== "attr" && def?.bracket) {
+		return def.bracket(id, label);
+	}
+	return attrForm(id, label, node);
+}
+
+/**
+ * Mermaid v11 attribute syntax. Key order is fixed — shape, label, then the
+ * preserved keys in parse order — so re-serializing an untouched node produces
+ * no diff. Values are always quoted, which Mermaid accepts and which keeps
+ * values containing spaces or commas from splitting the property list.
+ */
+function attrForm(id: string, label: string, node: DiagramNode): string {
+	const shape = node.rawShape ?? SHAPES[node.shape]?.name ?? "rect";
+	const parts = [`shape: ${shape}`, `label: ${label}`];
+	for (const [k, v] of Object.entries(node.attrs ?? {})) {
+		parts.push(`${k}: "${v.replace(/"/g, "&quot;")}"`);
+	}
+	return `${id}@{ ${parts.join(", ")} }`;
 }
 
 function edgeOperator(kind: EdgeKind): string {

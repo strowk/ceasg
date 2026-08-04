@@ -13,7 +13,7 @@
  */
 
 import { estimateNodeSize } from "./nodeGeometry";
-import { ALL_SHAPES } from "./shapes";
+import { ALL_SHAPES, SHAPES } from "./shapes";
 import type { ShapeName } from "./shapes";
 
 export type Direction = "TB" | "BT" | "LR" | "RL";
@@ -111,6 +111,14 @@ export interface DiagramNode {
 	/** Optional hyperlink target: an Obsidian link (`[[Note#Heading]]`) or an
 	 *  external URL. Persisted as a Mermaid `click <id> "<target>"` line. */
 	link?: string;
+	/** Which syntax the author wrote this node in. Undefined means the editor
+	 *  created it, which serializes to bracket form when the shape has one. */
+	syntax?: "bracket" | "attr";
+	/** `@{}` keys other than shape and label, preserved verbatim for round-trip. */
+	attrs?: Record<string, string>;
+	/** A shape name ceasg does not recognise. Drawn as a rect, written back
+	 *  unchanged so a future Mermaid shape survives an edit here. */
+	rawShape?: string;
 }
 
 /** A Mermaid `subgraph` — a labelled container grouping member nodes. */
@@ -525,7 +533,24 @@ export function removeEdge(model: DiagramModel, id: string): void {
 	model.edges = model.edges.filter((e) => e.id !== id);
 }
 
-/** Copy a node (label + shape) to a new id offset slightly. Returns new id. */
+/**
+ * Change a node's shape, recording the syntax promotion that implies.
+ *
+ * A shape with no bracket form can only be written as `@{…}`, so switching to
+ * one pins the node to the attribute form permanently. Switching back does not
+ * demote it: auto-demotion would rewrite a line the author may have written by
+ * hand, and the round trip would no longer be stable.
+ */
+export function setNodeShape(node: DiagramNode, shape: NodeShape): void {
+	node.shape = shape;
+	// A recognised shape supersedes any preserved unknown name.
+	node.rawShape = undefined;
+	if (!SHAPES[shape]?.bracket) {
+		node.syntax = "attr";
+	}
+}
+
+/** Copy a node (label, shape and syntax form) to a new id offset slightly. Returns new id. */
 export function duplicateNode(
 	model: DiagramModel,
 	id: string,
@@ -544,6 +569,9 @@ export function duplicateNode(
 		style: src.style ? { ...src.style, extra: src.style.extra ? [...src.style.extra] : undefined } : undefined,
 		classes: src.classes ? [...src.classes] : undefined,
 		link: src.link,
+		syntax: src.syntax,
+		attrs: src.attrs ? { ...src.attrs } : undefined,
+		rawShape: src.rawShape,
 	});
 	return newId;
 }

@@ -30,6 +30,7 @@ import {
 	newGroupId,
 } from "./model";
 import { lookupShape } from "./shapes";
+import { warn } from "./diagnostics";
 
 export interface ParseResult {
 	model: DiagramModel;
@@ -71,6 +72,9 @@ interface ParsedToken {
 	shape?: NodeShape;
 	label?: string;
 	classes?: string[];
+	syntax?: "bracket" | "attr";
+	attrs?: Record<string, string>;
+	rawShape?: string;
 }
 
 /** Parse a single node token such as `A`, `A[Label]`, `B{Decision}`. */
@@ -114,7 +118,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	for (const { re, shape } of patterns) {
 		const m = token.match(re);
 		if (m && m[1] !== undefined && m[2] !== undefined) {
-			return { id: m[1], shape, label: stripQuotes(m[2]) };
+			return { id: m[1], shape, label: stripQuotes(m[2]), syntax: "bracket" };
 		}
 	}
 
@@ -124,12 +128,30 @@ function parseNodeToken(raw: string): ParsedToken | null {
 		const props = parseV11Props(v11[2]);
 		const shapeName = props.get("shape");
 		const label = props.get("label");
-		const result: ParsedToken = { id: v11[1] };
-		// Unknown shape names degrade to rect (nearest supported shape).
+		const result: ParsedToken = { id: v11[1], syntax: "attr" };
 		if (shapeName !== undefined) {
-			result.shape = lookupShape(shapeName)?.name ?? "rect";
+			const def = lookupShape(shapeName);
+			if (def) {
+				result.shape = def.name;
+			} else {
+				// Draw it as a rect but keep the name so serialization is lossless.
+				result.shape = "rect";
+				result.rawShape = shapeName;
+				warn(
+					"unknown-shape",
+					shapeName,
+					`Unknown Mermaid shape "${shapeName}" on node "${v11[1]}"; drawn as a rectangle.`,
+					"The original name is preserved when the diagram is written back.",
+				);
+			}
 		}
 		if (label !== undefined) result.label = label;
+		// Everything except shape and label is passed through untouched.
+		const attrs: Record<string, string> = {};
+		for (const [k, v] of props) {
+			if (k !== "shape" && k !== "label") attrs[k] = v;
+		}
+		if (Object.keys(attrs).length > 0) result.attrs = attrs;
 		return result;
 	}
 
@@ -371,6 +393,9 @@ export function mermaidToModel(text: string): ParseResult {
 				shape: token.shape ?? "rect",
 				x: 0,
 				y: 0,
+				syntax: token.syntax,
+				attrs: token.attrs,
+				rawShape: token.rawShape,
 			};
 			nodeMap.set(token.id, node);
 			model.nodes.push(node);
@@ -379,6 +404,9 @@ export function mermaidToModel(text: string): ParseResult {
 			// in an edge statement after a bare reference).
 			if (token.shape) node.shape = token.shape;
 			if (token.label !== undefined) node.label = token.label;
+			if (token.syntax) node.syntax = token.syntax;
+			if (token.attrs) node.attrs = token.attrs;
+			if (token.rawShape) node.rawShape = token.rawShape;
 		}
 		for (const c of token.classes ?? []) {
 			if (!node.classes?.includes(c)) (node.classes ??= []).push(c);
