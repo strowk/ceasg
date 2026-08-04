@@ -29,7 +29,19 @@ const n = (el: Element, name: string): number => Number(el.getAttribute(name) ??
  * its uppercase equivalent: relative coordinates are offsets from the current
  * cursor, not absolute points, so reading them as absolute would produce
  * plausible-looking but wrong bounds instead of a visible failure. Throwing
- * is fine here — this module is test support, not a render path.
+ * is fine here — this module is test support, not a render path. `z` is the
+ * one exception: closepath takes no coordinates, so there is no
+ * relative-vs-absolute distinction for it to get wrong, and lowercase `z` is
+ * unremarkable output from path-drawing code.
+ *
+ * The command-letter check below is anchored (`/^[A-Za-z]$/`, "the whole
+ * token is one letter") rather than "the token contains a letter": the
+ * number half of the tokenizer regex, `-?\d*\.?\d+(?:e-?\d+)?`, legitimately
+ * absorbs a lowercase `e` exponent into a single multi-character token (e.g.
+ * "1e-5" — the form `Number.prototype.toString()` emits for the near-zero
+ * residuals trig-based curve math produces, such as `Math.cos(Math.PI / 2)`).
+ * An unanchored test would misidentify that whole numeric token as a command
+ * letter and reject a perfectly valid absolute coordinate.
  */
 function pathPoints(d: string): Array<[number, number]> {
   const pts: Array<[number, number]> = [];
@@ -40,8 +52,9 @@ function pathPoints(d: string): Array<[number, number]> {
   const take = (): number => Number(tokens[i++] ?? NaN);
   while (i < tokens.length) {
     const t = tokens[i]!;
-    if (/[A-Za-z]/.test(t)) {
-      if (t !== t.toUpperCase()) {
+    if (/^[A-Za-z]$/.test(t)) {
+      const isRelative = t !== t.toUpperCase();
+      if (isRelative && t.toLowerCase() !== 'z') {
         throw new Error(
           `geometryProbe: relative path command "${t}" is not supported; ` +
           `shape primitives must emit absolute path commands only.`,
