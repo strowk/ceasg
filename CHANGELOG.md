@@ -13,7 +13,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Degraded rendering is reported to a new **ceasg** output channel.
 
 ### Fixed
-- Shape names ceasg does not recognise are no longer flattened to rectangles.
+- Shape names ceasg does not recognise no longer lose their original shape name. They still draw as a rectangle, but the name is kept and written back unchanged instead of being replaced with `rect`.
 
 ## [0.7.0] - Unreleased
 
