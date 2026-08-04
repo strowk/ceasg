@@ -40,6 +40,14 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-panel-actions button:hover { background: var(--vscode-button-hoverBackground); }
 .ceasg-panel-actions .ceasg-danger { background: var(--vscode-errorForeground); color: #fff; }
 .ceasg-palette { position: fixed; z-index: 20; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-widget-border); }
+/* 48 shapes will not fit in a popover; cap it and let the list scroll. */
+.ceasg-palette { max-height: 60vh; overflow-y: auto; }
+.ceasg-palette-heading {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  opacity: 0.7;
+  padding: 6px 4px 2px;
+}
 .ceasg-palette-item { background: var(--vscode-button-secondaryBackground); border: none; padding: 4px; cursor: grab; }
 .ceasg-palette-item:hover { background: var(--vscode-button-hoverBackground); }
 .ceasg-sidebar { width: 140px; min-width: 140px; overflow-y: auto; border-right: 1px solid var(--vscode-panel-border); background: var(--vscode-sideBar-background); padding: 6px; box-sizing: border-box; }

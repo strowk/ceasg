@@ -152,7 +152,7 @@ export class WysiwygEditor {
     if (!this.sidebarBuilt) {
       this.sidebarBuilt = true;
       const sidebarHost = this.root.querySelector('#sidebar') as HTMLElement;
-      this.sidebar = new ShapeSidebar(sidebarHost, this);
+      this.sidebar = new ShapeSidebar(sidebarHost, this, this.api);
     }
 
     // Build panel once per editor instance; guard against re-creation on applyExternal→init

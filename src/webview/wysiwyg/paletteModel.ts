@@ -1,4 +1,4 @@
-import { NODE_SHAPES, NodeShape, SHAPE_LABELS, createShapeIcon } from '../../core';
+import { NodeShape, SHAPE_GROUPS, SHAPE_LABELS, createShapeIcon } from '../../core';
 import type { WysiwygEditor } from './editor';
 
 /** dataTransfer type for a shape dragged from any palette onto the canvas.
@@ -39,11 +39,13 @@ function shapeItem(shape: NodeShape): PaletteItem {
   };
 }
 
-/** Every palette group, in display order. Both the toolbar dropdown and the
- *  sidebar render from this; adding a group is one entry here. */
-export const PALETTE_GROUPS: PaletteGroup[] = [
-  { id: 'basic', title: 'Basic', items: NODE_SHAPES.map(shapeItem) },
-];
+/** Every palette group, in display order, mirroring the shape registry. Both
+ *  the toolbar dropdown and the sidebar render from this. */
+export const PALETTE_GROUPS: PaletteGroup[] = SHAPE_GROUPS.map((g) => ({
+  id: g.id,
+  title: g.title,
+  items: g.shapes.map((s) => shapeItem(s.name)),
+}));
 
 /** The palette item a drag payload came from, or undefined when the payload
  *  belongs to no palette (a foreign drag). Lets the canvas drop handler stay

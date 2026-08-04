@@ -3,15 +3,21 @@ import { NODE_SHAPES } from '../../core';
 import { PALETTE_GROUPS, SHAPE_DRAG_TYPE, createPaletteItemButton, findPaletteItem } from './paletteModel';
 
 describe('PALETTE_GROUPS', () => {
-  it('ships exactly one group, Basic, holding every node shape', () => {
-    expect(PALETTE_GROUPS).toHaveLength(1);
-    expect(PALETTE_GROUPS[0].id).toBe('basic');
-    expect(PALETTE_GROUPS[0].title).toBe('Basic');
-    expect(PALETTE_GROUPS[0].items).toHaveLength(NODE_SHAPES.length);
+  it('mirrors the registry groups in palette order', () => {
+    expect(PALETTE_GROUPS.map((g) => g.id))
+      .toEqual(['basic', 'process', 'data', 'documents', 'flow', 'annotations']);
+    expect(PALETTE_GROUPS.map((g) => g.title))
+      .toEqual(['Basic', 'Process', 'Data & I/O', 'Documents', 'Flow Control', 'Annotations']);
+  });
+
+  it('covers every shape exactly once across all groups', () => {
+    const items = PALETTE_GROUPS.flatMap((g) => g.items);
+    expect(items).toHaveLength(NODE_SHAPES.length);
+    expect(new Set(items.map((i) => i.id)).size).toBe(NODE_SHAPES.length);
   });
 
   it('every item carries a valid shape as its drag payload and a human title', () => {
-    for (const item of PALETTE_GROUPS[0].items) {
+    for (const item of PALETTE_GROUPS.flatMap((g) => g.items)) {
       expect(item.dragType).toBe(SHAPE_DRAG_TYPE);
       expect(NODE_SHAPES).toContain(item.dragData);
       expect(item.title.length).toBeGreaterThan(0);

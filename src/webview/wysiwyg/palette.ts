@@ -8,13 +8,17 @@ export class ShapePalette {
     this.popover = document.createElement('div');
     this.popover.className = 'ceasg-palette';
     this.popover.style.display = 'none';
-    // The dropdown is a flat grid — it ignores group structure by design and
-    // shows every item from every group.
-    for (const item of PALETTE_GROUPS.flatMap((g) => g.items)) {
-      this.popover.appendChild(createPaletteItemButton(item, (it) => {
-        it.add(this.editor);
-        this.toggle(false);
-      }));
+    for (const group of PALETTE_GROUPS) {
+      const heading = document.createElement('div');
+      heading.className = 'ceasg-palette-heading';
+      heading.textContent = group.title;
+      this.popover.appendChild(heading);
+      for (const item of group.items) {
+        this.popover.appendChild(createPaletteItemButton(item, (it) => {
+          it.add(this.editor);
+          this.toggle(false);
+        }));
+      }
     }
     document.body.appendChild(this.popover);
   }

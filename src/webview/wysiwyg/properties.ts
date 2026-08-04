@@ -1,4 +1,4 @@
-import { BASE_FONT_SIZE, NODE_SHAPES, SHAPE_LABELS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
+import { BASE_FONT_SIZE, SHAPE_GROUPS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
 
@@ -99,7 +99,17 @@ export class PropertiesPanel {
     this.host.appendChild(this.row('Label', label));
 
     const shape = document.createElement('select');
-    for (const s of NODE_SHAPES) { const o = document.createElement('option'); o.value = s; o.textContent = SHAPE_LABELS[s]; shape.appendChild(o); }
+    for (const group of SHAPE_GROUPS) {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = group.title;
+      for (const s of group.shapes) {
+        const o = document.createElement('option');
+        o.value = s.name;
+        o.textContent = s.label;
+        optgroup.appendChild(o);
+      }
+      shape.appendChild(optgroup);
+    }
     shape.value = node().shape;
     shape.addEventListener('change', () => this.editor.mutate((m) => {
       const target = m.nodes.find((n) => n.id === id);
