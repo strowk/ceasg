@@ -1,3 +1,12 @@
+/*
+ * Ported from Mermaid Flow (obsidian-mermaid-flow)
+ *   https://github.com/THANSHEER/obsidian-mermaid-flow
+ * Copyright (C) THANSHEER and Mermaid Flow contributors.
+ * Licensed under GPL-3.0-or-later. Adapted for the ceasg VS Code extension
+ * (2026): `cyl`, `lean-r` and `lean-l` are that code, geometry unchanged and
+ * restructured into registry entries; the rest is new.
+ */
+
 import { ellipse, hline, path, polygon, rect, vline } from './primitives';
 import type { ShapeDef, ShapeGeom } from './types';
 

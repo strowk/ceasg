@@ -1,3 +1,12 @@
+/*
+ * Ported from Mermaid Flow (obsidian-mermaid-flow)
+ *   https://github.com/THANSHEER/obsidian-mermaid-flow
+ * Copyright (C) THANSHEER and Mermaid Flow contributors.
+ * Licensed under GPL-3.0-or-later. Adapted for the ceasg VS Code extension
+ * (2026): `createShapeIcon` is that code, unchanged apart from resolving the
+ * shape through the registry; the rest is new.
+ */
+
 import { geom } from './primitives';
 import { SHAPES, lookupShape } from './registry';
 import type { ShapeName } from './types';
