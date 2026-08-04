@@ -7,7 +7,7 @@ describe('mermaidToModel', () => {
     expect(model.direction).toBe('LR');
     expect(model.nodes.map((n) => n.id).sort()).toEqual(['A', 'B']);
     expect(model.nodes.find((n) => n.id === 'A')?.label).toBe('Start');
-    expect(model.nodes.find((n) => n.id === 'B')?.shape).toBe('diamond');
+    expect(model.nodes.find((n) => n.id === 'B')?.shape).toBe('diam');
     expect(model.edges).toHaveLength(1);
     expect(model.edges[0]).toMatchObject({ from: 'A', to: 'B', kind: 'arrow' });
   });
@@ -87,5 +87,27 @@ describe('node style props', () => {
   it('still preserves genuinely unknown props verbatim', () => {
     const { model } = mermaidToModel('flowchart LR\nA-->B\nstyle A opacity:0.5\n');
     expect(model.nodes.find((n) => n.id === 'A')!.style!.extra).toEqual(['opacity:0.5']);
+  });
+});
+
+describe('@{shape} alias resolution', () => {
+  const shapeOf = (src: string) =>
+    mermaidToModel(`flowchart TD\n  ${src}\n`).model.nodes[0]?.shape;
+
+  it('resolves canonical Mermaid names', () => {
+    expect(shapeOf('A@{shape: dbl-circ, label: "x"}')).toBe('dbl-circ');
+  });
+
+  it('resolves documented aliases', () => {
+    expect(shapeOf('A@{shape: database, label: "x"}')).toBe('cyl');
+    expect(shapeOf('A@{shape: out-in, label: "x"}')).toBe('lean-l');
+  });
+
+  it('is case-insensitive', () => {
+    expect(shapeOf('A@{shape: DATABASE, label: "x"}')).toBe('cyl');
+  });
+
+  it('degrades an unknown name to rect', () => {
+    expect(shapeOf('A@{shape: not-a-shape, label: "x"}')).toBe('rect');
   });
 });

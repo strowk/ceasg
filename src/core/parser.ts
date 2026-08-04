@@ -29,6 +29,7 @@ import {
 	newEdgeId,
 	newGroupId,
 } from "./model";
+import { lookupShape } from "./shapes";
 
 export interface ParseResult {
 	model: DiagramModel;
@@ -94,20 +95,20 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	// single-bracket counterparts (e.g. `((( )))` before `(( ))` before `( )`).
 	const id = "([A-Za-z0-9_]+)";
 	const patterns: Array<{ re: RegExp; shape: NodeShape }> = [
-		{ re: new RegExp(`^${id}\\(\\(\\((.*)\\)\\)\\)$`), shape: "double-circle" },
+		{ re: new RegExp(`^${id}\\(\\(\\((.*)\\)\\)\\)$`), shape: "dbl-circ" },
 		{ re: new RegExp(`^${id}\\(\\((.*)\\)\\)$`), shape: "circle" },
 		{ re: new RegExp(`^${id}\\(\\[(.*)\\]\\)$`), shape: "stadium" },
-		{ re: new RegExp(`^${id}\\[\\[(.*)\\]\\]$`), shape: "subroutine" },
-		{ re: new RegExp(`^${id}\\[\\((.*)\\)\\]$`), shape: "cylinder" },
-		{ re: new RegExp(`^${id}\\{\\{(.*)\\}\\}$`), shape: "hexagon" },
-		{ re: new RegExp(`^${id}\\[/(.*)\\\\\\]$`), shape: "trapezoid" },
-		{ re: new RegExp(`^${id}\\[\\\\(.*)/\\]$`), shape: "trapezoid-alt" },
-		{ re: new RegExp(`^${id}\\[/(.*)/\\]$`), shape: "parallelogram" },
-		{ re: new RegExp(`^${id}\\[\\\\(.*)\\\\\\]$`), shape: "parallelogram-alt" },
-		{ re: new RegExp(`^${id}\\{(.*)\\}$`), shape: "diamond" },
-		{ re: new RegExp(`^${id}>(.*)\\]$`), shape: "asymmetric" },
+		{ re: new RegExp(`^${id}\\[\\[(.*)\\]\\]$`), shape: "fr-rect" },
+		{ re: new RegExp(`^${id}\\[\\((.*)\\)\\]$`), shape: "cyl" },
+		{ re: new RegExp(`^${id}\\{\\{(.*)\\}\\}$`), shape: "hex" },
+		{ re: new RegExp(`^${id}\\[/(.*)\\\\\\]$`), shape: "trap-b" },
+		{ re: new RegExp(`^${id}\\[\\\\(.*)/\\]$`), shape: "trap-t" },
+		{ re: new RegExp(`^${id}\\[/(.*)/\\]$`), shape: "lean-r" },
+		{ re: new RegExp(`^${id}\\[\\\\(.*)\\\\\\]$`), shape: "lean-l" },
+		{ re: new RegExp(`^${id}\\{(.*)\\}$`), shape: "diam" },
+		{ re: new RegExp(`^${id}>(.*)\\]$`), shape: "odd" },
 		{ re: new RegExp(`^${id}\\[(.*)\\]$`), shape: "rect" },
-		{ re: new RegExp(`^${id}\\((.*)\\)$`), shape: "round" },
+		{ re: new RegExp(`^${id}\\((.*)\\)$`), shape: "rounded" },
 	];
 
 	for (const { re, shape } of patterns) {
@@ -126,7 +127,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 		const result: ParsedToken = { id: v11[1] };
 		// Unknown shape names degrade to rect (nearest supported shape).
 		if (shapeName !== undefined) {
-			result.shape = V11_SHAPE_MAP[shapeName.toLowerCase()] ?? "rect";
+			result.shape = lookupShape(shapeName)?.name ?? "rect";
 		}
 		if (label !== undefined) result.label = label;
 		return result;
@@ -140,30 +141,6 @@ function parseNodeToken(raw: string): ParsedToken | null {
 
 	return null;
 }
-
-/**
- * Mermaid v11 `@{shape: …}` names → the nearest supported NodeShape.
- * Aliases per the Mermaid v11 shape table; unmapped names fall back to rect.
- */
-const V11_SHAPE_MAP: Record<string, NodeShape> = {
-	rect: "rect", process: "rect", proc: "rect", rectangle: "rect",
-	rounded: "round", event: "round",
-	stadium: "stadium", pill: "stadium", terminal: "stadium",
-	subroutine: "subroutine", subproc: "subroutine", "fr-rect": "subroutine",
-	"framed-rectangle": "subroutine",
-	cyl: "cylinder", cylinder: "cylinder", db: "cylinder", database: "cylinder",
-	circle: "circle", circ: "circle",
-	"dbl-circ": "double-circle", "double-circle": "double-circle",
-	diam: "diamond", diamond: "diamond", decision: "diamond", question: "diamond",
-	hex: "hexagon", hexagon: "hexagon", prepare: "hexagon",
-	"lean-r": "parallelogram", "lean-right": "parallelogram", "in-out": "parallelogram",
-	"lean-l": "parallelogram-alt", "lean-left": "parallelogram-alt", "out-in": "parallelogram-alt",
-	"trap-b": "trapezoid", "trapezoid-bottom": "trapezoid", trapezoid: "trapezoid",
-	priority: "trapezoid",
-	"trap-t": "trapezoid-alt", "trapezoid-top": "trapezoid-alt",
-	"inv-trapezoid": "trapezoid-alt", manual: "trapezoid-alt",
-	odd: "asymmetric",
-};
 
 /** Parse the body of `@{…}`: comma-separated key: value pairs, quote-aware. */
 function parseV11Props(body: string): Map<string, string> {
