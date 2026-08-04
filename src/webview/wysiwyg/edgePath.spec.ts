@@ -58,4 +58,41 @@ describe('nodeBorderPoint with an outline', () => {
     expect(withOutline).toEqual(['bang', 'bolt', 'cloud', 'curv-trap', 'flag',
       'flip-tri', 'hourglass', 'notch-pent', 'tri']);
   });
+
+  // Regression: hourglassOutline places two vertices exactly at (cx, cy),
+  // which is also the ray's own origin. A ray along the pinch's horizontal
+  // has no real crossing there — the silhouette has zero width along that
+  // line — so this must fall through to box math, not report the node's own
+  // centre as the border point (which would put the arrowhead on the label).
+  it('falls back to box math for an hourglass edge near the horizontal pinch, not its centre', () => {
+    const m = model('hourglass');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    const p = nodeBorderPoint(m, node as never, 1000, 0);
+    expect(p).not.toEqual({ x: 0, y: 0 });
+    expect(p).toEqual({ x: 50, y: 0 }); // box math: half of w=100
+  });
+
+  it('anchors a bang on its starburst spike, not the box corner', () => {
+    const m = model('bang');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    const p = nodeBorderPoint(m, node as never, 1000, 1000);
+    // The box corner is (50, 50); the starburst pulls well inside it.
+    expect(p.x).toBeLessThan(50);
+  });
+
+  it('anchors a bolt on its lightning outline, not the box corner', () => {
+    const m = model('bolt');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    const p = nodeBorderPoint(m, node as never, 1000, 1000);
+    // The box corner is (50, 50); the bolt's outline is much narrower.
+    expect(p.x).toBeLessThan(30);
+  });
+
+  it('anchors a notch-pent inside its notched corner, not the box corner', () => {
+    const m = model('notch-pent');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    const p = nodeBorderPoint(m, node as never, -1000, -1000);
+    // The box corner is (-50, -50); the notch cuts that corner back.
+    expect(p.x).toBeGreaterThan(-50);
+  });
 });
