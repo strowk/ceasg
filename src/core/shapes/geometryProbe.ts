@@ -24,6 +24,12 @@ const n = (el: Element, name: string): number => Number(el.getAttribute(name) ??
  * absolute commands, so only those are handled. For each command the trailing
  * pair is the endpoint; C/S/Q also contribute their control points, which bound
  * the curve conservatively (a bézier never leaves its control hull).
+ *
+ * A lowercase (relative) command is rejected rather than silently treated as
+ * its uppercase equivalent: relative coordinates are offsets from the current
+ * cursor, not absolute points, so reading them as absolute would produce
+ * plausible-looking but wrong bounds instead of a visible failure. Throwing
+ * is fine here — this module is test support, not a render path.
  */
 function pathPoints(d: string): Array<[number, number]> {
   const pts: Array<[number, number]> = [];
@@ -34,7 +40,15 @@ function pathPoints(d: string): Array<[number, number]> {
   const take = (): number => Number(tokens[i++] ?? NaN);
   while (i < tokens.length) {
     const t = tokens[i]!;
-    if (/[A-Za-z]/.test(t)) { cmd = t; i++; continue; }
+    if (/[A-Za-z]/.test(t)) {
+      if (t !== t.toUpperCase()) {
+        throw new Error(
+          `geometryProbe: relative path command "${t}" is not supported; ` +
+          `shape primitives must emit absolute path commands only.`,
+        );
+      }
+      cmd = t; i++; continue;
+    }
     switch (cmd.toUpperCase()) {
       case 'M': case 'L': case 'T': {
         cursor = [take(), take()]; pts.push(cursor); break;
@@ -61,7 +75,15 @@ function pathPoints(d: string): Array<[number, number]> {
   return pts;
 }
 
-/** The drawn extent of `elements`, or null when nothing draws (e.g. `text`). */
+/**
+ * The drawn extent of `elements`, or null when nothing draws (e.g. `text`).
+ *
+ * Every element tag a primitive can emit must have a case below. An unhandled
+ * tag falls through to `default: break` and contributes nothing to the
+ * bounds — a shape built from a new primitive type (Tasks 11-14) would then
+ * pass the "stays within its box" assertion no matter where it actually
+ * drew. Add a case here in lockstep with any new element type in primitives.ts.
+ */
 export function probeBounds(elements: SVGElement[]): Bounds | null {
   let b: Bounds | null = null;
   for (const el of elements) {

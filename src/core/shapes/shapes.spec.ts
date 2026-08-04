@@ -37,6 +37,14 @@ describe.each(ALL_SHAPES.map((d) => [d.name, d] as const))('shape "%s"', (name, 
     expect(b.maxY).toBeLessThanOrEqual(g.bottom + MARGIN);
   });
 
+  // NOTE: this case is vacuous for every rect/circle/ellipse/polygon/line-built
+  // shape — primitives.ts's `num()` already clamps any non-finite value to "0"
+  // before it reaches an attribute, so those primitives can never emit a
+  // literal "NaN"/"Infinity" string. It only has teeth for `path()`-based
+  // shapes, whose `d` string is authored directly and bypasses `num()`. None
+  // of the current 14 shapes use `path()`, so today this case always passes
+  // trivially; it starts actually protecting something once a path-based
+  // shape lands (Task 13).
   it('emits no non-finite coordinates for a degenerate box', () => {
     const els = def.render(geom(0, 0, 0, 0));
     for (const el of els) {
