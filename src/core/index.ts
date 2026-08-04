@@ -9,3 +9,4 @@ export * from './layout';
 export * from './placement';
 export * from './alignTools';
 export * from './themePalette';
+export * from './diagnostics';

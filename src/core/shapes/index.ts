@@ -2,6 +2,7 @@ import { geom } from './primitives';
 import { SHAPES, lookupShape } from './registry';
 import type { ShapeName } from './types';
 import { getDocument } from '../dom';
+import { warn } from '../diagnostics';
 
 export * from './types';
 export * from './primitives';
@@ -23,7 +24,14 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 export function createShapeElements(
   shape: ShapeName, cx: number, cy: number, w: number, h: number,
 ): SVGElement[] {
-  const def = lookupShape(shape) ?? SHAPES['rect'];
+  let def = lookupShape(shape);
+  if (!def) {
+    // Unreachable once NodeShape is registry-derived; a typed hole today is a
+    // blank diagram tomorrow, so degrade loudly rather than silently.
+    warn('shape-lookup-miss', String(shape),
+      `No shape registered as "${shape}"; drawn as a rectangle.`);
+    def = SHAPES['rect']!;
+  }
   return def.render(geom(cx, cy, w, h));
 }
 

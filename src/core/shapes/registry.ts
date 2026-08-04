@@ -12,6 +12,7 @@ import { FLOW_SHAPES } from './flow';
 import { PROCESS_SHAPES } from './process';
 import { SHAPE_GROUP_TITLES } from './types';
 import type { ShapeDef, ShapeGroupId, ShapeName } from './types';
+import { warn } from '../diagnostics';
 
 export const ALL_SHAPES: ShapeDef[] = [
   ...BASIC_SHAPES,
@@ -54,4 +55,30 @@ export const ALIAS_INDEX: Map<string, ShapeName> = (() => {
 export function lookupShape(name: string): ShapeDef | undefined {
   const canonical = ALIAS_INDEX.get(name.toLowerCase());
   return canonical === undefined ? undefined : SHAPES[canonical];
+}
+
+/**
+ * Report aliases claimed by more than one shape. First registration wins in
+ * ALIAS_INDEX, so a collision silently makes resolution order-dependent.
+ *
+ * Called by the extension host after the output-channel sink is installed;
+ * building ALIAS_INDEX at module load happens too early to warn usefully.
+ * registry.spec.ts asserts there are none, so this firing in production means
+ * a shape was added without running the suite.
+ */
+export function reportAliasCollisions(): void {
+  const owner = new Map<string, string>();
+  for (const def of ALL_SHAPES) {
+    for (const alias of def.aliases) {
+      const key = alias.toLowerCase();
+      const prev = owner.get(key);
+      if (prev && prev !== def.name) {
+        warn('alias-collision', key,
+          `Shape alias "${alias}" is claimed by both "${prev}" and "${def.name}".`,
+          `"${prev}" wins; "${def.name}" is unreachable through this alias.`);
+      } else {
+        owner.set(key, def.name);
+      }
+    }
+  }
 }

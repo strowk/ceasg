@@ -19,6 +19,7 @@
 import * as dagre from "@dagrejs/dagre";
 import type { EdgeLabel, GraphLabel, NodeLabel } from "@dagrejs/dagre";
 import { DiagramModel, materializeGroupBounds, nodeSize } from "./model";
+import { warn } from "./diagnostics";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
 const DEFAULT_CROSS_GAP = 110; // distance between siblings within a rank (grid fallback)
@@ -29,7 +30,12 @@ export function autoLayout(model: DiagramModel): void {
 	try {
 		dagreLayout(model);
 	} catch (e) {
-		console.error("[ceasg] dagre layout failed, using grid fallback:", e);
+		warn(
+			"layout-failed",
+			String(e),
+			"Auto layout failed; using the grid fallback.",
+			String(e),
+		);
 		gridFallback(model);
 	}
 	// Re-fit every group box to the freshly laid-out members and store it
