@@ -7,12 +7,8 @@
  * restructured into registry entries; the rest is new.
  */
 
-import { ellipse, hline, path, polygon, rect, vline } from './primitives';
-import type { ShapeDef, ShapeGeom } from './types';
-
-function slantOf(g: ShapeGeom): number {
-  return Math.min(g.hw * 0.5, 20);
-}
+import { ellipse, hline, path, polygon, rect, slantOf, vline } from './primitives';
+import type { ShapeDef } from './types';
 
 export const DATA_SHAPES: ShapeDef[] = [
   {

@@ -17,6 +17,15 @@ const MIN_EXTENT = 1;
 /** Offset between copies in a stacked shape. */
 export const STACK_DEPTH = 5;
 
+/**
+ * Shared slant for the parallelogram/trapezoid family (shapes.ts:51). Lives
+ * here, with STACK_DEPTH, because both the process and data families use it
+ * and neither should have to depend on the other to get it.
+ */
+export function slantOf(g: ShapeGeom): number {
+  return Math.min(g.hw * 0.5, 20);
+}
+
 export function el<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
   return getDocument().createElementNS(SVG_NS, name);
 }

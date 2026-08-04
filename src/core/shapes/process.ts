@@ -3,18 +3,13 @@
  *   https://github.com/THANSHEER/obsidian-mermaid-flow
  * Copyright (C) THANSHEER and Mermaid Flow contributors.
  * Licensed under GPL-3.0-or-later. Adapted for the ceasg VS Code extension
- * (2026): `fr-rect`, `trap-b`, `trap-t` and `slantOf` are that code, geometry
- * unchanged and restructured into registry entries; the rest is new.
+ * (2026): `fr-rect`, `trap-b` and `trap-t` are that code, geometry unchanged
+ * and restructured into registry entries; the rest is new.
  */
 
-import { STACK_DEPTH, hline, polygon, rect, vline } from './primitives';
+import { STACK_DEPTH, hline, polygon, rect, slantOf, vline } from './primitives';
 import { cornerTag } from './documents';
-import type { ShapeDef, ShapeGeom } from './types';
-
-/** Shared slant for the parallelogram/trapezoid family (shapes.ts:51). */
-export function slantOf(g: ShapeGeom): number {
-  return Math.min(g.hw * 0.5, 20);
-}
+import type { ShapeDef } from './types';
 
 export const PROCESS_SHAPES: ShapeDef[] = [
   {

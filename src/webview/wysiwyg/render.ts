@@ -21,10 +21,20 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   const style = resolveNodeStyle(model, node);
   for (const shapeEl of createShapeElements(node.shape, node.x, node.y, w, h)) {
     shapeEl.classList.add('ceasg-shape');
+    // A solid marker (fork bar, junction dot) is a mark drawn in the stroke
+    // colour, not a container: diagram.css fills it from --ceasg-node-stroke,
+    // so the node's own fill must not claim it and the stroke colour has to
+    // reach it as that custom property. Without the property set the rule
+    // falls back to `currentColor` — the inherited text colour, which is not
+    // this node's stroke at all.
+    const isSolid = shapeEl.getAttribute('data-ceasg-solid') === 'true';
     // Inline style beats the `.ceasg-shape` stylesheet rule; a presentation
     // attribute would be overridden by it, so per-node styling must use style.
-    if (style?.fillColor) { shapeEl.style.fill = style.fillColor; }
-    if (style?.strokeColor) { shapeEl.style.stroke = style.strokeColor; }
+    if (style?.fillColor && !isSolid) { shapeEl.style.fill = style.fillColor; }
+    if (style?.strokeColor) {
+      shapeEl.style.stroke = style.strokeColor;
+      shapeEl.style.setProperty('--ceasg-node-stroke', style.strokeColor);
+    }
     if (style?.strokeWidth) { shapeEl.style.strokeWidth = String(style.strokeWidth); }
     if (style?.strokeDasharray) { shapeEl.style.strokeDasharray = style.strokeDasharray; }
     g.appendChild(shapeEl);

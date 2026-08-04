@@ -35,6 +35,20 @@ describe('renderDiagram', () => {
     expect(shape.style.fill).toBe('rgb(255, 0, 0)');
   });
 
+  it('gives a solid marker the node stroke colour, not the node fill', () => {
+    // fork draws one solid bar. diagram.css fills it from --ceasg-node-stroke,
+    // so the stroke colour has to arrive as that property, and the node's fill
+    // must not be written over it.
+    const { model } = mermaidToModel('flowchart LR\nA@{ shape: fork }\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    model.nodes[0].style = { fillColor: '#ff0000', strokeColor: '#0000ff' };
+    const { refs } = renderDiagram(model);
+    const shape = refs.nodeEls.get('A')!.querySelector<SVGElement>('.ceasg-shape')!;
+    expect(shape.getAttribute('data-ceasg-solid')).toBe('true');
+    expect(shape.style.getPropertyValue('--ceasg-node-stroke')).toBe('#0000ff');
+    expect(shape.style.fill).toBe('');
+  });
+
   it('applies node stroke width and dasharray from style', () => {
     const { model } = mermaidToModel('flowchart LR\nA[X]\nstyle A stroke-width:3px,stroke-dasharray:5 5\n');
     model.nodes[0].x = 0; model.nodes[0].y = 0;

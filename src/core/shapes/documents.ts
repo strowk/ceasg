@@ -1,4 +1,4 @@
-import { STACK_DEPTH, path, polygon, unfilled, vline, wavyBottom } from './primitives';
+import { STACK_DEPTH, path, polygon, vline, wavyBottom } from './primitives';
 import type { ShapeDef, ShapeGeom } from './types';
 
 /** Wave height, and therefore the extra bottom room every document needs. */
