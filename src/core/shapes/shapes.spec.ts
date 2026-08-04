@@ -8,8 +8,24 @@ import { estimateNodeSize } from '../nodeGeometry';
 import { emptyModel } from '../model';
 import type { DiagramModel, DiagramNode } from '../model';
 
-/** A generous box so shapes with internal insets have room to be themselves. */
-const BOX = { cx: 200, cy: 120, w: 160, h: 80 };
+/**
+ * Boxes every shape is bounds-checked in. One box is not enough: checking only
+ * 160x80 let `delay` ship drawing 6px left of its box on a tall node, and
+ * `cloud` 4.7% of its height above and below on every node — the latter passed
+ * only because MARGIN happens to be 4 and 4.7% of 80 is 3.73.
+ *
+ * The sizes are ones `estimateNodeSize` really produces (h = 16 * lines + 28,
+ * w >= MIN_W): a long one-line label, a four-line label, and a ten-line label
+ * whose height is more than twice its width — the shape of box that catches a
+ * radius clamped against height alone. The 160x80 box is kept so the coverage
+ * the suite already had is not traded away for the new coverage.
+ */
+const BOXES = [
+  { name: 'wide 1-line 320x44', cx: 200, cy: 120, w: 320, h: 44 },
+  { name: 'default 160x80', cx: 200, cy: 120, w: 160, h: 80 },
+  { name: '4-line 120x92', cx: 200, cy: 120, w: 120, h: 92 },
+  { name: 'tall 10-line 88x188', cx: 200, cy: 120, w: 88, h: 188 },
+];
 /** Stroke width and rounding slop; a shape 4px outside its box is a bug. */
 const MARGIN = 4;
 
@@ -22,8 +38,8 @@ function modelWith(node: DiagramNode): DiagramModel {
 }
 
 describe.each(ALL_SHAPES.map((d) => [d.name, d] as const))('shape "%s"', (name, def) => {
-  it('renders elements that stay within its box', () => {
-    const g = geom(BOX.cx, BOX.cy, BOX.w, BOX.h);
+  it.each(BOXES)('renders elements that stay within its $name box', (box) => {
+    const g = geom(box.cx, box.cy, box.w, box.h);
     const els = def.render(g);
     const b = probeBounds(els);
     if (b === null) {
