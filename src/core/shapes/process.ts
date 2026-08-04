@@ -1,4 +1,4 @@
-import { polygon, rect, vline } from './primitives';
+import { hline, polygon, rect, vline } from './primitives';
 import type { ShapeDef, ShapeGeom } from './types';
 
 /** Shared slant for the parallelogram/trapezoid family (shapes.ts:51). */
@@ -49,5 +49,27 @@ export const PROCESS_SHAPES: ShapeDef[] = [
         [g.left, g.top], [g.right, g.top], [g.right - s, g.bottom], [g.left + s, g.bottom],
       ])];
     },
+  },
+  {
+    name: 'lin-rect',
+    label: 'Lined process',
+    group: 'process',
+    aliases: ['lin-proc', 'lined-process', 'lined-rectangle', 'shaded-process'],
+    size: (b) => ({ w: b.w + 12, h: b.h }),
+    render: (g) => [
+      rect(g.left, g.top, g.w, g.h, 0),
+      vline(g.left + 10, g.top, g.bottom),
+    ],
+  },
+  {
+    name: 'div-rect',
+    label: 'Divided process',
+    group: 'process',
+    aliases: ['div-proc', 'divided-process', 'divided-rectangle'],
+    size: (b) => ({ w: b.w, h: b.h + 12 }),
+    render: (g) => [
+      rect(g.left, g.top, g.w, g.h, 0),
+      hline(g.top + Math.min(g.h * 0.28, 16), g.left, g.right),
+    ],
   },
 ];

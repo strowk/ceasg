@@ -1,4 +1,9 @@
 .ceasg-shape { fill: var(--vscode-editorWidget-background); stroke: var(--vscode-foreground); stroke-width: 1.5; }
+/* Fork bars and junction dots render filled in the stroke colour, not the
+   node fill, so they read as markers rather than as containers. */
+.ceasg-shape[data-ceasg-solid='true'] {
+  fill: var(--ceasg-node-stroke, currentColor);
+}
 /* Must match BASE_FONT_SIZE/BASE_FONT_FAMILY in core/textMetrics.ts: node boxes
    are measured in this font, and the properties panel offers it as the default
    font size, so drawing in a different one would mis-size every box. It is also

@@ -7,7 +7,7 @@ describe('registry', () => {
       'dbl-circ', 'diam', 'hex', 'lean-r', 'lean-l', 'trap-b', 'trap-t', 'odd']) {
       expect(SHAPES[name], `missing ${name}`).toBeDefined();
     }
-    expect(ALL_SHAPES).toHaveLength(14);
+    expect(ALL_SHAPES).toHaveLength(24);
   });
 
   it('resolves historical ceasg names through aliases', () => {
@@ -29,8 +29,16 @@ describe('registry', () => {
     expect(lookupShape('nonsense')).toBeUndefined();
   });
 
-  it('every shape has a bracket form, since all 14 predate @{} syntax', () => {
+  it('every shape has a bracket form, except ones deliberately attr-only', () => {
+    // Task 11's 10 rect/line/circle shapes are new to Mermaid v11's `@{}`
+    // syntax and never had a bracket shorthand; they, and `text`, serialize
+    // only through the @{ shape: X, ... } attr form.
+    const attrOnly = new Set([
+      'text', 'lin-rect', 'div-rect', 'win-pane', 'lin-cyl',
+      'fork', 'sm-circ', 'f-circ', 'fr-circ', 'cross-circ',
+    ]);
     for (const def of ALL_SHAPES) {
+      if (attrOnly.has(def.name)) { continue; }
       expect(def.bracket, `${def.name} lost its bracket form`).toBeDefined();
     }
   });

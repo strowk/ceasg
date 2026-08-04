@@ -89,3 +89,45 @@ describe.each(ALL_SHAPES.map((d) => [d.name, d] as const))('shape "%s"', (name, 
     expect(back?.label, text).toBe('Round trip');
   });
 });
+
+describe('rect/line/circle shapes', () => {
+  const render = (name: string) => SHAPES[name]!.render(geom(200, 120, 160, 80));
+
+  it('text draws no border, only a label', () => {
+    expect(render('text')).toHaveLength(0);
+  });
+
+  it('lin-rect adds a single divider line to a rectangle', () => {
+    const els = render('lin-rect');
+    expect(els.map((e) => e.tagName.toLowerCase())).toEqual(['rect', 'line']);
+  });
+
+  it('win-pane adds both a vertical and a horizontal divider', () => {
+    const els = render('win-pane');
+    expect(els).toHaveLength(3);
+    expect(els.filter((e) => e.tagName.toLowerCase() === 'line')).toHaveLength(2);
+  });
+
+  it('fork is a solid bar, thin regardless of the box height', () => {
+    const els = render('fork');
+    expect(els).toHaveLength(1);
+    expect(Number(els[0]!.getAttribute('height'))).toBeLessThan(16);
+    expect(els[0]!.getAttribute('data-ceasg-solid')).toBe('true');
+  });
+
+  it('sm-circ and f-circ ignore the label when sizing', () => {
+    const long = { id: 'A', label: 'An extremely long label', shape: 'sm-circ', x: 0, y: 0 };
+    const short = { id: 'A', label: 'x', shape: 'sm-circ', x: 0, y: 0 };
+    expect(estimateNodeSize(long as never)).toEqual(estimateNodeSize(short as never));
+  });
+
+  it('fr-circ and cross-circ draw an outer circle plus an inner mark', () => {
+    expect(render('fr-circ').length).toBeGreaterThan(1);
+    expect(render('cross-circ').length).toBeGreaterThan(1);
+  });
+
+  it('lin-cyl adds a second ellipse to the cylinder body', () => {
+    const els = render('lin-cyl');
+    expect(els.filter((e) => e.tagName.toLowerCase() === 'ellipse')).toHaveLength(2);
+  });
+});

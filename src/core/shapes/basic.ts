@@ -97,6 +97,15 @@ export const BASIC_SHAPES: ShapeDef[] = [
       ])];
     },
   },
+  {
+    name: 'text',
+    label: 'Text block',
+    group: 'basic',
+    aliases: ['text-block'],
+    // No border: the renderer draws only the label. probeBounds returns null
+    // for this shape, which the suite accepts for an empty element list.
+    render: () => [],
+  },
 ];
 
 /**

@@ -17,7 +17,7 @@ describe('model', () => {
     expect(m.direction).toBe('TB');
     expect(m.nodes).toHaveLength(0);
   });
-  it('exposes 14 node shapes', () => { expect(NODE_SHAPES).toHaveLength(14); });
+  it('exposes 24 node shapes', () => { expect(NODE_SHAPES).toHaveLength(24); });
   it('nextNodeId is unique', () => {
     const m = emptyModel();
     const id = nextNodeId(m);
