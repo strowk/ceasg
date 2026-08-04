@@ -106,3 +106,31 @@ export function solid<T extends SVGElement>(e: T): T {
   e.setAttribute('data-ceasg-solid', 'true');
   return e;
 }
+
+/**
+ * The wavy lower edge shared by every document shape, as absolute path
+ * commands starting at the bottom-right corner and ending at bottom-left.
+ * `amp` is the wave height; the curve never dips below `g.bottom`.
+ */
+export function wavyBottom(g: ShapeGeom, amp: number): string {
+  const y = g.bottom - amp;
+  const q = g.w / 4;
+  return [
+    `L${num(g.right)},${num(y)}`,
+    `C${num(g.right - q)},${num(y - amp)} ${num(g.cx - q)},${num(y + amp)} ${num(g.left)},${num(y)}`,
+  ].join(' ');
+}
+
+/**
+ * A curly brace as absolute path commands, spanning `top`..`bottom` at `x`.
+ * `dir` is which way the brace's cusp points.
+ */
+export function braceD(x: number, top: number, bottom: number, dir: 'left' | 'right'): string {
+  const mid = (top + bottom) / 2;
+  const reach = dir === 'left' ? 8 : -8;
+  return [
+    `M${num(x + reach)},${num(top)}`,
+    `C${num(x)},${num(top)} ${num(x)},${num(mid)} ${num(x - reach / 2)},${num(mid)}`,
+    `C${num(x)},${num(mid)} ${num(x)},${num(bottom)} ${num(x + reach)},${num(bottom)}`,
+  ].join(' ');
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { geom, polygon, rect, path, vline } from './primitives';
+import { geom, polygon, rect, path, vline, wavyBottom, braceD } from './primitives';
 
 describe('geom', () => {
   it('derives edges and half-extents from centre and size', () => {
@@ -47,5 +47,23 @@ describe('primitives', () => {
     expect(l.getAttribute('x1')).toBe('5');
     expect(l.getAttribute('x2')).toBe('5');
     expect(l.getAttribute('fill')).toBe('none');
+  });
+});
+
+describe('curve fragments', () => {
+  it('wavyBottom returns absolute commands only', () => {
+    const d = wavyBottom(geom(100, 50, 80, 44), 6);
+    expect(d).not.toMatch(/[a-z]/);
+  });
+
+  it('wavyBottom stays within the box vertically', () => {
+    const g = geom(100, 50, 80, 44);
+    const ys = (wavyBottom(g, 6).match(/-?\d+(\.\d+)?/g) ?? []).map(Number)
+      .filter((_, i) => i % 2 === 1);
+    for (const y of ys) { expect(y).toBeLessThanOrEqual(g.bottom + 0.001); }
+  });
+
+  it('braceD draws opposite curves for left and right', () => {
+    expect(braceD(10, 0, 40, 'left')).not.toBe(braceD(10, 0, 40, 'right'));
   });
 });

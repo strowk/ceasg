@@ -7,7 +7,7 @@ describe('registry', () => {
       'dbl-circ', 'diam', 'hex', 'lean-r', 'lean-l', 'trap-b', 'trap-t', 'odd']) {
       expect(SHAPES[name], `missing ${name}`).toBeDefined();
     }
-    expect(ALL_SHAPES).toHaveLength(33);
+    expect(ALL_SHAPES).toHaveLength(45);
   });
 
   it('resolves historical ceasg names through aliases', () => {
@@ -40,6 +40,11 @@ describe('registry', () => {
       // with no classic bracket shorthand of their own.
       'tri', 'flip-tri', 'notch-rect', 'notch-pent', 'sl-rect',
       'bow-rect', 'hourglass', 'bolt', 'bang',
+      // Task 13's 12 curve shapes: same story — none carries an
+      // `internalAliases` entry in Mermaid's vendored `shapesDefs`, meaning
+      // none has a classic bracket handler to fall back to.
+      'doc', 'lin-doc', 'tag-doc', 'tag-rect', 'delay', 'curv-trap',
+      'h-cyl', 'datastore', 'flag', 'brace', 'brace-r', 'braces',
     ]);
     for (const def of ALL_SHAPES) {
       if (attrOnly.has(def.name)) { continue; }

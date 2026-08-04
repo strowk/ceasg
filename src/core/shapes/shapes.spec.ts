@@ -177,3 +177,43 @@ describe('polygon shapes', () => {
     expect(long.h).toBeGreaterThan(short.h);
   });
 });
+
+describe('curve shapes', () => {
+  const tags = (name: string) =>
+    SHAPES[name]!.render(geom(200, 120, 160, 80)).map((e) => e.tagName.toLowerCase());
+
+  it('doc is a single path with a wavy bottom', () => {
+    expect(tags('doc')).toEqual(['path']);
+  });
+
+  it('lin-doc adds a divider line to the document body', () => {
+    expect(tags('lin-doc')).toEqual(['path', 'line']);
+  });
+
+  it('tag-doc and tag-rect add a corner tag', () => {
+    expect(tags('tag-doc').length).toBeGreaterThan(1);
+    expect(tags('tag-rect').length).toBeGreaterThan(1);
+  });
+
+  it('delay, curv-trap, h-cyl, datastore and flag are path-based', () => {
+    for (const n of ['delay', 'curv-trap', 'h-cyl', 'datastore', 'flag']) {
+      expect(tags(n), n).toContain('path');
+    }
+  });
+
+  it('braces draws two curves, brace and brace-r draw one each', () => {
+    expect(tags('brace')).toHaveLength(1);
+    expect(tags('brace-r')).toHaveLength(1);
+    expect(tags('braces')).toHaveLength(2);
+  });
+
+  it('every curve shape uses absolute path commands only', () => {
+    for (const n of ['doc', 'lin-doc', 'tag-doc', 'tag-rect', 'delay', 'curv-trap',
+      'h-cyl', 'datastore', 'flag', 'brace', 'brace-r', 'braces']) {
+      for (const el of SHAPES[n]!.render(geom(200, 120, 160, 80))) {
+        if (el.tagName.toLowerCase() !== 'path') { continue; }
+        expect(el.getAttribute('d'), n).not.toMatch(/[a-z]/);
+      }
+    }
+  });
+});

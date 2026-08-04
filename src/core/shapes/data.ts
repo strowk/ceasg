@@ -1,4 +1,4 @@
-import { ellipse, hline, polygon, rect, vline } from './primitives';
+import { ellipse, hline, path, polygon, rect, vline } from './primitives';
 import type { ShapeDef, ShapeGeom } from './types';
 
 function slantOf(g: ShapeGeom): number {
@@ -104,6 +104,74 @@ export const DATA_SHAPES: ShapeDef[] = [
         [g.left, g.top], [g.right, g.top], [g.right - n, g.cy],
         [g.right, g.bottom], [g.left, g.bottom], [g.left + n, g.cy],
       ])];
+    },
+  },
+  {
+    name: 'h-cyl',
+    label: 'Direct access storage',
+    group: 'data',
+    aliases: ['das', 'horizontal-cylinder'],
+    size: (b) => ({ w: b.w + 30, h: b.h }),
+    render: (g) => {
+      // A cylinder on its side: a rounded right cap and a matching left arc.
+      const rx = Math.min(g.hw * 0.25, 14);
+      return [path(
+        `M${g.left + rx},${g.top} L${g.right - rx},${g.top}` +
+        ` A${rx},${g.hh} 0 0 1 ${g.right - rx},${g.bottom}` +
+        ` L${g.left + rx},${g.bottom}` +
+        ` A${rx},${g.hh} 0 0 1 ${g.left + rx},${g.top} Z`,
+      )];
+    },
+  },
+  {
+    name: 'datastore',
+    label: 'Data store',
+    group: 'data',
+    aliases: ['data-store'],
+    size: (b) => ({ w: b.w + 24, h: b.h }),
+    render: (g) => {
+      // An open-sided cylinder: square right edge, curved left edge.
+      const rx = Math.min(g.hw * 0.2, 12);
+      return [path(
+        `M${g.right},${g.top} L${g.left + rx},${g.top}` +
+        ` A${rx},${g.hh} 0 0 0 ${g.left + rx},${g.bottom}` +
+        ` L${g.right},${g.bottom} Z`,
+      )];
+    },
+  },
+  {
+    name: 'curv-trap',
+    label: 'Display',
+    group: 'data',
+    aliases: ['curved-trapezoid', 'display'],
+    size: (b) => ({ w: b.w + 34, h: b.h }),
+    render: (g) => {
+      const s = Math.min(g.hw * 0.3, 22);
+      return [path(
+        `M${g.left},${g.cy} L${g.left + s},${g.top} L${g.right - s},${g.top}` +
+        ` A${s},${g.hh} 0 0 1 ${g.right - s},${g.bottom}` +
+        ` L${g.left + s},${g.bottom} Z`,
+      )];
+    },
+  },
+  {
+    name: 'flag',
+    label: 'Paper tape',
+    group: 'data',
+    aliases: ['paper-tape'],
+    size: (b) => ({ w: b.w, h: b.h + 20 }),
+    render: (g) => {
+      // Wavy top and bottom, mirrored, so the tape reads as continuous.
+      const amp = 8;
+      const q = g.w / 4;
+      const ty = g.top + amp;
+      const by = g.bottom - amp;
+      return [path(
+        `M${g.left},${ty}` +
+        ` C${g.left + q},${ty - amp} ${g.cx + q},${ty + amp} ${g.right},${ty}` +
+        ` L${g.right},${by}` +
+        ` C${g.right - q},${by - amp} ${g.cx - q},${by + amp} ${g.left},${by} Z`,
+      )];
     },
   },
 ];

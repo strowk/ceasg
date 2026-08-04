@@ -1,4 +1,4 @@
-import { polygon } from './primitives';
+import { braceD, path, polygon, unfilled } from './primitives';
 import type { ShapeDef } from './types';
 
 /** Spike count for the bang starburst. Even, so spikes alternate in and out. */
@@ -21,5 +21,32 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
       }
       return [polygon(pts)];
     },
+  },
+  {
+    name: 'brace',
+    label: 'Comment (left brace)',
+    group: 'annotations',
+    aliases: ['brace-l', 'comment'],
+    size: (b) => ({ w: b.w + 14, h: b.h }),
+    render: (g) => [unfilled(path(braceD(g.left + 10, g.top, g.bottom, 'left')))],
+  },
+  {
+    name: 'brace-r',
+    label: 'Comment (right brace)',
+    group: 'annotations',
+    aliases: ['comment-right'],
+    size: (b) => ({ w: b.w + 14, h: b.h }),
+    render: (g) => [unfilled(path(braceD(g.right - 10, g.top, g.bottom, 'right')))],
+  },
+  {
+    name: 'braces',
+    label: 'Comment (both braces)',
+    group: 'annotations',
+    aliases: ['comment-both'],
+    size: (b) => ({ w: b.w + 28, h: b.h }),
+    render: (g) => [
+      unfilled(path(braceD(g.left + 10, g.top, g.bottom, 'left'))),
+      unfilled(path(braceD(g.right - 10, g.top, g.bottom, 'right'))),
+    ],
   },
 ];
