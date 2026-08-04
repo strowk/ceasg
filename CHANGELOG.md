@@ -4,6 +4,17 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.8.0] - Unreleased
+
+### Added
+- All 48 Mermaid v11.3.0 node shapes are now supported, up from 14.
+- Shapes are grouped into six families in the palette, dropdown and sidebar.
+- Node syntax is preserved: nodes written as `A[Label]` stay that way, and `@{…}` attributes ceasg does not model are round-tripped untouched.
+- Degraded rendering is reported to a new **ceasg** output channel.
+
+### Fixed
+- Shape names ceasg does not recognise are no longer flattened to rectangles.
+
 ## [0.7.0] - Unreleased
 
 ### Added

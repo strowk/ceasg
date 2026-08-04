@@ -10,7 +10,7 @@ A VS Code extension for editing Mermaid diagrams visually. Click a CodeLens on a
 - **Dual-mode editing:**
   - **Flowchart WYSIWYG** — Drag nodes, connect edges, adjust shapes/colors, auto-layout, and set position all visually on the canvas.
   - **Live preview for other types** — Sequence, state, class, and other diagram types render live as you edit the Mermaid source in the editor.
-- **Shape palette** — Add nodes from a collapsible left sidebar of shape groups, or from the toolbar's shapes dropdown. Click to drop a shape on the canvas, or drag it exactly where you want it.
+- **Shape palette** — All 48 Mermaid shapes, including the v11.3.0 expanded set, in six collapsible groups in the left sidebar or the toolbar's shapes dropdown. Click to drop a shape on the canvas, or drag it exactly where you want it.
 - **Subgraphs** — Render subgraph containers (including nested ones); create one from a selection, drag a whole subgraph, drag nodes in/out to change membership, rename, resize, and ungroup — all on the canvas.
 - **Two-way sync:**
   - Edits in the visual editor write back to the Markdown file instantly.
@@ -41,6 +41,7 @@ The extension preserves two lightweight comment formats for interoperability:
 - **No PNG/SVG export** — Use Mermaid's live editor or browser DevTools to screenshot/save.
 - **No copy/paste** — Select, duplicate, and other multi-select shortcuts deferred to later.
 - **No theme/style presets dropdown** — Inline color/style controls available in the properties panel.
+- **Expanded shapes need Mermaid 11.3+** — Shapes outside the classic bracket syntax are written as `A@{ shape: doc }`, which older Mermaid renderers do not understand. Nodes you wrote in bracket syntax are left in bracket syntax.
 
 ## Requirements
 
