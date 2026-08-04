@@ -135,23 +135,34 @@ export const FLOW_SHAPES: ShapeDef[] = [
     render: (g) => [polygon(boltOutline(g))],
   },
   {
-    // NOTE: this shape is absent from the Task 13 brief's steps despite being
-    // named in its title and exercised by its Step 1 tests. Its geometry is
-    // derived directly from Mermaid's own `halfRoundedRectangle` handler
-    // (mermaid.js, vendored under node_modules), not authored freehand: a
-    // square left edge and a semicircular right cap whose apex lands exactly
-    // on `g.right` (radius === g.hh). See task-13-report.md for the full
-    // derivation and the (flagged, not brief-specified) size margin below.
+    // Geometry derived from Mermaid's own `halfRoundedRectangle` handler
+    // (mermaid.js, vendored under node_modules): a square left edge and a
+    // semicircular right cap whose apex lands exactly on `g.right`.
     name: 'delay',
     label: 'Delay',
     group: 'flow',
     aliases: ['half-rounded-rectangle'],
     size: (b) => ({ w: b.w + 8, h: b.h }),
-    render: (g) => [path(
-      `M${g.left},${g.top} L${g.right - g.hh},${g.top}` +
-      ` A${g.hh},${g.hh} 0 0 1 ${g.right - g.hh},${g.bottom}` +
-      ` L${g.left},${g.bottom} Z`,
-    )],
+    render: (g) => {
+      // The cap's x-radius is clamped against the box width, as every other
+      // arc-based shape clamps against `hw`. Mermaid's cap is a semicircle of
+      // radius `hh`, but on a tall or narrow node (`hh > w`, reachable from a
+      // ~10-line label or a `%% pos` w/h hint) `g.right - g.hh` lands left of
+      // `g.left` and the whole shape starts outside its box.
+      //
+      // The y-radius stays `hh`, so the arc's vertical chord (`top`..`bottom`,
+      // length `2 * hh`) is still spanned exactly and needs no SVG 1.1 §F.6.6
+      // radius correction; the arc is a half-ellipse centred on
+      // (`right - rx`, `cy`) whose apex is at `right - rx + rx === right`.
+      // When `hh <= w` (every ordinary node) `rx === hh` and this is the same
+      // semicircle as before.
+      const rx = Math.min(g.hh, g.w);
+      return [path(
+        `M${g.left},${g.top} L${g.right - rx},${g.top}` +
+        ` A${rx},${g.hh} 0 0 1 ${g.right - rx},${g.bottom}` +
+        ` L${g.left},${g.bottom} Z`,
+      )];
+    },
   },
 ];
 

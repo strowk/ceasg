@@ -4,6 +4,31 @@ import type { Pt, ShapeDef, ShapeGeom } from './types';
 /** Spike count for the bang starburst. Even, so spikes alternate in and out. */
 const BANG_SPIKES = 12;
 
+/**
+ * How far the cloud's top and bottom apexes sit *inside* the box, as a
+ * fraction of `ry`. Staying inside is what keeps the arcs inside.
+ *
+ * A lobe arc runs from (left + rx, top + ry) to the apex, and it reaches the
+ * topmost point of its own ellipse *before* that endpoint (the apex is not
+ * where the tangent goes horizontal). Put the apex on `g.top` and the arc
+ * bulges 0.0466 * h above it — 3.7px on the 80px-tall test box, which only
+ * passed because the bounds margin is 4px, and 7.5px at h = 160.
+ *
+ * Solving for the apex that puts the extremum on the edge: with half-chord
+ * components u = |x1p| = (hw - rx) / 2 and q = y1p = (ry - inset) / 2, SVG
+ * 1.1 §F.6.5 gives the arc's centre offset cy' = coef * ry * u / rx, and the
+ * topmost point of the arc is (y1 + y2) / 2 + cy' - ry. Setting that equal to
+ * `g.top` reduces to cy' = q, i.e. coef = rx * q / (ry * u); squaring and
+ * substituting §F.6.5's coef collapses to (rx^2 q^2 + ry^2 u^2)^2 =
+ * (rx * ry^2 * u)^2, so q = (ry / rx) * sqrt(u * (rx - u)).
+ *
+ * With rx = w/5 (so u = 3w/20 and rx - u = w/20) that is q = ry * sqrt(3) / 4,
+ * and inset = ry - 2q = ry * (1 - sqrt(3) / 2) — scale-invariant, as the
+ * overflow it cancels was. The extremum then lands exactly on the edge, so
+ * the drawn cloud still touches `top` and `bottom` and looks unchanged.
+ */
+const APEX_INSET = 1 - Math.sqrt(3) / 2;
+
 const bangOutline = (g: ShapeGeom): Pt[] => {
   const pts: Pt[] = [];
   for (let i = 0; i < BANG_SPIKES; i++) {
@@ -78,13 +103,14 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
       const ry = g.h / 3;
       const y0 = g.top + ry;
       const y1 = g.bottom - ry;
+      const inset = APEX_INSET * ry;
       return [path(
         `M${g.left + rx},${y1}` +
         ` A${rx},${ry} 0 0 1 ${g.left + rx},${y0}` +
-        ` A${rx},${ry} 0 0 1 ${g.cx},${g.top}` +
+        ` A${rx},${ry} 0 0 1 ${g.cx},${g.top + inset}` +
         ` A${rx},${ry} 0 0 1 ${g.right - rx},${y0}` +
         ` A${rx},${ry} 0 0 1 ${g.right - rx},${y1}` +
-        ` A${rx},${ry} 0 0 1 ${g.cx},${g.bottom} Z`,
+        ` A${rx},${ry} 0 0 1 ${g.cx},${g.bottom - inset} Z`,
       )];
     },
   },
