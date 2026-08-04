@@ -173,9 +173,17 @@ describe('serialization fidelity', () => {
 
   it('promotes a bracket node to attr form when the new shape has no bracket', () => {
     const model = mermaidToModel('flowchart TD\n  A[Process]\n').model;
+    setNodeShape(model.nodes[0]!, 'text');
+    expect(model.nodes[0]!.syntax).toBe('attr');
+    expect(modelToMermaid(model)).toContain('A@{ shape: text');
+  });
+
+  it('promotes a bracket node to attr form for an unregistered shape too', () => {
+    // The registry lookup misses entirely here, which reaches the same branch
+    // by a different route than a registered shape that simply has no bracket
+    // form. Deliberately a name no shape will ever claim.
+    const model = mermaidToModel('flowchart TD\n  A[Process]\n').model;
     setNodeShape(model.nodes[0]!, 'fake-bracketless');
-    // A registered bracketless shape arrives in Task 11; until then assert the
-    // rule directly on the syntax field.
     expect(model.nodes[0]!.syntax).toBe('attr');
   });
 

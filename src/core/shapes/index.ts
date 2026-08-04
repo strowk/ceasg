@@ -27,10 +27,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * render.ts and the Markdown preview path need no changes.
  *
  * Resolved through `lookupShape` (canonical name or any alias) rather than a
- * bare `SHAPES[shape]` lookup: parser.ts is not yet migrated (Task 5) and
- * still emits historical names like `"diamond"`, which are registered
- * aliases, not registry keys. A bare keyed lookup would silently fall back to
- * `rect` for every one of those.
+ * bare `SHAPES[shape]` lookup. The parser now canonicalises before it hands a
+ * name over, but a caller need not: a model loaded from an older document, or
+ * built by hand, may still carry a historical name like `"diamond"`, which is
+ * a registered alias and not a registry key. A bare keyed lookup would draw
+ * every one of those as a plain rect.
  */
 export function createShapeElements(
   shape: ShapeName, cx: number, cy: number, w: number, h: number,

@@ -19,7 +19,7 @@ describe('probeBounds', () => {
 
   it('parses a scientific-notation coordinate rather than mistaking its exponent for a command', () => {
     // Number.prototype.toString() emits e.g. "1e-5" for near-zero residuals —
-    // exactly what trig-based curve/arc math (Task 13) produces. The whole
+    // exactly what the trig-based curve and arc math produces. The whole
     // token contains a lowercase "e", but it is one numeric token, not a
     // relative command letter.
     const el = path('M 1e-5,1e-5 L 100,100');

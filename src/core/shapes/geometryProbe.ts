@@ -117,10 +117,10 @@ function arcPoints(
  * absolute commands, so only those are handled. For each command the trailing
  * pair is the endpoint; C/S/Q also contribute their control points, which bound
  * the curve conservatively (a bézier never leaves its control hull). A only
- * contributed its endpoint until Task 14's `cloud` review found that blind —
- * an arc can bulge well outside the chord between its endpoints — so it now
- * goes through `arcPoints`, which samples (and conservatively pads) the arc
- * itself; see that function's doc comment for why the padding is sound.
+ * contributed its endpoint until `cloud` showed that blind — an arc can bulge
+ * well outside the chord between its endpoints — so it now goes through
+ * `arcPoints`, which samples (and conservatively pads) the arc itself; see
+ * that function's doc comment for why the padding is sound.
  *
  * A lowercase (relative) command is rejected rather than silently treated as
  * its uppercase equivalent: relative coordinates are offsets from the current
@@ -192,9 +192,9 @@ function pathPoints(d: string): Array<[number, number]> {
  *
  * Every element tag a primitive can emit must have a case below. An unhandled
  * tag falls through to `default: break` and contributes nothing to the
- * bounds — a shape built from a new primitive type (Tasks 11-14) would then
- * pass the "stays within its box" assertion no matter where it actually
- * drew. Add a case here in lockstep with any new element type in primitives.ts.
+ * bounds — a shape built from a new primitive type would then pass the "stays
+ * within its box" assertion no matter where it actually drew. Add a case here
+ * in lockstep with any new element type in primitives.ts.
  */
 export function probeBounds(elements: SVGElement[]): Bounds | null {
   let b: Bounds | null = null;

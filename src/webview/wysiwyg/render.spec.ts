@@ -92,9 +92,11 @@ describe('renderDiagram', () => {
   });
 
   it('renders a parsed {} diamond as its real geometry, not a fallback rect', () => {
-    // parser.ts is not yet migrated (Task 5) and still emits the historical
-    // name "diamond" for `{}` brackets. createShapeElements must resolve that
-    // alias through the registry rather than falling back to plain rect.
+    // End to end over the real parser: `{}` must come out of the pipeline as a
+    // polygon. It no longer exercises alias resolution — the parser
+    // canonicalises `{}` to "diam" itself now — but it does still catch the
+    // failure that matters here, a name the renderer cannot resolve silently
+    // degrading to the fallback rect.
     const { model } = mermaidToModel('flowchart LR\nA[Start]-->B{Choice}\n');
     model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
     const { refs } = renderDiagram(model);

@@ -30,22 +30,22 @@ describe('registry', () => {
   });
 
   it('every shape has a bracket form, except ones deliberately attr-only', () => {
-    // Task 11's 10 rect/line/circle shapes are new to Mermaid v11's `@{}`
-    // syntax and never had a bracket shorthand; they, and `text`, serialize
-    // only through the @{ shape: X, ... } attr form.
+    // The 10 rect/line/circle shapes are new to Mermaid v11's `@{}` syntax
+    // and never had a bracket shorthand; they, and `text`, serialize only
+    // through the @{ shape: X, ... } attr form.
     const attrOnly = new Set([
       'text', 'lin-rect', 'div-rect', 'win-pane', 'lin-cyl',
       'fork', 'sm-circ', 'f-circ', 'fr-circ', 'cross-circ',
-      // Task 12's 9 polygon shapes: also new to Mermaid v11's `@{}` syntax,
-      // with no classic bracket shorthand of their own.
+      // The 9 polygon shapes: also new to Mermaid v11's `@{}` syntax, with no
+      // classic bracket shorthand of their own.
       'tri', 'flip-tri', 'notch-rect', 'notch-pent', 'sl-rect',
       'bow-rect', 'hourglass', 'bolt', 'bang',
-      // Task 13's 12 curve shapes: same story — none carries an
+      // The 12 curve shapes: same story — none carries an
       // `internalAliases` entry in Mermaid's vendored `shapesDefs`, meaning
       // none has a classic bracket handler to fall back to.
       'doc', 'lin-doc', 'tag-doc', 'tag-rect', 'delay', 'curv-trap',
       'h-cyl', 'datastore', 'flag', 'brace', 'brace-r', 'braces',
-      // Task 14's 3 stacked shapes: same story again — no `internalAliases`
+      // The 3 stacked shapes: same story again — no `internalAliases`
       // entry for st-rect, docs or cloud in the vendored shapesDefs.
       'st-rect', 'docs', 'cloud',
     ]);
