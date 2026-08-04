@@ -1,9 +1,19 @@
-import { HostToWebview } from '../shared/messages';
+import { HostToWebview, DiagnosticMessage } from '../shared/messages';
 import { mountPreview } from './preview/preview';
 import { WysiwygEditor } from './wysiwyg/editor';
+import { setDiagnosticSink } from '../core';
 
 const api = acquireVsCodeApi();
 const root = document.getElementById('app') as HTMLElement;
+
+// Route core diagnostics to the extension host, which writes them to the
+// ceasg output channel. Dedupe already happened in core, so this cannot flood.
+setDiagnosticSink((d) => {
+  const msg: DiagnosticMessage = {
+    type: 'diagnostic', code: d.code, key: d.key, message: d.message, detail: d.detail,
+  };
+  api.postMessage(msg);
+});
 
 let mounted = false;
 let removed = false;

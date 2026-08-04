@@ -29,10 +29,13 @@ export type DiagnosticSink = (d: Diagnostic) => void;
  */
 export const DEDUPE_LIMIT = 200;
 
+/** One-line rendering shared by the console sink and the output channel. */
+export function formatDiagnostic(d: Diagnostic): string {
+  return `[${d.code}] ${d.message}${d.detail ? ` — ${d.detail}` : ''}`;
+}
+
 /** Works in all three runtimes; replaced by the host with an output channel. */
-const consoleSink: DiagnosticSink = (d) => {
-  console.warn(`[ceasg] ${d.code}: ${d.message}`, d.detail ?? '');
-};
+const consoleSink: DiagnosticSink = (d) => { console.warn(`[ceasg] ${formatDiagnostic(d)}`); };
 
 let sink: DiagnosticSink = consoleSink;
 /** Document identity, so one file's warning cannot silence another's. */

@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
-import { HostToWebview, WebviewToHost, isUpdateMessage, isReadyMessage } from '../shared/messages';
+import {
+  HostToWebview, WebviewToHost, isUpdateMessage, isReadyMessage, isDiagnosticMessage,
+} from '../shared/messages';
 import { findMermaidBlocks, modeForType } from './blockLocator';
 import { ensureBlockId } from './blockText';
 import { computeInnerEdit, locateById, sameMermaidSource } from './documentSync';
 import { getWebviewHtml } from './webviewHtml';
+import { clearDiagnostics, setDiagnosticScope } from '../core';
+import type { Diagnostic } from '../core';
+import { appendDiagnostic } from './diagnosticChannel';
 
 interface Session {
   panel: vscode.WebviewPanel;
@@ -23,7 +28,10 @@ function randomId(): string {
 
 export class PanelManager {
   private sessions = new Map<string, Session>();
-  constructor(private readonly context: vscode.ExtensionContext) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly channel: vscode.OutputChannel,
+  ) {}
 
   private key(uri: vscode.Uri, blockId: string): string { return `${uri.toString()}#${blockId}`; }
 
@@ -62,12 +70,25 @@ export class PanelManager {
     const session: Session = { panel, documentUri, blockId, version: 0,
       init: { type: 'init', mode, source, version: 0 }, lastWebviewSource: '' };
     this.sessions.set(key, session);
+    // Scope diagnostics to this document (not the session key) so one file
+    // cannot silence another, and so onDidCloseTextDocument's clear (which
+    // keys by document URI) actually reaches these suppressions.
+    setDiagnosticScope(documentUri.toString());
 
     panel.webview.html = getWebviewHtml(panel.webview, this.context.extensionUri);
 
     const disposables: vscode.Disposable[] = [];
 
     disposables.push(panel.webview.onDidReceiveMessage(async (msg: WebviewToHost) => {
+      if (isDiagnosticMessage(msg)) {
+        appendDiagnostic(this.channel, {
+          code: msg.code as Diagnostic['code'],
+          key: msg.key,
+          message: msg.message,
+          detail: msg.detail,
+        });
+        return;
+      }
       if (isReadyMessage(msg)) { panel.webview.postMessage(session.init); return; }
       if (isUpdateMessage(msg)) {
         session.version = msg.version;
@@ -83,6 +104,7 @@ export class PanelManager {
 
     panel.onDidDispose(() => {
       this.sessions.delete(key);
+      clearDiagnostics(documentUri.toString());
       disposables.forEach((d) => d.dispose());
     });
   }

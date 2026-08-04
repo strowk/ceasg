@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   warn, setDiagnosticSink, setDiagnosticScope, clearDiagnostics, DEDUPE_LIMIT,
+  formatDiagnostic,
 } from './diagnostics';
 import type { Diagnostic } from './diagnostics';
 
@@ -66,5 +67,18 @@ describe('diagnostics', () => {
   it('never throws when the sink itself throws', () => {
     setDiagnosticSink(() => { throw new Error('sink exploded'); });
     expect(() => warn('unknown-shape', 'x', 'y')).not.toThrow();
+  });
+});
+
+describe('formatDiagnostic', () => {
+  it('renders code and message on one line', () => {
+    expect(formatDiagnostic({ code: 'unknown-shape', key: 'clod', message: 'Unknown shape "clod".' }))
+      .toBe('[unknown-shape] Unknown shape "clod".');
+  });
+
+  it('appends detail when present', () => {
+    expect(formatDiagnostic({
+      code: 'layout-failed', key: 'e', message: 'Auto layout failed.', detail: 'boom',
+    })).toBe('[layout-failed] Auto layout failed. — boom');
   });
 });

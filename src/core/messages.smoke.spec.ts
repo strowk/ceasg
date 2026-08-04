@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isUpdateMessage, isReadyMessage } from '../shared/messages';
+import { isUpdateMessage, isReadyMessage, isDiagnosticMessage } from '../shared/messages';
 
 describe('message guards', () => {
   it('accepts a well-formed update', () => {
@@ -15,5 +15,19 @@ describe('message guards', () => {
   it('recognises ready', () => {
     expect(isReadyMessage({ type: 'ready' })).toBe(true);
     expect(isReadyMessage({ type: 'update' })).toBe(false);
+  });
+});
+
+describe('isDiagnosticMessage', () => {
+  it('accepts a well-formed diagnostic', () => {
+    expect(isDiagnosticMessage({
+      type: 'diagnostic', code: 'unknown-shape', key: 'clod', message: 'x',
+    })).toBe(true);
+  });
+
+  it('rejects other message types and malformed payloads', () => {
+    expect(isDiagnosticMessage({ type: 'ready' })).toBe(false);
+    expect(isDiagnosticMessage({ type: 'diagnostic', code: 'x' })).toBe(false);
+    expect(isDiagnosticMessage(null)).toBe(false);
   });
 });
