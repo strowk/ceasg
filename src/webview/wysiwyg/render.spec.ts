@@ -90,6 +90,17 @@ describe('renderDiagram', () => {
     expect(label.style.fill).toBe('rgb(0, 255, 0)');
     expect(label.style.fontSize).toBe('20px');
   });
+
+  it('renders a parsed {} diamond as its real geometry, not a fallback rect', () => {
+    // parser.ts is not yet migrated (Task 5) and still emits the historical
+    // name "diamond" for `{}` brackets. createShapeElements must resolve that
+    // alias through the registry rather than falling back to plain rect.
+    const { model } = mermaidToModel('flowchart LR\nA[Start]-->B{Choice}\n');
+    model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
+    const { refs } = renderDiagram(model);
+    const shape = refs.nodeEls.get('B')!.querySelector('.ceasg-shape')!;
+    expect(shape.tagName).toBe('polygon');
+  });
 });
 
 describe('renderDiagram groups', () => {

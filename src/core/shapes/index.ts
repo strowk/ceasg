@@ -1,5 +1,5 @@
 import { geom } from './primitives';
-import { SHAPES } from './registry';
+import { SHAPES, lookupShape } from './registry';
 import type { ShapeName } from './types';
 import { getDocument } from '../dom';
 
@@ -13,11 +13,17 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * Build the SVG element(s) that draw `shape` centred at (cx, cy) within a w x h
  * box. The caller adds CSS classes. Signature preserved from shapes.ts:37 so
  * render.ts and the Markdown preview path need no changes.
+ *
+ * Resolved through `lookupShape` (canonical name or any alias) rather than a
+ * bare `SHAPES[shape]` lookup: parser.ts is not yet migrated (Task 5) and
+ * still emits historical names like `"diamond"`, which are registered
+ * aliases, not registry keys. A bare keyed lookup would silently fall back to
+ * `rect` for every one of those.
  */
 export function createShapeElements(
   shape: ShapeName, cx: number, cy: number, w: number, h: number,
 ): SVGElement[] {
-  const def = SHAPES[shape] ?? SHAPES['rect'];
+  const def = lookupShape(shape) ?? SHAPES['rect'];
   return def.render(geom(cx, cy, w, h));
 }
 
