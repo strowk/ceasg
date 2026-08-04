@@ -30,6 +30,7 @@ import {
 	groupChildren,
 	groupBounds,
 } from "./model";
+import { SHAPES } from "./shapes";
 
 const INDENT = "    ";
 
@@ -57,37 +58,10 @@ function sanitizeId(id: string): string {
 function nodeDeclaration(node: DiagramNode): string {
 	const label = quoteLabel(node.label);
 	const id = sanitizeId(node.id);
-	switch (node.shape) {
-		case "round":
-			return `${id}(${label})`;
-		case "stadium":
-			return `${id}([${label}])`;
-		case "subroutine":
-			return `${id}[[${label}]]`;
-		case "cylinder":
-			return `${id}[(${label})]`;
-		case "circle":
-			return `${id}((${label}))`;
-		case "double-circle":
-			return `${id}(((${label})))`;
-		case "diamond":
-			return `${id}{${label}}`;
-		case "hexagon":
-			return `${id}{{${label}}}`;
-		case "parallelogram":
-			return `${id}[/${label}/]`;
-		case "parallelogram-alt":
-			return `${id}[\\${label}\\]`;
-		case "trapezoid":
-			return `${id}[/${label}\\]`;
-		case "trapezoid-alt":
-			return `${id}[\\${label}/]`;
-		case "asymmetric":
-			return `${id}>${label}]`;
-		case "rect":
-		default:
-			return `${id}[${label}]`;
-	}
+	const def = SHAPES[node.shape];
+	// A shape with no bracket form cannot be written in the classic syntax;
+	// Task 9 routes those to the @{} attribute form instead.
+	return def?.bracket ? def.bracket(id, label) : `${id}[${label}]`;
 }
 
 function edgeOperator(kind: EdgeKind): string {

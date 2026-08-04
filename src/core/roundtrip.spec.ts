@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { mermaidToModel } from './parser';
 import { modelToMermaid } from './serializer';
+import { emptyModel } from './model';
+import { ALL_SHAPES } from './shapes';
 
 function roundtrip(src: string): string {
   return modelToMermaid(mermaidToModel(src).model, { includePositions: false });
@@ -100,5 +102,42 @@ describe('nested subgraph round-trip', () => {
     const out = modelToMermaid(model, { includePositions: true });
     expect(out).toContain('%% mermaid-flow:gpos');
     expect(out).toContain('g1=40,20,300,180');
+  });
+});
+
+describe('bracket serialization comes from the registry', () => {
+  it('every registered bracket form round-trips through the parser', () => {
+    for (const def of ALL_SHAPES) {
+      if (!def.bracket) { continue; }
+      const src = `flowchart TD\n  ${def.bracket('A', 'Hi')}\n`;
+      expect(mermaidToModel(src).model.nodes[0]?.shape, def.name).toBe(def.name);
+    }
+  });
+
+  // The test above only exercises the parser: it would still pass even if the
+  // serializer dropped every shape (as it did until this task), because it
+  // never calls modelToMermaid. This test closes that gap by driving the
+  // model -> text -> model loop: build a model containing a node of each
+  // registered shape, serialize it, and check both that the emitted text is
+  // exactly that shape's bracket form and that reparsing it recovers the
+  // shape.
+  it('every registered shape serializes to its bracket form and survives model -> text -> model', () => {
+    const failures: string[] = [];
+    for (const def of ALL_SHAPES) {
+      if (!def.bracket) { continue; }
+      const model = emptyModel('TD');
+      model.nodes.push({ id: 'A', label: 'Hi', shape: def.name, x: 0, y: 0 });
+      const out = modelToMermaid(model, { includePositions: false });
+      const expectedDecl = def.bracket('A', '"Hi"');
+      if (!out.includes(expectedDecl)) {
+        failures.push(`${def.name}: expected declaration ${JSON.stringify(expectedDecl)} in output ${JSON.stringify(out)}`);
+        continue;
+      }
+      const reparsedShape = mermaidToModel(out).model.nodes[0]?.shape;
+      if (reparsedShape !== def.name) {
+        failures.push(`${def.name}: round-tripped shape was ${JSON.stringify(reparsedShape)}`);
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });
