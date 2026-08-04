@@ -184,4 +184,12 @@ describe('serialization fidelity', () => {
     setNodeShape(model.nodes[0]!, 'rect');
     expect(modelToMermaid(model)).toContain('A@{ shape: rect');
   });
+
+  it('drops a stale rawShape once a later declaration supplies a recognised shape', () => {
+    const src =
+      'flowchart TD\n  A@{ shape: not-a-shape, label: "x" }\n  A@{ shape: diam, label: "y" }\n';
+    const out = rt(src);
+    expect(out).toContain('shape: diam');
+    expect(out).not.toContain('not-a-shape');
+  });
 });

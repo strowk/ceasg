@@ -402,11 +402,18 @@ export function mermaidToModel(text: string): ParseResult {
 		} else {
 			// A later, richer declaration wins (e.g. shape/label defined inline
 			// in an edge statement after a bare reference).
-			if (token.shape) node.shape = token.shape;
+			if (token.shape) {
+				node.shape = token.shape;
+				// A shape-carrying token always supersedes any previously stored
+				// unknown name — including clearing it when this token's shape is
+				// recognised. Otherwise a stale rawShape from an earlier unknown
+				// declaration re-emits on save even after the shape was corrected
+				// (mirrors setNodeShape's "a recognised shape supersedes..." rule).
+				node.rawShape = token.rawShape;
+			}
 			if (token.label !== undefined) node.label = token.label;
 			if (token.syntax) node.syntax = token.syntax;
 			if (token.attrs) node.attrs = token.attrs;
-			if (token.rawShape) node.rawShape = token.rawShape;
 		}
 		for (const c of token.classes ?? []) {
 			if (!node.classes?.includes(c)) (node.classes ??= []).push(c);
