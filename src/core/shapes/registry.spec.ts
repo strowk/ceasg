@@ -42,3 +42,52 @@ describe('registry', () => {
     expect(flat.slice().sort()).toEqual(ALL_SHAPES.map((s) => s.name).sort());
   });
 });
+
+describe('registry invariants', () => {
+  it('canonical names are unique', () => {
+    const names = ALL_SHAPES.map((d) => d.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('no alias is claimed by two shapes', () => {
+    const owner = new Map<string, string>();
+    const collisions: string[] = [];
+    for (const def of ALL_SHAPES) {
+      for (const alias of def.aliases) {
+        const key = alias.toLowerCase();
+        const prev = owner.get(key);
+        if (prev && prev !== def.name) { collisions.push(`${alias}: ${prev} vs ${def.name}`); }
+        owner.set(key, def.name);
+      }
+    }
+    expect(collisions).toEqual([]);
+  });
+
+  it('no alias shadows a different shape canonical name', () => {
+    const canonical = new Set(ALL_SHAPES.map((d) => d.name.toLowerCase()));
+    for (const def of ALL_SHAPES) {
+      for (const alias of def.aliases) {
+        if (canonical.has(alias.toLowerCase())) {
+          expect(alias.toLowerCase(), `alias "${alias}" of ${def.name}`).toBe(def.name.toLowerCase());
+        }
+      }
+    }
+  });
+
+  it('every shape belongs to exactly one declared group', () => {
+    const ids = new Set(SHAPE_GROUPS.map((g) => g.id));
+    for (const def of ALL_SHAPES) { expect(ids.has(def.group), def.name).toBe(true); }
+  });
+
+  // unskip in Task 14, once every group has members
+  it.skip('no group is empty', () => {
+    for (const g of SHAPE_GROUPS) { expect(g.shapes.length, g.id).toBeGreaterThan(0); }
+  });
+
+  it('every shape that had a bracket form before still has one', () => {
+    for (const name of ['rect', 'rounded', 'stadium', 'fr-rect', 'cyl', 'circle',
+      'dbl-circ', 'diam', 'hex', 'lean-r', 'lean-l', 'trap-b', 'trap-t', 'odd']) {
+      expect(SHAPES[name]?.bracket, `${name} lost its bracket form`).toBeDefined();
+    }
+  });
+});
