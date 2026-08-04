@@ -56,9 +56,18 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     aliases: ['cloud-shape'],
     size: (b) => ({ w: b.w + 46, h: b.h + 26 }),
     render: (g) => {
-      // Five arcs around the box, each bulging out to the edge and no further.
-      const rx = g.w / 6;
-      const ry = g.h / 4;
+      // Five arcs around the box. rx/ry are sized so every chord between
+      // consecutive arc endpoints is spannable by an ellipse of that size
+      // without SVG's mandatory out-of-range-radius correction (SVG 1.1
+      // §F.6.6): a renderer that has to scale rx/ry up to reach an endpoint
+      // draws an arc bigger than requested, bulging past the box. The two
+      // chord shapes here are the vertical ones (endpoints ry apart in y,
+      // spannable once ry >= h/4) and the diagonal ones (endpoints offset by
+      // (hw - rx, ry), spannable once rx >= hw / (1 + sqrt(3)) ≈ 0.183 * w —
+      // notably independent of ry, since a diagonal's vertical leg is always
+      // exactly ry by construction. w/5 and h/3 clear both with margin.
+      const rx = g.w / 5;
+      const ry = g.h / 3;
       const y0 = g.top + ry;
       const y1 = g.bottom - ry;
       return [path(
