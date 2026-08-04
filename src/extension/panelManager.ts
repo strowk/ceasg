@@ -6,7 +6,6 @@ import { findMermaidBlocks, modeForType } from './blockLocator';
 import { ensureBlockId } from './blockText';
 import { computeInnerEdit, locateById, sameMermaidSource } from './documentSync';
 import { getWebviewHtml } from './webviewHtml';
-import { clearDiagnostics, setDiagnosticScope } from '../core';
 import type { Diagnostic } from '../core';
 import { appendDiagnostic } from './diagnosticChannel';
 
@@ -70,11 +69,13 @@ export class PanelManager {
     const session: Session = { panel, documentUri, blockId, version: 0,
       init: { type: 'init', mode, source, version: 0 }, lastWebviewSource: '' };
     this.sessions.set(key, session);
-    // Scope diagnostics to this document (not the session key) so one file
-    // cannot silence another, and so onDidCloseTextDocument's clear (which
-    // keys by document URI) actually reaches these suppressions.
-    setDiagnosticScope(documentUri.toString());
-
+    // No diagnostic scope is set here. Core's dedupe state is a module global,
+    // and every diagnostic that dedupe exists for (`unknown-shape` and friends)
+    // is raised while parsing or rendering — which happens only in the webview,
+    // a separate realm with its own copy of that global. So suppressions are
+    // already per webview instance, i.e. per document and block, and they are
+    // discarded with the panel; a scope set on the host's copy could neither
+    // reach them nor be cleared into them.
     panel.webview.html = getWebviewHtml(panel.webview, this.context.extensionUri);
 
     const disposables: vscode.Disposable[] = [];
@@ -104,7 +105,6 @@ export class PanelManager {
 
     panel.onDidDispose(() => {
       this.sessions.delete(key);
-      clearDiagnostics(documentUri.toString());
       disposables.forEach((d) => d.dispose());
     });
   }

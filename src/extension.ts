@@ -3,12 +3,15 @@ import { MermaidCodeLensProvider } from './extension/codeLensProvider';
 import { installDiagnosticChannel } from './extension/diagnosticChannel';
 import { PanelManager } from './extension/panelManager';
 import { installMermaidFence } from './preview/markdownItMermaid';
-import { clearDiagnostics, reportAliasCollisions } from './core';
+import { reportAliasCollisions } from './core';
 
 export function activate(context: vscode.ExtensionContext) {
   const channel = installDiagnosticChannel(context);
   // Now that the sink writes to the channel, surface any registry problem that
-  // was invisible at module-load time.
+  // was invisible at module-load time. This is the host's only diagnostic: it
+  // never parses or renders, so it has nothing to clear when a document closes
+  // (the webview that does render keeps its own suppressions, and drops them
+  // with the panel).
   reportAliasCollisions();
   const panels = new PanelManager(context, channel);
   context.subscriptions.push(
@@ -17,7 +20,6 @@ export function activate(context: vscode.ExtensionContext) {
       void panels.open(uri, blockIndex);
     }),
     vscode.workspace.onDidSaveTextDocument((doc) => panels.handleSave(doc)),
-    vscode.workspace.onDidCloseTextDocument((doc) => clearDiagnostics(doc.uri.toString())),
   );
 
   return {

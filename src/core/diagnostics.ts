@@ -51,9 +51,14 @@ export function setDiagnosticScope(next: string): void {
 }
 
 /**
- * Forget suppressions. Called when a document closes or its panel is disposed,
- * so reopening a file reports its problems afresh. With no argument, clears all
- * scopes (used by tests and on deactivate).
+ * Forget suppressions, so a document reports its problems afresh. With no
+ * argument, clears every scope.
+ *
+ * Scoping only matters to a runtime that renders more than one document from
+ * one copy of this module. Today none does: the extension host never parses or
+ * renders, and each webview is its own realm holding the diagrams of exactly
+ * one block, so its suppressions are already per document and die with it. Kept
+ * because the seam is runtime-agnostic by design, and used by the tests.
  */
 export function clearDiagnostics(target?: string): void {
   if (target === undefined) { seen.clear(); } else { seen.delete(target); }
