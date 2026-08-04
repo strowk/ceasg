@@ -145,6 +145,13 @@ export const DATA_SHAPES: ShapeDef[] = [
     group: 'data',
     aliases: ['curved-trapezoid', 'display'],
     size: (b) => ({ w: b.w + 34, h: b.h }),
+    outline: (g) => {
+      const s = Math.min(g.hw * 0.3, 22);
+      return [
+        [g.left, g.cy], [g.left + s, g.top], [g.right - s, g.top],
+        [g.right, g.cy], [g.right - s, g.bottom], [g.left + s, g.bottom],
+      ];
+    },
     render: (g) => {
       const s = Math.min(g.hw * 0.3, 22);
       return [path(
@@ -160,6 +167,13 @@ export const DATA_SHAPES: ShapeDef[] = [
     group: 'data',
     aliases: ['paper-tape'],
     size: (b) => ({ w: b.w, h: b.h + 20 }),
+    outline: (g) => {
+      const amp = 8;
+      return [
+        [g.left, g.top + amp], [g.cx, g.top], [g.right, g.top + amp],
+        [g.right, g.bottom - amp], [g.cx, g.bottom], [g.left, g.bottom - amp],
+      ];
+    },
     render: (g) => {
       // Wavy top and bottom, mirrored, so the tape reads as continuous.
       const amp = 8;

@@ -1,10 +1,32 @@
 import { circle, line, path, polygon, rect, solid, unfilled } from './primitives';
 import { fitGrow } from './sizing';
-import type { ShapeDef } from './types';
+import type { Pt, ShapeDef, ShapeGeom } from './types';
 
 /** Junction and start markers are fixed-size markers, not label containers. */
 const MARKER_D = 20;
 const markerSize = () => ({ w: MARKER_D, h: MARKER_D });
+
+const triOutline = (g: ShapeGeom): Pt[] =>
+  [[g.cx, g.top], [g.right, g.bottom], [g.left, g.bottom]];
+
+const flipTriOutline = (g: ShapeGeom): Pt[] =>
+  [[g.left, g.top], [g.right, g.top], [g.cx, g.bottom]];
+
+const notchPentOutline = (g: ShapeGeom): Pt[] => {
+  const n = Math.min(g.w * 0.12, 16);
+  return [
+    [g.left + n, g.top], [g.right - n, g.top], [g.right, g.top + n],
+    [g.right, g.bottom], [g.left, g.bottom], [g.left, g.top + n],
+  ];
+};
+
+/** Both lobes as one closed outline, so a ray crossing either lobe hits it. */
+const hourglassOutline = (g: ShapeGeom): Pt[] =>
+  [[g.left, g.top], [g.right, g.top], [g.cx, g.cy],
+   [g.right, g.bottom], [g.left, g.bottom], [g.cx, g.cy]];
+
+const boltOutline = (g: ShapeGeom): Pt[] =>
+  BOLT_OUTLINE.map(([u, v]) => [g.left + u * g.w, g.top + v * g.h]);
 
 export const FLOW_SHAPES: ShapeDef[] = [
   {
@@ -67,7 +89,8 @@ export const FLOW_SHAPES: ShapeDef[] = [
     aliases: ['extract', 'triangle'],
     // A triangle pinches toward its apex exactly as a rhombus does.
     size: (b, ctx) => fitGrow({ w: Math.max(b.w + 28, 100), h: Math.max(72, b.h + 28) }, ctx, 0.55),
-    render: (g) => [polygon([[g.cx, g.top], [g.right, g.bottom], [g.left, g.bottom]])],
+    outline: triOutline,
+    render: (g) => [polygon(triOutline(g))],
   },
   {
     name: 'flip-tri',
@@ -75,7 +98,8 @@ export const FLOW_SHAPES: ShapeDef[] = [
     group: 'flow',
     aliases: ['flipped-triangle', 'manual-file'],
     size: (b, ctx) => fitGrow({ w: Math.max(b.w + 28, 100), h: Math.max(72, b.h + 28) }, ctx, 0.55),
-    render: (g) => [polygon([[g.left, g.top], [g.right, g.top], [g.cx, g.bottom]])],
+    outline: flipTriOutline,
+    render: (g) => [polygon(flipTriOutline(g))],
   },
   {
     name: 'notch-pent',
@@ -83,13 +107,8 @@ export const FLOW_SHAPES: ShapeDef[] = [
     group: 'flow',
     aliases: ['loop-limit', 'notched-pentagon'],
     size: (b) => ({ w: b.w + 16, h: b.h + 8 }),
-    render: (g) => {
-      const n = Math.min(g.w * 0.12, 16);
-      return [polygon([
-        [g.left + n, g.top], [g.right - n, g.top], [g.right, g.top + n],
-        [g.right, g.bottom], [g.left, g.bottom], [g.left, g.top + n],
-      ])];
-    },
+    outline: notchPentOutline,
+    render: (g) => [polygon(notchPentOutline(g))],
   },
   {
     name: 'hourglass',
@@ -98,6 +117,8 @@ export const FLOW_SHAPES: ShapeDef[] = [
     aliases: ['collate'],
     // A collate marker carries no label, so it keeps a fixed square footprint.
     size: () => ({ w: 48, h: 48 }),
+    // The render stays two separate triangles; the outline is their combined silhouette.
+    outline: hourglassOutline,
     render: (g) => [
       polygon([[g.left, g.top], [g.right, g.top], [g.cx, g.cy]]),
       polygon([[g.left, g.bottom], [g.right, g.bottom], [g.cx, g.cy]]),
@@ -110,7 +131,8 @@ export const FLOW_SHAPES: ShapeDef[] = [
     aliases: ['com-link', 'lightning-bolt'],
     size: () => ({ w: 48, h: 48 }),
     // Normalised outline mapped onto the box, so it can never leave it.
-    render: (g) => [polygon(BOLT_OUTLINE.map(([u, v]) => [g.left + u * g.w, g.top + v * g.h]))],
+    outline: boltOutline,
+    render: (g) => [polygon(boltOutline(g))],
   },
   {
     // NOTE: this shape is absent from the Task 13 brief's steps despite being

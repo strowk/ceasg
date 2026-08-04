@@ -30,3 +30,32 @@ describe('edgePathD', () => {
     expect(d).toContain('C');
   });
 });
+
+import { SHAPES } from '../../core';
+
+describe('nodeBorderPoint with an outline', () => {
+  const model = (shape: string) => ({
+    direction: 'TD', nodes: [{ id: 'A', label: 'x', shape, x: 0, y: 0, w: 100, h: 100 }],
+    edges: [], groups: [], config: {}, classDefs: [], unknownLines: [],
+  }) as never;
+
+  it('anchors a triangle on its sloped edge, not its box corner', () => {
+    const m = model('tri');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    const p = nodeBorderPoint(m, node as never, 100, -100);
+    // The box corner is (50, -50); the triangle's edge is well inside it.
+    expect(Math.abs(p.x)).toBeLessThan(50);
+  });
+
+  it('leaves box-anchored shapes exactly as before', () => {
+    const m = model('rect');
+    const node = (m as { nodes: Array<Record<string, number>> }).nodes[0]!;
+    expect(nodeBorderPoint(m, node as never, 1000, 0)).toEqual({ x: 50, y: 0 });
+  });
+
+  it('declares outlines on exactly the nine divergent shapes', () => {
+    const withOutline = Object.values(SHAPES).filter((d) => d.outline).map((d) => d.name).sort();
+    expect(withOutline).toEqual(['bang', 'bolt', 'cloud', 'curv-trap', 'flag',
+      'flip-tri', 'hourglass', 'notch-pent', 'tri']);
+  });
+});

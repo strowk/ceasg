@@ -7,6 +7,7 @@ import { warn } from '../diagnostics';
 export * from './types';
 export * from './primitives';
 export * from './registry';
+export * from './outline';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 

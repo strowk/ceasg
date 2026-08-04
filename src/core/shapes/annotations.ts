@@ -1,8 +1,19 @@
 import { braceD, path, polygon, unfilled } from './primitives';
-import type { ShapeDef } from './types';
+import type { Pt, ShapeDef, ShapeGeom } from './types';
 
 /** Spike count for the bang starburst. Even, so spikes alternate in and out. */
 const BANG_SPIKES = 12;
+
+const bangOutline = (g: ShapeGeom): Pt[] => {
+  const pts: Pt[] = [];
+  for (let i = 0; i < BANG_SPIKES; i++) {
+    // Outer radius reaches the box edge exactly; inner pulls back to 0.32.
+    const r = i % 2 === 0 ? 0.5 : 0.32;
+    const angle = (i * 2 * Math.PI) / BANG_SPIKES;
+    pts.push([g.cx + r * g.w * Math.cos(angle), g.cy + r * g.h * Math.sin(angle)]);
+  }
+  return pts;
+};
 
 export const ANNOTATION_SHAPES: ShapeDef[] = [
   {
@@ -11,16 +22,8 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     group: 'annotations',
     aliases: ['explosion'],
     size: (b) => ({ w: b.w + 40, h: b.h + 30 }),
-    render: (g) => {
-      const pts: Array<[number, number]> = [];
-      for (let i = 0; i < BANG_SPIKES; i++) {
-        // Outer radius reaches the box edge exactly; inner pulls back to 0.32.
-        const r = i % 2 === 0 ? 0.5 : 0.32;
-        const angle = (i * 2 * Math.PI) / BANG_SPIKES;
-        pts.push([g.cx + r * g.w * Math.cos(angle), g.cy + r * g.h * Math.sin(angle)]);
-      }
-      return [polygon(pts)];
-    },
+    outline: bangOutline,
+    render: (g) => [polygon(bangOutline(g))],
   },
   {
     name: 'brace',
@@ -55,6 +58,11 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     group: 'annotations',
     aliases: ['cloud-shape'],
     size: (b) => ({ w: b.w + 46, h: b.h + 26 }),
+    /** Twelve points around the lobes; anchoring needs no more precision. */
+    outline: (g) => Array.from({ length: 12 }, (_, i) => {
+      const angle = (i * 2 * Math.PI) / 12;
+      return [g.cx + 0.5 * g.w * Math.cos(angle), g.cy + 0.5 * g.h * Math.sin(angle)] as Pt;
+    }),
     render: (g) => {
       // Five arcs around the box. rx/ry are sized so every chord between
       // consecutive arc endpoints is spannable by an ellipse of that size

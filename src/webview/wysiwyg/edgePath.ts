@@ -1,5 +1,5 @@
 import { DiagramModel, DiagramNode, DiagramEdge, Direction } from '../../core';
-import { nodeSize } from '../../core';
+import { nodeSize, SHAPES, geom, rayPolygonHit } from '../../core';
 
 // `model` is needed to resolve the node's font (classDef layers included), which
 // decides the box size and therefore where the edge meets its border.
@@ -8,6 +8,13 @@ export function nodeBorderPoint(model: DiagramModel, node: DiagramNode, towardX:
   const dx = towardX - node.x;
   const dy = towardY - node.y;
   if (dx === 0 && dy === 0) { return { x: node.x + w / 2, y: node.y }; }
+  // Shapes whose filled region diverges sharply from their box declare an
+  // outline; everything else keeps the box math this function has always used.
+  const outline = SHAPES[node.shape]?.outline;
+  if (outline) {
+    const hit = rayPolygonHit(node.x, node.y, dx, dy, outline(geom(node.x, node.y, w, h)));
+    if (hit) { return hit; }
+  }
   const hw = w / 2;
   const hh = h / 2;
   const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
