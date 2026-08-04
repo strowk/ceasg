@@ -1,4 +1,4 @@
-import { circle, line, polygon, rect, solid, unfilled } from './primitives';
+import { circle, line, path, polygon, rect, solid, unfilled } from './primitives';
 import { fitGrow } from './sizing';
 import type { ShapeDef } from './types';
 
@@ -111,6 +111,25 @@ export const FLOW_SHAPES: ShapeDef[] = [
     size: () => ({ w: 48, h: 48 }),
     // Normalised outline mapped onto the box, so it can never leave it.
     render: (g) => [polygon(BOLT_OUTLINE.map(([u, v]) => [g.left + u * g.w, g.top + v * g.h]))],
+  },
+  {
+    // NOTE: this shape is absent from the Task 13 brief's steps despite being
+    // named in its title and exercised by its Step 1 tests. Its geometry is
+    // derived directly from Mermaid's own `halfRoundedRectangle` handler
+    // (mermaid.js, vendored under node_modules), not authored freehand: a
+    // square left edge and a semicircular right cap whose apex lands exactly
+    // on `g.right` (radius === g.hh). See task-13-report.md for the full
+    // derivation and the (flagged, not brief-specified) size margin below.
+    name: 'delay',
+    label: 'Delay',
+    group: 'flow',
+    aliases: ['half-rounded-rectangle'],
+    size: (b) => ({ w: b.w + 8, h: b.h }),
+    render: (g) => [path(
+      `M${g.left},${g.top} L${g.right - g.hh},${g.top}` +
+      ` A${g.hh},${g.hh} 0 0 1 ${g.right - g.hh},${g.bottom}` +
+      ` L${g.left},${g.bottom} Z`,
+    )],
   },
 ];
 

@@ -1,4 +1,4 @@
-import { hline, path, polygon, rect, vline } from './primitives';
+import { hline, polygon, rect, vline } from './primitives';
 import { cornerTag } from './documents';
 import type { ShapeDef, ShapeGeom } from './types';
 
@@ -93,24 +93,5 @@ export const PROCESS_SHAPES: ShapeDef[] = [
     aliases: ['tag-proc', 'tagged-process', 'tagged-rectangle'],
     size: (b) => ({ w: b.w + 14, h: b.h }),
     render: (g) => [rect(g.left, g.top, g.w, g.h, 0), cornerTag(g)],
-  },
-  {
-    // NOTE: this shape is absent from the Task 13 brief's steps despite being
-    // named in its title and exercised by its Step 1 tests. Its geometry is
-    // derived directly from Mermaid's own `halfRoundedRectangle` handler
-    // (mermaid.js, vendored under node_modules), not authored freehand: a
-    // square left edge and a semicircular right cap whose apex lands exactly
-    // on `g.right` (radius === g.hh). See task-13-report.md for the full
-    // derivation and the (flagged, not brief-specified) size margin below.
-    name: 'delay',
-    label: 'Delay',
-    group: 'process',
-    aliases: ['half-rounded-rectangle'],
-    size: (b) => ({ w: b.w + 8, h: b.h }),
-    render: (g) => [path(
-      `M${g.left},${g.top} L${g.right - g.hh},${g.top}` +
-      ` A${g.hh},${g.hh} 0 0 1 ${g.right - g.hh},${g.bottom}` +
-      ` L${g.left},${g.bottom} Z`,
-    )],
   },
 ];
