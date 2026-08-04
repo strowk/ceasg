@@ -33,7 +33,10 @@ tolerable. At 48 it is seven parallel 48-branch edits per change.
 - A shape is defined in exactly one place.
 - Round-tripping a diagram through the visual editor never changes a node's syntax form, and never
   loses a shape name — including names ceasg does not know.
-- Degraded rendering reports itself to a VS Code output channel rather than failing silently.
+- Degraded rendering always reports itself rather than failing silently. Where the runtime can reach
+  the extension host — the host itself and the WYSIWYG webview — it reports to the `ceasg` output
+  channel; in the Markdown preview it falls back to `console.warn`. Every degradation path emits
+  through the same seam, so the report is unconditional even though its destination is not.
 - Every shape is covered by automated structural tests; visual correctness is verifiable in one
   glance.
 
