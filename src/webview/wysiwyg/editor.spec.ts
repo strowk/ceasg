@@ -144,10 +144,10 @@ describe('adding nodes from a palette', () => {
   it('addNodeOfShape selects the dropped node', () => {
     const { editor } = make();
     editor.init('flowchart TB\nA[A]\n');
-    editor.addNodeOfShape('diamond', 0, 0);
+    editor.addNodeOfShape('diam', 0, 0);
     const nodes = editor.getModel().nodes;
     const added = nodes[nodes.length - 1];
-    expect(added.shape).toBe('diamond');
+    expect(added.shape).toBe('diam');
     expect(editor.selection!.single).toBe(added.id);
   });
 
@@ -174,11 +174,11 @@ describe('canvas drop', () => {
     editor.init('flowchart TB\nA[A]\n');
     const before = editor.getModel().nodes.length;
 
-    fireDrop(root, { 'text/ceasg-shape': 'diamond' });
+    fireDrop(root, { 'text/ceasg-shape': 'diam' });
 
     const nodes = editor.getModel().nodes;
     expect(nodes).toHaveLength(before + 1);
-    expect(nodes[nodes.length - 1].shape).toBe('diamond');
+    expect(nodes[nodes.length - 1].shape).toBe('diam');
   });
 
   it('ignores a drop whose payload belongs to no palette', () => {

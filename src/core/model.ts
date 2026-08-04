@@ -13,6 +13,8 @@
  */
 
 import { estimateNodeSize } from "./nodeGeometry";
+import { ALL_SHAPES } from "./shapes";
+import type { ShapeName } from "./shapes";
 
 export type Direction = "TB" | "BT" | "LR" | "RL";
 
@@ -25,55 +27,16 @@ export const DIRECTION_LABELS: Record<Direction, string> = {
 	RL: "Right to left",
 };
 
-export type NodeShape =
-	| "rect"
-	| "round"
-	| "stadium"
-	| "subroutine"
-	| "cylinder"
-	| "circle"
-	| "double-circle"
-	| "diamond"
-	| "hexagon"
-	| "parallelogram"
-	| "parallelogram-alt"
-	| "trapezoid"
-	| "trapezoid-alt"
-	| "asymmetric";
+/** A node shape, keyed by its Mermaid v11 canonical short name. */
+export type NodeShape = ShapeName;
 
-export const NODE_SHAPES: NodeShape[] = [
-	"rect",
-	"round",
-	"stadium",
-	"subroutine",
-	"cylinder",
-	"circle",
-	"double-circle",
-	"diamond",
-	"hexagon",
-	"parallelogram",
-	"parallelogram-alt",
-	"trapezoid",
-	"trapezoid-alt",
-	"asymmetric",
-];
+/** Every registered shape, in palette order. Derived — do not hand-edit. */
+export const NODE_SHAPES: NodeShape[] = ALL_SHAPES.map((d) => d.name);
 
-export const SHAPE_LABELS: Record<NodeShape, string> = {
-	rect: "Rectangle",
-	round: "Rounded",
-	stadium: "Stadium",
-	subroutine: "Subroutine",
-	cylinder: "Cylinder / database",
-	circle: "Circle",
-	"double-circle": "Double circle",
-	diamond: "Decision",
-	hexagon: "Hexagon",
-	parallelogram: "Parallelogram",
-	"parallelogram-alt": "Parallelogram (alt)",
-	trapezoid: "Trapezoid",
-	"trapezoid-alt": "Trapezoid (alt)",
-	asymmetric: "Asymmetric",
-};
+/** Display labels for the palette and the properties dropdown. Derived. */
+export const SHAPE_LABELS: Record<string, string> = Object.fromEntries(
+	ALL_SHAPES.map((d) => [d.name, d.label]),
+);
 
 export type EdgeKind =
 	| "arrow"

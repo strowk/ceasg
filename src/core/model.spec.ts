@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, resolveNodeStyle, nodeSize } from './model';
+import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, nodeSize } from './model';
+import { ALL_SHAPES } from './shapes';
 import {
   groupChildren, groupBounds, assignGroupToParent,
   groupDescendantNodeIds, translateGroup, removeGroup, GROUP_PAD,
@@ -222,5 +223,23 @@ describe('nodeSize', () => {
     const m = emptyModel('LR');
     m.nodes = [{ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0, w: 300, h: 150, style: { fontSize: 40 } }];
     expect(nodeSize(m, m.nodes[0])).toEqual({ w: 300, h: 150 });
+  });
+});
+
+describe('shape exports derive from the registry', () => {
+  it('NODE_SHAPES lists every registered shape in registry order', () => {
+    expect(NODE_SHAPES).toEqual(ALL_SHAPES.map((d) => d.name));
+  });
+
+  it('SHAPE_LABELS has a label for every registered shape', () => {
+    for (const def of ALL_SHAPES) {
+      expect(SHAPE_LABELS[def.name]).toBe(def.label);
+    }
+  });
+
+  it('keeps the historical labels for shapes that existed before', () => {
+    expect(SHAPE_LABELS['rect']).toBe('Rectangle');
+    expect(SHAPE_LABELS['cyl']).toBe('Cylinder / database');
+    expect(SHAPE_LABELS['diam']).toBe('Decision');
   });
 });
