@@ -254,8 +254,36 @@ channel.
 **Known limitation:** warnings raised in the Markdown preview runtime reach only that preview's
 devtools console. Contributed preview scripts have no supported channel back to the extension host.
 
-Warnings dedupe by `code` + key. Rendering re-runs on every keystroke, so an un-deduped
-unknown-shape warning would flood the channel within seconds.
+### Deduplication
+
+Parsing and rendering both re-run on every keystroke. An un-deduped unknown-shape warning would
+therefore emit once per keystroke and flood the channel within seconds, so `warn` takes an explicit
+dedupe key and the sink suppresses repeats:
+
+```ts
+warn(code: DiagnosticCode, key: string, message: string, detail?: string): void
+```
+
+- **Dedupe identity** is `code` + `key` + document identity. `key` is supplied by the caller and
+  names the specific occurrence — the unrecognised shape name for an unknown shape, the missing
+  registry name for a lookup miss, the alias string for a collision. Two different unknown shape
+  names in one document produce two warnings; the same name across fifty keystrokes produces one.
+- **Document identity** is part of the key because the sink in the extension host is shared across
+  every open document. Without it, the first document to warn about `clod` would silence the same
+  warning in every other file for the rest of the session.
+- **Lifetime** is the document's editing session. The suppress-set is cleared when the document is
+  closed and when its WYSIWYG panel is disposed, so reopening a file reports its problems afresh.
+- **Bound** is 200 entries per document, dropping oldest-first. The realistic count is one or two;
+  the cap exists so a pathological generated file cannot grow the set without limit.
+
+**Accepted limitation:** a problem that is fixed and then reintroduced within the same editing
+session is not re-reported. Suppressing on first sight rather than diffing the active problem set
+each pass is the simpler mechanism, and it costs little here — after full parity, unknown shape
+names are rare (a typo, or a shape from a future Mermaid release), and the other two warned events
+signal internal bugs that are worth reporting once rather than continuously. If this proves annoying
+in practice, the fix is to have each parse pass publish its full set of active keys and diff against
+the previous pass, which restores absent-to-present reporting at the cost of pass plumbing through
+`mermaidToModel` and `renderDiagram`.
 
 Warned events:
 
@@ -283,7 +311,9 @@ Three areas the parameterised suite does not cover:
   silently rewrite existing diagrams into `@{}`.
 - **Serialization fidelity.** Bracket stays bracket; attr stays attr; promotion occurs on a shape
   change to a bracketless shape; demotion does not occur; `attrs` and `rawShape` pass through.
-- **Diagnostics.** The sink is called for each warned event, and dedupe suppresses repeats.
+- **Diagnostics.** The sink is called once for each warned event; a repeat with the same
+  `code`+`key`+document is suppressed; the same `key` under a different document is not suppressed;
+  the set clears on document close; and the 200-entry cap drops oldest-first.
 
 `docs/shape-gallery.md` is generated, contains all 48 shapes, and is opened in the preview pane for
 a visual pass.
