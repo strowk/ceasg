@@ -131,3 +131,49 @@ describe('rect/line/circle shapes', () => {
     expect(els.filter((e) => e.tagName.toLowerCase() === 'ellipse')).toHaveLength(2);
   });
 });
+
+describe('polygon shapes', () => {
+  const pointsOf = (name: string) => {
+    const els = SHAPES[name]!.render(geom(200, 120, 160, 80));
+    return els.map((e) => (e.getAttribute('points') ?? '').trim().split(/\s+/).length);
+  };
+
+  it('tri and flip-tri are three-point polygons pointing opposite ways', () => {
+    expect(pointsOf('tri')).toEqual([3]);
+    expect(pointsOf('flip-tri')).toEqual([3]);
+    const tri = SHAPES['tri']!.render(geom(0, 0, 100, 100))[0]!.getAttribute('points')!;
+    const flip = SHAPES['flip-tri']!.render(geom(0, 0, 100, 100))[0]!.getAttribute('points')!;
+    expect(tri).not.toBe(flip);
+  });
+
+  it('notch-rect cuts one corner, notch-pent cuts two', () => {
+    expect(pointsOf('notch-rect')).toEqual([5]);
+    expect(pointsOf('notch-pent')).toEqual([6]);
+  });
+
+  it('sl-rect slopes its top edge', () => {
+    expect(pointsOf('sl-rect')).toEqual([4]);
+  });
+
+  it('bow-rect pinches both vertical edges inward', () => {
+    expect(pointsOf('bow-rect')).toEqual([6]);
+  });
+
+  it('hourglass is two triangles meeting at the centre', () => {
+    expect(pointsOf('hourglass')).toEqual([3, 3]);
+  });
+
+  it('bolt and bang are single closed polygons', () => {
+    expect(pointsOf('bolt')).toEqual([7]);
+    expect(pointsOf('bang')).toEqual([12]);
+  });
+
+  it('tri grows for a long label so the text stays inside the apex', () => {
+    const short = estimateNodeSize({ id: 'A', label: 'Hi', shape: 'tri', x: 0, y: 0 } as never);
+    const long = estimateNodeSize({
+      id: 'A', label: 'A much longer extraction label', shape: 'tri', x: 0, y: 0,
+    } as never);
+    expect(long.w).toBeGreaterThan(short.w);
+    expect(long.h).toBeGreaterThan(short.h);
+  });
+});

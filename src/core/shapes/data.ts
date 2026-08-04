@@ -77,4 +77,33 @@ export const DATA_SHAPES: ShapeDef[] = [
       hline(g.top + Math.min(g.h * 0.28, 16), g.left, g.right),
     ],
   },
+  {
+    name: 'notch-rect',
+    label: 'Card',
+    group: 'data',
+    aliases: ['card', 'notched-rectangle'],
+    size: (b) => ({ w: b.w + 16, h: b.h }),
+    render: (g) => {
+      const n = Math.min(g.w * 0.15, 16);
+      return [polygon([
+        [g.left + n, g.top], [g.right, g.top], [g.right, g.bottom],
+        [g.left, g.bottom], [g.left, g.top + n],
+      ])];
+    },
+  },
+  {
+    name: 'bow-rect',
+    label: 'Stored data',
+    group: 'data',
+    aliases: ['bow-tie-rectangle', 'stored-data'],
+    size: (b) => ({ w: b.w + 30, h: b.h }),
+    render: (g) => {
+      // Both vertical edges pinch inward; that pinch is the whole symbol.
+      const n = Math.min(g.w * 0.12, 16);
+      return [polygon([
+        [g.left, g.top], [g.right, g.top], [g.right - n, g.cy],
+        [g.right, g.bottom], [g.left, g.bottom], [g.left + n, g.cy],
+      ])];
+    },
+  },
 ];

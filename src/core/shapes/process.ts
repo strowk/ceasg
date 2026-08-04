@@ -72,4 +72,17 @@ export const PROCESS_SHAPES: ShapeDef[] = [
       hline(g.top + Math.min(g.h * 0.28, 16), g.left, g.right),
     ],
   },
+  {
+    name: 'sl-rect',
+    label: 'Manual input',
+    group: 'process',
+    aliases: ['manual-input', 'sloped-rectangle'],
+    size: (b) => ({ w: b.w, h: b.h + 14 }),
+    render: (g) => {
+      const s = Math.min(g.h * 0.3, 14);
+      return [polygon([
+        [g.left, g.top + s], [g.right, g.top], [g.right, g.bottom], [g.left, g.bottom],
+      ])];
+    },
+  },
 ];

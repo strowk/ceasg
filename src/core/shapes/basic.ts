@@ -7,6 +7,7 @@
  */
 
 import { circle, polygon, rect, unfilled } from './primitives';
+import { fitGrow } from './sizing';
 import type { ShapeDef } from './types';
 
 export const BASIC_SHAPES: ShapeDef[] = [
@@ -108,23 +109,17 @@ export const BASIC_SHAPES: ShapeDef[] = [
   },
 ];
 
-/**
- * Moved verbatim from nodeGeometry.ts:64-80. A rhombus contains a tw x th label
- * only where tw/w + th/h <= 1, so fixed padding gets relatively tighter as the
- * label grows. Grow both axes uniformly until the label sits within DIAMOND_FIT.
- */
+/** Leaves a 30% margin inside the rhombus; calibrated so ordinary diamonds
+ *  keep the size they had before the registry refactor. */
 const DIAMOND_FIT = 0.7;
 
 function diamondSize(
   b: { w: number; h: number },
   ctx: { widest: number; fontSize: number; lineCount: number },
 ): { w: number; h: number } {
-  let w = Math.max(b.w + 28, 100);
-  let h = Math.max(72, b.h + 28);
-  const grow = (ctx.widest / w + (ctx.fontSize * ctx.lineCount) / h) / DIAMOND_FIT;
-  if (grow > 1) {
-    w = Math.ceil(w * grow);
-    h = Math.ceil(h * grow);
-  }
-  return { w, h };
+  return fitGrow(
+    { w: Math.max(b.w + 28, 100), h: Math.max(72, b.h + 28) },
+    ctx,
+    DIAMOND_FIT,
+  );
 }

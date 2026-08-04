@@ -7,7 +7,7 @@ describe('registry', () => {
       'dbl-circ', 'diam', 'hex', 'lean-r', 'lean-l', 'trap-b', 'trap-t', 'odd']) {
       expect(SHAPES[name], `missing ${name}`).toBeDefined();
     }
-    expect(ALL_SHAPES).toHaveLength(24);
+    expect(ALL_SHAPES).toHaveLength(33);
   });
 
   it('resolves historical ceasg names through aliases', () => {
@@ -36,6 +36,10 @@ describe('registry', () => {
     const attrOnly = new Set([
       'text', 'lin-rect', 'div-rect', 'win-pane', 'lin-cyl',
       'fork', 'sm-circ', 'f-circ', 'fr-circ', 'cross-circ',
+      // Task 12's 9 polygon shapes: also new to Mermaid v11's `@{}` syntax,
+      // with no classic bracket shorthand of their own.
+      'tri', 'flip-tri', 'notch-rect', 'notch-pent', 'sl-rect',
+      'bow-rect', 'hourglass', 'bolt', 'bang',
     ]);
     for (const def of ALL_SHAPES) {
       if (attrOnly.has(def.name)) { continue; }
