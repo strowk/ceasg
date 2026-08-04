@@ -185,27 +185,38 @@ pixels. ceasg's historical names map as: `subroutine`→`fr-rect`, `parallelogra
 
 The 34 new shapes fall into four implementation tiers; effort is unevenly distributed:
 
-- **Tier 1 — rect plus lines or circles (11).** `lin-rect`, `div-rect`, `win-pane`, `lin-cyl`,
-  `lin-doc`, `fork`, `sm-circ`, `f-circ`, `fr-circ`, `cross-circ`, `text`. All compose existing
-  primitives; the current `subroutine` vline pattern covers most.
-- **Tier 2 — single polygon (10).** `tri`, `flip-tri`, `notch-rect`, `notch-pent`, `sl-rect`,
-  `bow-rect`, `flag`, `hourglass`, `bolt`, `bang`. One `polygon()` call each.
-- **Tier 3 — curves (10).** `doc`, `tag-doc`, `tag-rect`, `delay`, `curv-trap`, `h-cyl`,
-  `datastore`, `brace`, `brace-r`, `braces`. Require a new `path()` primitive with arcs and béziers,
-  plus a shared `wavyBottom()` helper reused by `doc`, `lin-doc`, `docs`, and `tag-doc`.
+- **Tier 1 — rect plus lines or circles (10).** `lin-rect`, `div-rect`, `win-pane`, `lin-cyl`,
+  `fork`, `sm-circ`, `f-circ`, `fr-circ`, `cross-circ`, `text`. All compose existing primitives; the
+  current `subroutine` vline pattern covers most.
+- **Tier 2 — single polygon (9).** `tri`, `flip-tri`, `notch-rect`, `notch-pent`, `sl-rect`,
+  `bow-rect`, `hourglass`, `bolt`, `bang`. One `polygon()` call each.
+- **Tier 3 — curves (12).** `doc`, `lin-doc`, `tag-doc`, `tag-rect`, `delay`, `curv-trap`, `h-cyl`,
+  `datastore`, `flag`, `brace`, `brace-r`, `braces`. Require a new `path()` primitive with arcs and
+  béziers, plus a shared `wavyBottom()` helper reused by `doc`, `lin-doc`, `docs`, and `tag-doc`.
 - **Tier 4 — stacked copies (3).** `st-rect`, `docs`, `cloud`. Offset duplicates of a tier-1 or
   tier-3 body; `cloud` is the one genuinely bespoke path.
+
+The tiers order by drawing primitive, not by semantic group, and two shapes sit where dependency
+rather than appearance puts them: `lin-doc` is a document body plus one line, but the body is the
+tier-3 wavy path, and `flag` (paper tape) has wavy top *and* bottom edges, so neither can be a plain
+polygon. Both are tier 3.
 
 ### Edge anchoring
 
 `nodeBorderPoint` (`edgePath.ts:6`) uses bounding-box math for every shape. It gains an `outline`
 branch: when the shape declares one, the border point is the ray/outline intersection instead.
 
-`outline` is declared only where the filled area diverges sharply from the box (roughly under 70%
-coverage): `tri`, `flip-tri`, `hourglass`, `bolt`, `flag`, `notch-pent`, `bang`, `curv-trap`,
-`cloud`, `brace`, `brace-r`, `braces`. Curved shapes supply a coarse polygon approximation;
-anchoring does not need sub-pixel accuracy. Everything else keeps box math, including `diam` and
-`hex`, whose anchoring is unchanged from what ships today.
+`outline` is declared on the nine shapes whose filled area diverges sharply from the box (roughly
+under 70% coverage): `tri`, `flip-tri`, `hourglass`, `bolt`, `flag`, `notch-pent`, `bang`,
+`curv-trap`, `cloud`. Curved shapes supply a coarse polygon approximation; anchoring does not need
+sub-pixel accuracy.
+
+`brace`, `brace-r` and `braces` are deliberately excluded despite being thin: they are **open
+curves, not closed regions**, so there is no silhouette for a ray to intersect and a fabricated
+closed outline would anchor edges to an imaginary boundary. They keep box math.
+
+Everything else keeps box math too, including `diam` and `hex`, whose anchoring is unchanged from
+what ships today.
 
 ### Sizing
 
@@ -297,6 +308,13 @@ Warned events:
 
 The existing dagre failure at `layout.ts:32` is routed through the same seam.
 
+**Alias collisions are reported on demand, not at load.** `ALIAS_INDEX` is built when the registry
+module is first imported, which happens before `activate()` installs the output-channel sink — a
+warning raised there could only ever reach the console. Detection is therefore an exported
+`reportAliasCollisions()` that the extension host calls once, after wiring. The registry invariant
+test asserts there are none, so this firing in production means a shape was added without running
+the suite.
+
 ## Testing
 
 A parameterised suite over `ALL_SHAPES` asserts, for every shape: it renders within its box, its
@@ -330,8 +348,12 @@ green:
 1. Registry refactor — 14 shapes, Mermaid ids, all seven definition sites derived. Behaviour-neutral.
 2. Diagnostics seam, output channel, and the `diagnostic` message.
 3. Serialization fidelity — `syntax`, `attrs`, `rawShape`.
-4. Tier 1 and 2 shapes (21), palette groups, `<optgroup>` dropdown.
-5. Tier 3 and 4 shapes (13), including the `path()` primitive.
-6. Gallery generation and the visual pass.
+4. The registry-driven test suite, written before any new shape so each one is covered on arrival.
+5. Tier 1 and 2 shapes (19), palette groups, `<optgroup>` dropdown.
+6. Tier 3 and 4 shapes (15), including the `path()` primitive.
+7. Outline-based edge anchoring.
+8. Gallery generation and the visual pass.
+
+The implementation plan is `docs/superpowers/plans/2026-08-04-expanded-node-shapes.md`.
 
 Steps 1–3 are independent of each other and of the new shapes.
