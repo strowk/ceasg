@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { estimateNodeSize, NODE_H, MIN_W } from './nodeGeometry';
 import { measureTextWidth, BASE_FONT_FAMILY } from './textMetrics';
+import { SHAPES } from './shapes';
 
 describe('estimateNodeSize', () => {
   it('respects manual overrides', () => {
@@ -84,5 +85,24 @@ describe('estimateNodeSize', () => {
       const s = estimateNodeSize({ id: 'A', label: 'Choice', shape: 'diamond', x: 0, y: 0 });
       expect(s).toEqual({ w: 110, h: 72 });
     });
+  });
+});
+
+describe('sizing comes from the registry', () => {
+  const node = (shape: string) => ({ id: 'A', label: 'Hi', shape, x: 0, y: 0 } as never);
+
+  it('applies a shape size rule when the def has one', () => {
+    expect(estimateNodeSize(node('hex')).w)
+      .toBe(estimateNodeSize(node('rect')).w + 40);
+  });
+
+  it('uses the base box for shapes with no size rule', () => {
+    expect(SHAPES['fr-rect'].size).toBeUndefined();
+    expect(estimateNodeSize(node('fr-rect'))).toEqual(estimateNodeSize(node('rect')));
+  });
+
+  it('falls back to the base box for an unregistered shape', () => {
+    expect(() => estimateNodeSize(node('not-a-shape'))).not.toThrow();
+    expect(estimateNodeSize(node('not-a-shape')).w).toBeGreaterThan(0);
   });
 });
