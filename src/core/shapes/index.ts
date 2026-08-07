@@ -53,6 +53,12 @@ export function createShapeIcon(shape: ShapeName): SVGSVGElement {
   svg.setAttribute('viewBox', '0 0 36 24');
   svg.classList.add('mermaid-flow-shape-icon');
   for (const node of createShapeElements(shape, 18, 12, 28, 16)) {
+    // Same class the canvas renderer uses, so an icon is styled by the one
+    // `.ceasg-shape` rule in diagram.css (loaded in the webview alongside
+    // webview.css) rather than falling back to the SVG defaults of black fill
+    // and no stroke. Without it a stroke-only shape — every brace, and every
+    // divider line inside a framed or lined shape — draws nothing at all.
+    node.classList.add('ceasg-shape');
     node.classList.add('mermaid-flow-shape');
     svg.appendChild(node);
   }
