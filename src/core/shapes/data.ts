@@ -8,7 +8,20 @@
  */
 
 import { ellipse, hline, path, polygon, rect, slantOf, vline } from './primitives';
-import type { ShapeDef } from './types';
+import type { ShapeDef, ShapeGeom } from './types';
+
+/**
+ * Wave amplitude for the paper tape's mirrored top and bottom edges, shared by
+ * its outline and its render so the two cannot drift apart.
+ *
+ * Clamped against the box. At a fixed 8 the two baselines (`top + amp` and
+ * `bottom - amp`) meet on the centre line as soon as the box is 16px tall —
+ * exactly the palette icon's height — collapsing the tape into a flat sliver.
+ * `flag` reserves 20px of extra height, so a real node never reaches the clamp.
+ */
+function flagAmp(g: ShapeGeom): number {
+  return Math.min(8, g.h * 0.2);
+}
 
 export const DATA_SHAPES: ShapeDef[] = [
   {
@@ -173,7 +186,7 @@ export const DATA_SHAPES: ShapeDef[] = [
     aliases: ['paper-tape'],
     size: (b) => ({ w: b.w, h: b.h + 20 }),
     outline: (g) => {
-      const amp = 8;
+      const amp = flagAmp(g);
       return [
         [g.left, g.top + amp], [g.cx, g.top], [g.right, g.top + amp],
         [g.right, g.bottom - amp], [g.cx, g.bottom], [g.left, g.bottom - amp],
@@ -181,7 +194,7 @@ export const DATA_SHAPES: ShapeDef[] = [
     },
     render: (g) => {
       // Wavy top and bottom, mirrored, so the tape reads as continuous.
-      const amp = 8;
+      const amp = flagAmp(g);
       const q = g.w / 4;
       const ty = g.top + amp;
       const by = g.bottom - amp;

@@ -4,9 +4,17 @@ import type { ShapeDef, ShapeGeom } from './types';
 /** Wave height, and therefore the extra bottom room every document needs. */
 export const DOC_WAVE = 10;
 
-/** A document body: square top and sides, wavy bottom. Absolute commands only. */
+/**
+ * A document body: square top and sides, wavy bottom. Absolute commands only.
+ *
+ * The wave is clamped against the box rather than always DOC_WAVE. The size
+ * rules reserve DOC_WAVE of vertical room, so a normally-sized document is
+ * unaffected — but the palette icon draws into a 16px-tall box, and a stacked
+ * `docs` copy is shorter still. Unclamped, the wave's baseline lands above the
+ * shape's own top edge and the body is drawn inside out.
+ */
 export function docBody(g: ShapeGeom): string {
-  return `M${g.left},${g.top} L${g.right},${g.top} ${wavyBottom(g, DOC_WAVE)} Z`;
+  return `M${g.left},${g.top} L${g.right},${g.top} ${wavyBottom(g, Math.min(DOC_WAVE, g.h * 0.25))} Z`;
 }
 
 /** The folded corner tag shared by tag-doc and tag-rect. */

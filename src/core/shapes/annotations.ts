@@ -40,6 +40,24 @@ const bangOutline = (g: ShapeGeom): Pt[] => {
   return pts;
 };
 
+/**
+ * Where a brace's spine sits relative to the box edge, and how far its cusp
+ * reaches, both clamped against the width.
+ *
+ * At the fixed 10 and 8 these were, a 28px-wide palette icon put the two
+ * spines 8px apart while each brace spanned 12px — so `braces` drew its two
+ * halves overlapping in the middle, and `brace`/`brace-r` sat marooned in the
+ * centre third of an otherwise empty icon. The brace shapes reserve 14-28px of
+ * extra width, so a real node stays on the constants and is unchanged.
+ */
+function braceInset(g: ShapeGeom): number {
+  return Math.min(10, g.w * 0.2);
+}
+
+function braceSpan(g: ShapeGeom): number {
+  return Math.min(8, g.w * 0.15);
+}
+
 export const ANNOTATION_SHAPES: ShapeDef[] = [
   {
     name: 'bang',
@@ -56,7 +74,7 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     group: 'annotations',
     aliases: ['brace-l', 'comment'],
     size: (b) => ({ w: b.w + 14, h: b.h }),
-    render: (g) => [unfilled(path(braceD(g.left + 10, g.top, g.bottom, 'left')))],
+    render: (g) => [unfilled(path(braceD(g.left + braceInset(g), g.top, g.bottom, 'left', braceSpan(g))))],
   },
   {
     name: 'brace-r',
@@ -64,7 +82,7 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     group: 'annotations',
     aliases: ['comment-right'],
     size: (b) => ({ w: b.w + 14, h: b.h }),
-    render: (g) => [unfilled(path(braceD(g.right - 10, g.top, g.bottom, 'right')))],
+    render: (g) => [unfilled(path(braceD(g.right - braceInset(g), g.top, g.bottom, 'right', braceSpan(g))))],
   },
   {
     name: 'braces',
@@ -73,8 +91,8 @@ export const ANNOTATION_SHAPES: ShapeDef[] = [
     aliases: ['comment-both'],
     size: (b) => ({ w: b.w + 28, h: b.h }),
     render: (g) => [
-      unfilled(path(braceD(g.left + 10, g.top, g.bottom, 'left'))),
-      unfilled(path(braceD(g.right - 10, g.top, g.bottom, 'right'))),
+      unfilled(path(braceD(g.left + braceInset(g), g.top, g.bottom, 'left', braceSpan(g)))),
+      unfilled(path(braceD(g.right - braceInset(g), g.top, g.bottom, 'right', braceSpan(g)))),
     ],
   },
   {

@@ -25,6 +25,11 @@ const BOXES = [
   { name: 'default 160x80', cx: 200, cy: 120, w: 160, h: 80 },
   { name: '4-line 120x92', cx: 200, cy: 120, w: 120, h: 92 },
   { name: 'tall 10-line 88x188', cx: 200, cy: 120, w: 88, h: 188 },
+  // The palette icon box (createShapeIcon draws 28x16 inside a 36x24 viewBox).
+  // Far smaller than any node, and the size that exposed absolute constants
+  // which never scaled down: an unclamped DOC_WAVE put a stacked `docs` copy's
+  // wave baseline above its own top edge, drawing the body inside out.
+  { name: 'palette icon 28x16', cx: 18, cy: 12, w: 28, h: 16 },
 ];
 /** Stroke width and rounding slop; a shape 4px outside its box is a bug. */
 const MARGIN = 4;
@@ -256,5 +261,34 @@ describe('stacked shapes', () => {
 
   it('the registry now holds all 48 shapes', () => {
     expect(ALL_SHAPES).toHaveLength(48);
+  });
+});
+
+/**
+ * The bounds cases above catch a shape drawing OUTSIDE its box. These catch the
+ * opposite failure, which no bounds check can see: a shape that stays inside
+ * but collapses, because an absolute pixel constant did not scale down to the
+ * palette's 28x16 icon box. Both were live bugs.
+ */
+describe('shapes stay legible at palette icon size', () => {
+  const ICON = () => geom(18, 12, 28, 16);
+
+  it('flag keeps its two wave baselines apart instead of collapsing to a line', () => {
+    // `amp` was a fixed 8, which is exactly half a 16px-tall box, so `top + amp`
+    // and `bottom - amp` met on the centre line and the paper tape rendered as
+    // a flat sliver 4.6px tall.
+    const d = SHAPES['flag']!.render(ICON())[0]!.getAttribute('d')!;
+    const top = Number(/^M[-\d.]+,([-\d.]+)/.exec(d)![1]);
+    const bottom = Number(/L[-\d.]+,([-\d.]+)/.exec(d)![1]);
+    expect(Math.abs(bottom - top)).toBeGreaterThan(16 * 0.3);
+  });
+
+  it('braces draws its two halves without overlapping them', () => {
+    // The spine inset (10) and cusp reach (8) were absolute, so on a 28px-wide
+    // box the left brace spanned x 10..22 and the right x 14..26 — they drew
+    // through each other in the middle of the icon.
+    const [left, right] = SHAPES['braces']!.render(ICON())
+      .map((el) => probeBounds([el])!);
+    expect(left!.maxX).toBeLessThan(right!.minX);
   });
 });

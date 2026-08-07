@@ -137,9 +137,11 @@ export function wavyBottom(g: ShapeGeom, amp: number): string {
  * A curly brace as absolute path commands, spanning `top`..`bottom` at `x`.
  * `dir` is which way the brace's cusp points.
  */
-export function braceD(x: number, top: number, bottom: number, dir: 'left' | 'right'): string {
+export function braceD(
+  x: number, top: number, bottom: number, dir: 'left' | 'right', span = 8,
+): string {
   const mid = (top + bottom) / 2;
-  const reach = dir === 'left' ? 8 : -8;
+  const reach = dir === 'left' ? span : -span;
   return [
     `M${num(x + reach)},${num(top)}`,
     `C${num(x)},${num(top)} ${num(x)},${num(mid)} ${num(x - reach / 2)},${num(mid)}`,
