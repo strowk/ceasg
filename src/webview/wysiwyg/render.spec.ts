@@ -49,6 +49,27 @@ describe('renderDiagram', () => {
     expect(shape.style.fill).toBe('');
   });
 
+  it('draws no label on a marker shape, which has no room for one', () => {
+    // hourglass is a fixed 48x48 marker: its size rule ignores the label, so a
+    // drawn label would spill outside the shape. Mermaid resolves this by
+    // discarding the label for these shapes rather than placing it elsewhere.
+    const { model } = mermaidToModel('flowchart LR\nA@{ shape: hourglass, label: "Collate" }\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    const node = refs.nodeEls.get('A')!;
+    expect(node.querySelector('.ceasg-label')).toBeNull();
+    expect(node.textContent).not.toContain('Collate');
+  });
+
+  it('still draws a label on a shape that sizes itself to fit one', () => {
+    // The counterpart to the marker case: tri grows via fitGrow to contain its
+    // label, so suppressing it there would lose text the shape has room for.
+    const { model } = mermaidToModel('flowchart LR\nA@{ shape: tri, label: "Extract" }\n');
+    model.nodes[0].x = 0; model.nodes[0].y = 0;
+    const { refs } = renderDiagram(model);
+    expect(refs.nodeEls.get('A')!.textContent).toContain('Extract');
+  });
+
   it('applies node stroke width and dasharray from style', () => {
     const { model } = mermaidToModel('flowchart LR\nA[X]\nstyle A stroke-width:3px,stroke-dasharray:5 5\n');
     model.nodes[0].x = 0; model.nodes[0].y = 0;

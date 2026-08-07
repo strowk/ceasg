@@ -54,5 +54,13 @@ export interface ShapeDef {
   size?: (base: { w: number; h: number }, ctx: SizingCtx) => { w: number; h: number };
   /** Outline for edge anchoring. Omit to use bounding-box math. */
   outline?: (g: ShapeGeom) => Pt[];
+  /**
+   * Draw no label. Set on fixed-size markers, whose `size` rule ignores the
+   * label and so leaves no room to draw one. Mermaid does the same for this
+   * set rather than placing the text elsewhere, so honouring it keeps the
+   * canvas showing what Mermaid will render. The label is still held on the
+   * node, still editable in the properties panel, and still serialized.
+   */
+  hideLabel?: boolean;
   render: (g: ShapeGeom) => SVGElement[];
 }

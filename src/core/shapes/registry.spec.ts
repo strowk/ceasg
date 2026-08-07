@@ -109,4 +109,28 @@ describe('registry invariants', () => {
       expect(SHAPES[name]?.bracket, `${name} lost its bracket form`).toBeDefined();
     }
   });
+
+  it('suppresses the label on exactly the shapes with no room for one', () => {
+    // These five fix their height regardless of the label, so a drawn label
+    // spills outside the shape. Mermaid discards the label for all five too
+    // (it blanks node.label for hourglass/bolt/f-circ/fork and builds no label
+    // element for sm-circ), so matching keeps the canvas honest about what
+    // Mermaid will render. fr-circ and cross-circ are deliberately absent:
+    // ceasg grows them to fit their label, so theirs has somewhere to go.
+    const hidden = ALL_SHAPES.filter((d) => d.hideLabel).map((d) => d.name).sort();
+    expect(hidden).toEqual(['bolt', 'f-circ', 'fork', 'hourglass', 'sm-circ']);
+  });
+
+  it('only suppresses a label on a shape whose height ignores the line count', () => {
+    // The property that makes suppression correct: a shape that reserves
+    // vertical room per line has somewhere to draw the text, so hiding it
+    // there would lose text the shape could have shown.
+    const heightAt = (d: (typeof ALL_SHAPES)[number], lineCount: number) =>
+      d.size?.({ w: 120, h: 16 * lineCount + 28 },
+        { widest: 100, fontSize: 16, lineCount })?.h;
+    for (const def of ALL_SHAPES.filter((d) => d.hideLabel)) {
+      expect(heightAt(def, 4), `${def.name} reserves room per line but hides its label`)
+        .toBe(heightAt(def, 1));
+    }
+  });
 });

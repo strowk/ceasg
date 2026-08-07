@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, nodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -39,6 +39,10 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
     if (style?.strokeDasharray) { shapeEl.style.strokeDasharray = style.strokeDasharray; }
     g.appendChild(shapeEl);
   }
+  // A fixed-size marker sizes itself without reference to its label, so there
+  // is nowhere inside it to draw one; Mermaid drops the label for these too.
+  // The label stays on the node and in the properties panel — only unpainted.
+  if (lookupShape(node.shape)?.hideLabel) { return g; }
   const lines = node.label.split('\n');
   const text = el('text');
   text.setAttribute('class', 'ceasg-label');

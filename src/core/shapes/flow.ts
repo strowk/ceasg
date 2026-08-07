@@ -31,6 +31,7 @@ const boltOutline = (g: ShapeGeom): Pt[] =>
 export const FLOW_SHAPES: ShapeDef[] = [
   {
     name: 'fork',
+    hideLabel: true,
     label: 'Fork / join',
     group: 'flow',
     aliases: ['join'],
@@ -40,6 +41,7 @@ export const FLOW_SHAPES: ShapeDef[] = [
   },
   {
     name: 'sm-circ',
+    hideLabel: true,
     label: 'Small start',
     group: 'flow',
     aliases: ['small-circle', 'start'],
@@ -48,6 +50,7 @@ export const FLOW_SHAPES: ShapeDef[] = [
   },
   {
     name: 'f-circ',
+    hideLabel: true,
     label: 'Junction',
     group: 'flow',
     aliases: ['filled-circle', 'junction'],
@@ -112,6 +115,7 @@ export const FLOW_SHAPES: ShapeDef[] = [
   },
   {
     name: 'hourglass',
+    hideLabel: true,
     label: 'Collate',
     group: 'flow',
     aliases: ['collate'],
@@ -126,6 +130,7 @@ export const FLOW_SHAPES: ShapeDef[] = [
   },
   {
     name: 'bolt',
+    hideLabel: true,
     label: 'Communication link',
     group: 'flow',
     aliases: ['com-link', 'lightning-bolt'],
