@@ -4,27 +4,23 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.8.0] - Unreleased
+## [0.7.0] - Unreleased
 
 ### Added
 - All 48 Mermaid v11.3.0 node shapes are now supported, up from 14.
 - Shapes are grouped into six families in the palette, dropdown and sidebar.
 - Node syntax is preserved: nodes written as `A[Label]` stay that way, and `@{…}` attributes ceasg does not model are round-tripped untouched.
 - Degraded rendering is reported to a new **ceasg** output channel.
-
-### Fixed
-- Shape names ceasg does not recognise no longer lose their original shape name. They still draw as a rectangle, but the name is kept and written back unchanged instead of being replaced with `rect`.
-
-## [0.7.0] - Unreleased
-
-### Added
 - **Wheel and trackpad panning** on the visual editor canvas. Scroll or swipe with two fingers to pan in any direction; hold `Shift` to pan horizontally with a mouse wheel. `Ctrl`/`Cmd` + wheel still zooms, and trackpad pinch-to-zoom now works too.
 - The canvas shows a **grab cursor** while space-drag panning is armed, and a grabbing cursor once panning is active (including middle-button drag, which has no separate armed phase).
 
 ### Changed
+- Fixed-size marker shapes — fork/join, start, junction, collate and communication link — no longer draw their label across the shape. These size themselves without reference to the label, so the text had nowhere to go; Mermaid drops it for the same shapes. The label is still stored, still editable in the properties panel, and still written back to the diagram.
 - Panning now stops at the edge of the diagram instead of scrolling it off-screen. Push past the edge and the canvas resists, then springs back, always leaving part of the diagram in view. Applies to every pan gesture, including the existing space-drag and middle-button drag.
 
 ### Fixed
+- Shape palette icons draw their stroke-only detail again. They were styled by a class no stylesheet defined, so they fell back to a black fill and no stroke: every comment shape was invisible, as were the divider lines inside the framed, lined and windowed shapes and the inner ring of a double circle. Icons now use the same styling as the canvas, so a preview matches the node it inserts.
+- Shape names ceasg does not recognise no longer lose their original shape name. They still draw as a rectangle, but the name is kept and written back unchanged instead of being replaced with `rect`.
 - Holding space and switching away from the editor no longer leaves the canvas stuck in pan mode.
 
 ## [0.6.0] - 2026-07-29
