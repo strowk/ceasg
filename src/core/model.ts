@@ -94,9 +94,17 @@ export interface ClassDef {
 	style: NodeStyle;
 }
 
+/** How a label's text should be interpreted. Undefined means a plain Mermaid
+ *  string, which still renders HTML markup because Mermaid defaults to
+ *  `htmlLabels: true`; "markdown" is the backtick-wrapped form, which adds
+ *  markdown emphasis and automatic word wrapping. */
+export type LabelFormat = "markdown";
+
 export interface DiagramNode {
 	id: string;
 	label: string;
+	/** Set when the author wrote the backtick-wrapped markdown-string form. */
+	labelFormat?: LabelFormat;
 	shape: NodeShape;
 	x: number;
 	y: number;
@@ -125,6 +133,8 @@ export interface DiagramNode {
 export interface DiagramGroup {
 	id: string;
 	title: string;
+	/** Set when the author wrote the backtick-wrapped markdown-string form. */
+	titleFormat?: LabelFormat;
 	nodeIds: string[];
 	/** Enclosing group id for nesting; undefined = top-level. */
 	parentId?: string;
@@ -191,6 +201,8 @@ export interface DiagramEdge {
 	from: string;
 	to: string;
 	label: string;
+	/** Set when the author wrote the backtick-wrapped markdown-string form. */
+	labelFormat?: LabelFormat;
 	kind: EdgeKind;
 	style?: EdgeStyle;
 	/** Show a marching-ants CSS animation on the edge line. */
@@ -612,6 +624,7 @@ export function duplicateNode(
 	model.nodes.push({
 		id: newId,
 		label: src.label,
+		labelFormat: src.labelFormat,
 		shape: src.shape,
 		x: src.x + 40,
 		y: src.y + 40,

@@ -23,6 +23,7 @@ import {
 	Direction,
 	EdgeKind,
 	EdgeStyle,
+	LabelFormat,
 	NodeShape,
 	NodeStyle,
 	emptyModel,
@@ -57,20 +58,35 @@ function opToKind(op: string): EdgeKind {
 	return "arrow";
 }
 
-function stripQuotes(s: string): string {
+/** A quoted Mermaid string, unwrapped. `markdown` is set for the backtick-
+ *  wrapped markdown-string form, `"`**bold**`"`, whose contents get markdown
+ *  emphasis and word wrapping rather than plain-with-HTML treatment. */
+interface ParsedString {
+	text: string;
+	markdown?: boolean;
+}
+
+function stripQuotesEx(s: string): ParsedString {
 	const t = s.trim();
 	let inner = t;
 	if (inner.length >= 2 && inner.startsWith('"') && inner.endsWith('"')) {
 		inner = inner.slice(1, -1);
 	}
+	let markdown = false;
+	if (inner.length >= 2 && inner.startsWith("`") && inner.endsWith("`")) {
+		inner = inner.slice(1, -1);
+		markdown = true;
+	}
 	// Decode <br/> back to \n for multi-line labels
-	return inner.replace(/<br\s*\/?>/gi, "\n");
+	const text = inner.replace(/<br\s*\/?>/gi, "\n");
+	return markdown ? { text, markdown } : { text };
 }
 
 interface ParsedToken {
 	id: string;
 	shape?: NodeShape;
 	label?: string;
+	labelFormat?: LabelFormat;
 	classes?: string[];
 	syntax?: "bracket" | "attr";
 	attrs?: Record<string, string>;
@@ -118,7 +134,12 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	for (const { re, shape } of patterns) {
 		const m = token.match(re);
 		if (m && m[1] !== undefined && m[2] !== undefined) {
-			return { id: m[1], shape, label: stripQuotes(m[2]), syntax: "bracket" };
+			const parsed = stripQuotesEx(m[2]);
+			const result: ParsedToken = { id: m[1], shape, label: parsed.text, syntax: "bracket" };
+			if (parsed.markdown) {
+				result.labelFormat = "markdown";
+			}
+			return result;
 		}
 	}
 
@@ -126,7 +147,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	const v11 = token.match(/^([A-Za-z0-9_]+)@\{(.*)\}$/);
 	if (v11 && v11[1] !== undefined && v11[2] !== undefined) {
 		const props = parseV11Props(v11[2]);
-		const shapeName = props.get("shape");
+		const shapeName = props.get("shape")?.text;
 		const label = props.get("label");
 		const result: ParsedToken = { id: v11[1], syntax: "attr" };
 		if (shapeName !== undefined) {
@@ -145,11 +166,16 @@ function parseNodeToken(raw: string): ParsedToken | null {
 				);
 			}
 		}
-		if (label !== undefined) result.label = label;
+		if (label !== undefined) {
+			result.label = label.text;
+			if (label.markdown) {
+				result.labelFormat = "markdown";
+			}
+		}
 		// Everything except shape and label is passed through untouched.
 		const attrs: Record<string, string> = {};
 		for (const [k, v] of props) {
-			if (k !== "shape" && k !== "label") attrs[k] = v;
+			if (k !== "shape" && k !== "label") attrs[k] = v.text;
 		}
 		if (Object.keys(attrs).length > 0) result.attrs = attrs;
 		return result;
@@ -165,8 +191,8 @@ function parseNodeToken(raw: string): ParsedToken | null {
 }
 
 /** Parse the body of `@{…}`: comma-separated key: value pairs, quote-aware. */
-function parseV11Props(body: string): Map<string, string> {
-	const props = new Map<string, string>();
+function parseV11Props(body: string): Map<string, ParsedString> {
+	const props = new Map<string, ParsedString>();
 	const parts: string[] = [];
 	let cur = "";
 	let inQuote = false;
@@ -183,10 +209,34 @@ function parseV11Props(body: string): Map<string, string> {
 	for (const part of parts) {
 		const m = part.match(/^\s*([\w-]+)\s*:\s*(.*?)\s*$/);
 		if (m && m[1] !== undefined && m[2] !== undefined) {
-			props.set(m[1].toLowerCase(), stripQuotes(m[2]));
+			props.set(m[1].toLowerCase(), stripQuotesEx(m[2]));
 		}
 	}
 	return props;
+}
+
+/**
+ * Split a line on `;` (Mermaid's optional statement terminator), ignoring any
+ * `;` inside a quoted string — HTML entities such as `&amp;` are legal label
+ * content and must not be mistaken for a statement boundary.
+ */
+function splitStatements(line: string): string[] {
+	const parts: string[] = [];
+	let cur = "";
+	let inQuote = false;
+	for (const ch of line) {
+		if (ch === '"') {
+			inQuote = !inQuote;
+		}
+		if (ch === ";" && !inQuote) {
+			parts.push(cur);
+			cur = "";
+			continue;
+		}
+		cur += ch;
+	}
+	parts.push(cur);
+	return parts;
 }
 
 /**
@@ -394,6 +444,7 @@ export function mermaidToModel(text: string): ParseResult {
 			node = {
 				id: token.id,
 				label: token.label ?? token.id,
+				labelFormat: token.labelFormat,
 				shape: token.shape ?? "rect",
 				x: 0,
 				y: 0,
@@ -415,7 +466,11 @@ export function mermaidToModel(text: string): ParseResult {
 				// (mirrors setNodeShape's "a recognised shape supersedes..." rule).
 				node.rawShape = token.rawShape;
 			}
-			if (token.label !== undefined) node.label = token.label;
+			if (token.label !== undefined) {
+				node.label = token.label;
+				// The flag belongs to this label, so a plain redeclaration clears it.
+				node.labelFormat = token.labelFormat;
+			}
 			if (token.syntax) node.syntax = token.syntax;
 			if (token.attrs) node.attrs = token.attrs;
 		}
@@ -434,13 +489,16 @@ export function mermaidToModel(text: string): ParseResult {
 	const openGroup = (rest: string): void => {
 		let id: string;
 		let title: string;
+		let titleMarkdown = false;
 		let m: RegExpMatchArray | null;
 		if (rest === "") {
 			id = newGroupId(model);
 			title = id;
 		} else if ((m = rest.match(/^([A-Za-z0-9_]+)\s*\[(.+)\]$/))) {
 			id = m[1] as string;
-			title = stripQuotes(m[2] as string);
+			const parsed = stripQuotesEx(m[2] as string);
+			title = parsed.text;
+			titleMarkdown = !!parsed.markdown;
 		} else if ((m = rest.match(/^"(.+)"$/))) {
 			id = newGroupId(model);
 			title = m[1] as string;
@@ -453,6 +511,9 @@ export function mermaidToModel(text: string): ParseResult {
 		}
 		const parent = groupStack[groupStack.length - 1];
 		const group: DiagramGroup = { id, title, nodeIds: [] };
+		if (titleMarkdown) {
+			group.titleFormat = "markdown";
+		}
 		if (parent) group.parentId = parent.id;
 		model.groups.push(group);
 		groupStack.push(group);
@@ -622,7 +683,7 @@ export function mermaidToModel(text: string): ParseResult {
 		}
 
 		// One statement may hold several `;`-separated statements.
-		for (const part of trimmed.split(";")) {
+		for (const part of splitStatements(trimmed)) {
 			const stmt = part.trim();
 			if (!stmt) continue;
 			parseStatement(stmt, ensureNode, model.edges, warnings, model.extras);
@@ -773,10 +834,15 @@ function parseStatement(
 		// Node piece. It may carry a leading pipe-label belonging to the
 		// previous operator: `|label| B`.
 		let label = "";
+		let labelFormat: LabelFormat | undefined;
 		let nodePart = piece;
 		const labelMatch = piece.match(/^\|([^|]*)\|\s*(.*)$/);
 		if (labelMatch && labelMatch[1] !== undefined && labelMatch[2] !== undefined) {
-			label = stripQuotes(labelMatch[1]);
+			const parsed = stripQuotesEx(labelMatch[1]);
+			label = parsed.text;
+			if (parsed.markdown) {
+				labelFormat = "markdown";
+			}
 			nodePart = labelMatch[2].trim();
 		}
 
@@ -809,6 +875,7 @@ function parseStatement(
 						from: from.id,
 						to: to.id,
 						label,
+						labelFormat,
 						kind: opToKind(pendingOp),
 					});
 				}

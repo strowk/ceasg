@@ -214,3 +214,35 @@ describe('@{shape} alias resolution', () => {
     expect(shapeOf('A@{shape: not-a-shape, label: "x"}')).toBe('rect');
   });
 });
+
+describe('markdown string labels', () => {
+  it('flags a backtick-wrapped node label and strips the backticks', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`**Bold**`"]\n');
+    expect(model.nodes[0]?.label).toBe('**Bold**');
+    expect(model.nodes[0]?.labelFormat).toBe('markdown');
+  });
+  it('leaves a plain label unflagged', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["**Bold**"]\n');
+    expect(model.nodes[0]?.label).toBe('**Bold**');
+    expect(model.nodes[0]?.labelFormat).toBeUndefined();
+  });
+  it('flags a markdown edge label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA -->|"`_yes_`"| B\n');
+    expect(model.edges[0]?.label).toBe('_yes_');
+    expect(model.edges[0]?.labelFormat).toBe('markdown');
+  });
+  it('flags a markdown subgraph title', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph S["`**G**`"]\nA\nend\n');
+    expect(model.groups[0]?.title).toBe('**G**');
+    expect(model.groups[0]?.titleFormat).toBe('markdown');
+  });
+  it('flags a markdown label in the v11 attribute form', () => {
+    const { model } = mermaidToModel('flowchart LR\nA@{ shape: rect, label: "`**B**`" }\n');
+    expect(model.nodes[0]?.label).toBe('**B**');
+    expect(model.nodes[0]?.labelFormat).toBe('markdown');
+  });
+  it('keeps HTML markup in a plain label verbatim', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["x <b>y</b>"]\n');
+    expect(model.nodes[0]?.label).toBe('x <b>y</b>');
+  });
+});

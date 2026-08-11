@@ -23,6 +23,7 @@ import {
 	DiagramModel,
 	DiagramNode,
 	EdgeKind,
+	LabelFormat,
 	NodeStyle,
 	hasConfig,
 	hasEdgeStyle,
@@ -35,13 +36,14 @@ import { SHAPES } from "./shapes";
 const INDENT = "    ";
 
 /** Wrap a label so Mermaid treats spaces/punctuation safely.
- *  `\n` in the label is encoded as `<br/>` which Mermaid renders as a line break. */
-function quoteLabel(label: string): string {
+ *  `\n` in the label is encoded as `<br/>` which Mermaid renders as a line break.
+ *  `markdown` re-adds the backticks of Mermaid's markdown-string form. */
+function quoteLabel(label: string, markdown?: LabelFormat): string {
 	// Newlines would split the single-line Mermaid statement, so encode them as
 	// <br/> (which Mermaid renders as a line break and the parser decodes back
 	// to \n). Embedded double quotes use the entity Mermaid understands.
 	const safe = label.replace(/\r?\n/g, "<br/>").replace(/"/g, "&quot;");
-	return `"${safe}"`;
+	return markdown === "markdown" ? `"\`${safe}\`"` : `"${safe}"`;
 }
 
 /**
@@ -56,7 +58,7 @@ function sanitizeId(id: string): string {
 }
 
 function nodeDeclaration(node: DiagramNode): string {
-	const label = quoteLabel(node.label);
+	const label = quoteLabel(node.label, node.labelFormat);
 	const id = sanitizeId(node.id);
 	const def = SHAPES[node.shape];
 	if (node.syntax !== "attr" && def?.bracket) {
@@ -104,7 +106,7 @@ function edgeLine(edge: DiagramEdge): string {
 	const to = sanitizeId(edge.to);
 	// Invisible links carry no label in Mermaid.
 	if (edge.kind !== "invisible" && edge.label && edge.label.trim() !== "") {
-		return `${from} ${op}|${quoteLabel(edge.label)}| ${to}`;
+		return `${from} ${op}|${quoteLabel(edge.label, edge.labelFormat)}| ${to}`;
 	}
 	return `${from} ${op} ${to}`;
 }
@@ -214,7 +216,7 @@ function emitGroup(
 	const pad = INDENT.repeat(depth + 1);
 	const title =
 		group.title && group.title !== group.id
-			? ` [${quoteLabel(group.title)}]`
+			? ` [${quoteLabel(group.title, group.titleFormat)}]`
 			: "";
 	lines.push(`${pad}subgraph ${sanitizeId(group.id)}${title}`);
 	// Nested child groups first.

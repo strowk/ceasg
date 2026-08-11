@@ -248,3 +248,36 @@ describe('serialization fidelity', () => {
     expect(out).not.toContain('not-a-shape');
   });
 });
+
+describe('round-trip — formatted labels', () => {
+  it('preserves a markdown node label including its backticks', () => {
+    const src = 'flowchart LR\n    A["`**Bold** and _italic_`"]\n';
+    const out = roundtrip(src);
+    expect(out).toContain('"`**Bold** and _italic_`"');
+    expect(roundtrip(out)).toBe(out);
+  });
+  it('preserves HTML markup and entities in a plain label', () => {
+    const src = 'flowchart LR\n    B["Line 1<br/><b>Line 2</b> &amp; more"]\n';
+    const out = roundtrip(src);
+    expect(out).toContain('<b>Line 2</b>');
+    expect(out).toContain('&amp;');
+    expect(roundtrip(out)).toBe(out);
+  });
+  it('preserves a markdown edge label', () => {
+    const out = roundtrip('flowchart LR\n    A -->|"`**yes**`"| B\n');
+    expect(out).toContain('|"`**yes**`"|');
+    expect(roundtrip(out)).toBe(out);
+  });
+  it('preserves a markdown subgraph title', () => {
+    const out = roundtrip('flowchart LR\n    subgraph S["`**Group**`"]\n    A\n    end\n');
+    expect(out).toContain('"`**Group**`"');
+    expect(roundtrip(out)).toBe(out);
+  });
+  it('drops the backticks when the format is cleared', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`**B**`"]\n');
+    delete model.nodes[0]!.labelFormat;
+    const out = modelToMermaid(model, { includePositions: false });
+    expect(out).toContain('A["**B**"]');
+    expect(out).not.toContain('`');
+  });
+});
