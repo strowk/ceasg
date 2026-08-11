@@ -11,15 +11,49 @@
  * cache) and the auto layout so both always agree on dimensions.
  */
 
+import { DEFAULT_WRAP_WIDTH, layoutLabel, type LabelLayout } from "./labelMarkup";
 import type { DiagramEdge, DiagramNode, NodeStyle } from "./model";
 import { lookupShape } from "./shapes";
-import { BASE_FONT_FAMILY, BASE_FONT_SIZE, measureTextWidth } from "./textMetrics";
+import { BASE_FONT_FAMILY, BASE_FONT_SIZE } from "./textMetrics";
 
 export const NODE_H = 44;
 export const MIN_W = 80;
 /** Padding around the label: 32px horizontally, 28px vertically. */
 const PAD_W = 32;
 const PAD_H = 28;
+
+/** Default edge-label font size; matches the `.ceasg-edge-label` rule.
+ *  Declared here, above `edgeLabelLayout`'s first use of it, because `const`
+ *  is not hoisted the way `function` is. */
+export const EDGE_LABEL_FONT_SIZE = 12;
+
+/**
+ * The laid-out label of a node: parsed, styled and wrapped.
+ *
+ * The renderer and `estimateNodeSize` both call this, so the box a node
+ * reserves and the glyphs painted inside it can never disagree.
+ *
+ * A manually resized node wraps to its own width rather than Mermaid's default,
+ * so dragging a resize handle reflows the text instead of overflowing it.
+ */
+export function nodeLabelLayout(node: DiagramNode, style?: NodeStyle): LabelLayout {
+	return layoutLabel(node.label || node.id, {
+		markdown: node.labelFormat === "markdown",
+		fontSize: style?.fontSize ?? BASE_FONT_SIZE,
+		fontFamily: style?.fontFamily ?? BASE_FONT_FAMILY,
+		wrapWidth: node.w ? Math.max(1, node.w - PAD_W) : DEFAULT_WRAP_WIDTH,
+	});
+}
+
+/** The laid-out label of an edge; see `nodeLabelLayout`. */
+export function edgeLabelLayout(edge: DiagramEdge): LabelLayout {
+	return layoutLabel(edge.label, {
+		markdown: edge.labelFormat === "markdown",
+		fontSize: edge.style?.fontSize ?? EDGE_LABEL_FONT_SIZE,
+		fontFamily: BASE_FONT_FAMILY,
+		wrapWidth: DEFAULT_WRAP_WIDTH,
+	});
+}
 
 /**
  * Size a node from its manual w/h or its label text + shape padding.
@@ -39,24 +73,19 @@ export function estimateNodeSize(
 		return { w: node.w, h: node.h };
 	}
 	const fontSize = style?.fontSize ?? BASE_FONT_SIZE;
-	const font = `${fontSize}px ${style?.fontFamily ?? BASE_FONT_FAMILY}`;
-	const rawLabel = node.label || node.id;
-	const lines = rawLabel.split("\n");
-	// Width uses the widest measured line; height grows for multi-line labels.
-	const widest = Math.max(...lines.map((l) => measureTextWidth(l, font)));
+	const layout = nodeLabelLayout(node, style);
+	const widest = layout.width;
 	const base = {
 		w: Math.max(MIN_W, Math.ceil(widest) + PAD_W),
-		h: fontSize * lines.length + PAD_H,
+		h: fontSize * layout.lines.length + PAD_H,
 	};
 	const def = lookupShape(node.shape);
 	if (!def?.size) {
 		return base;
 	}
-	return def.size(base, { style, widest, fontSize, lineCount: lines.length });
+	return def.size(base, { style, widest, fontSize, lineCount: layout.lines.length });
 }
 
-/** Default edge-label font size; matches the `.ceasg-edge-label` rule. */
-export const EDGE_LABEL_FONT_SIZE = 12;
 /** Padding of the label's background rect around the text. */
 const EDGE_LABEL_PAD_W = 8;
 const EDGE_LABEL_PAD_H = 6;
@@ -75,9 +104,9 @@ export function edgeLabelSize(edge: DiagramEdge): { w: number; h: number } {
 		return { w: 0, h: 0 };
 	}
 	const fontSize = edge.style?.fontSize ?? EDGE_LABEL_FONT_SIZE;
-	const font = `${fontSize}px ${BASE_FONT_FAMILY}`;
+	const layout = edgeLabelLayout(edge);
 	return {
-		w: Math.ceil(measureTextWidth(edge.label, font)) + EDGE_LABEL_PAD_W,
-		h: fontSize + EDGE_LABEL_PAD_H,
+		w: Math.ceil(layout.width) + EDGE_LABEL_PAD_W,
+		h: fontSize * layout.lines.length + EDGE_LABEL_PAD_H,
 	};
 }

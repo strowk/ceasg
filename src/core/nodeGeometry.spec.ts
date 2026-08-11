@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { estimateNodeSize, NODE_H, MIN_W } from './nodeGeometry';
+import { estimateNodeSize, edgeLabelSize, nodeLabelLayout, edgeLabelLayout, NODE_H, MIN_W } from './nodeGeometry';
 import { measureTextWidth, BASE_FONT_FAMILY } from './textMetrics';
 import { SHAPES } from './shapes';
+import type { DiagramNode } from './model';
 
 describe('estimateNodeSize', () => {
   it('respects manual overrides', () => {
@@ -104,5 +105,71 @@ describe('sizing comes from the registry', () => {
   it('falls back to the base box for an unregistered shape', () => {
     expect(() => estimateNodeSize(node('not-a-shape'))).not.toThrow();
     expect(estimateNodeSize(node('not-a-shape')).w).toBeGreaterThan(0);
+  });
+});
+
+function node(over: Partial<DiagramNode> = {}): DiagramNode {
+  return { id: 'A', label: 'Hi', shape: 'rect', x: 0, y: 0, ...over };
+}
+
+describe('nodeLabelLayout', () => {
+  it('leaves a plain label as one unstyled run', () => {
+    expect(nodeLabelLayout(node({ label: '**B**' })).lines)
+      .toEqual([[{ text: '**B**' }]]);
+  });
+  it('styles a markdown label', () => {
+    expect(nodeLabelLayout(node({ label: '**B**', labelFormat: 'markdown' })).lines)
+      .toEqual([[{ text: 'B', bold: true }]]);
+  });
+  it('wraps a markdown label at the default width', () => {
+    const long = 'the quick brown fox jumps over the lazy dog again and again';
+    expect(nodeLabelLayout(node({ label: long, labelFormat: 'markdown' })).lines.length)
+      .toBeGreaterThan(1);
+  });
+  it('wraps to a manual node width instead', () => {
+    const long = 'the quick brown fox jumps over the lazy dog again and again';
+    const narrow = nodeLabelLayout(node({ label: long, labelFormat: 'markdown', w: 90, h: 44 }));
+    const dflt = nodeLabelLayout(node({ label: long, labelFormat: 'markdown' }));
+    expect(narrow.lines.length).toBeGreaterThan(dflt.lines.length);
+  });
+  it('measures in the node font size', () => {
+    const big = nodeLabelLayout(node({ label: 'Hi' }), { fontSize: 32 });
+    expect(big.height).toBe(32);
+    expect(big.width).toBeGreaterThan(nodeLabelLayout(node({ label: 'Hi' })).width);
+  });
+});
+
+describe('estimateNodeSize — markup', () => {
+  // The whole point of the shared layout: a bold label reserves a wider box.
+  it('sizes a bold markdown label wider than the same plain text', () => {
+    const bold = estimateNodeSize(node({ label: '**Bold text here**', labelFormat: 'markdown' }));
+    const plain = estimateNodeSize(node({ label: 'Bold text here' }));
+    expect(bold.w).toBeGreaterThan(plain.w);
+  });
+  it('grows in height, not width, when a markdown label wraps', () => {
+    const long = 'the quick brown fox jumps over the lazy dog again and again';
+    const wrapped = estimateNodeSize(node({ label: long, labelFormat: 'markdown' }));
+    const flat = estimateNodeSize(node({ label: long }));
+    expect(wrapped.h).toBeGreaterThan(flat.h);
+    expect(wrapped.w).toBeLessThan(flat.w);
+  });
+  // Regression guard: unmarked labels must keep their historical geometry.
+  it('is unchanged for a plain single-line label', () => {
+    expect(estimateNodeSize(node({ label: 'Start' }))).toEqual({ w: 80, h: 44 });
+  });
+  it('is unchanged for a plain multi-line label', () => {
+    expect(estimateNodeSize(node({ label: 'a\nb\nc' })).h).toBe(16 * 3 + 28);
+  });
+});
+
+describe('edgeLabelLayout', () => {
+  it('styles a markdown edge label', () => {
+    const layout = edgeLabelLayout({ id: 'e', from: 'A', to: 'B', label: '**y**', kind: 'arrow', labelFormat: 'markdown' });
+    expect(layout.lines).toEqual([[{ text: 'y', bold: true }]]);
+  });
+  it('sizes a bold edge label wider than plain', () => {
+    const bold = edgeLabelSize({ id: 'e', from: 'A', to: 'B', label: '**yes please**', kind: 'arrow', labelFormat: 'markdown' });
+    const plain = edgeLabelSize({ id: 'e', from: 'A', to: 'B', label: 'yes please', kind: 'arrow' });
+    expect(bold.w).toBeGreaterThan(plain.w);
   });
 });
