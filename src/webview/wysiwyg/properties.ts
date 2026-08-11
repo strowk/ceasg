@@ -1,4 +1,4 @@
-import { BASE_FONT_SIZE, SHAPE_GROUPS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge } from '../../core';
+import { BASE_FONT_SIZE, SHAPE_GROUPS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge, LabelFormat } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
 
@@ -69,6 +69,22 @@ export class PropertiesPanel {
   }
 
   /**
+   * Plain / Markdown for a label. "Markdown" is Mermaid's backtick-wrapped
+   * markdown-string form: it adds bold/italic emphasis and word wrapping.
+   * Raw HTML markup (bold/italic tags, entities) renders in both, because
+   * Mermaid defaults to htmlLabels: true.
+   */
+  private formatSelect(current: LabelFormat | undefined, onPick: (v: LabelFormat | undefined) => void): HTMLSelectElement {
+    const sel = document.createElement('select');
+    for (const [value, text] of [['', 'Plain'], ['markdown', 'Markdown']] as const) {
+      const o = document.createElement('option'); o.value = value; o.textContent = text; sel.appendChild(o);
+    }
+    sel.value = current ?? '';
+    sel.addEventListener('change', () => onPick(sel.value === 'markdown' ? 'markdown' : undefined));
+    return sel;
+  }
+
+  /**
    * A number input that maps a blank field to `undefined` (property unset).
    *
    * An unset property seeds the field with `fallback` — the value the canvas
@@ -97,6 +113,9 @@ export class PropertiesPanel {
     const label = document.createElement('input'); label.type = 'text'; label.value = node().label;
     label.addEventListener('input', () => this.editor.mutate((m) => { m.nodes.find((n) => n.id === id)!.label = label.value; }, { commit: true }));
     this.host.appendChild(this.row('Label', label));
+
+    this.host.appendChild(this.row('Label format', this.formatSelect(node().labelFormat, (v) =>
+      this.editor.mutate((m) => { m.nodes.find((n) => n.id === id)!.labelFormat = v; }, { commit: true }))));
 
     const shape = document.createElement('select');
     for (const group of SHAPE_GROUPS) {
@@ -172,6 +191,9 @@ export class PropertiesPanel {
     label.addEventListener('input', () => this.editor.mutate((m) => { m.edges.find((e) => e.id === id)!.label = label.value; }, { commit: true }));
     this.host.appendChild(this.row('Label', label));
 
+    this.host.appendChild(this.row('Label format', this.formatSelect(edge().labelFormat, (v) =>
+      this.editor.mutate((m) => { m.edges.find((e) => e.id === id)!.labelFormat = v; }, { commit: true }))));
+
     const kind = document.createElement('select');
     for (const k of EDGE_KINDS) { const o = document.createElement('option'); o.value = k; o.textContent = EDGE_LABELS[k]; kind.appendChild(o); }
     kind.value = edge().kind;
@@ -227,6 +249,9 @@ export class PropertiesPanel {
     const title = document.createElement('input'); title.type = 'text'; title.value = group().title;
     title.addEventListener('input', () => this.editor.mutate((m) => { const g = m.groups.find((g) => g.id === id); if (g) { g.title = title.value; } }, { commit: true }));
     this.host.appendChild(this.row('Title', title));
+
+    this.host.appendChild(this.row('Title format', this.formatSelect(group().titleFormat, (v) =>
+      this.editor.mutate((m) => { m.groups.find((g) => g.id === id)!.titleFormat = v; }, { commit: true }))));
 
     this.host.appendChild(this.hint(`${group().nodeIds.length} member nodes`));
 
