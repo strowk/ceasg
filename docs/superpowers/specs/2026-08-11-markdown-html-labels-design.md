@@ -169,6 +169,13 @@ Formulas are unchanged: `w = max(MIN_W, ceil(layout.width) + PAD_W)`,
 `h = fontSize * lines.length + PAD_H`. At one plain line with no markup, every
 number is identical to today's, so existing diagrams keep their geometry.
 
+A label that *does* carry markup is deliberately re-sized, in both modes: since
+`A["A &amp; B"]` now paints `A & B`, its box is sized for `A & B` and gets
+narrower. Sizing follows painting. The alternative — reserving space for the
+literal source characters around a single painted glyph — would leave visibly
+empty boxes, and would break the one invariant this whole design exists to
+maintain.
+
 Bold runs are measured with a bold font (`bold 16px …` via the canvas
 `measureText` path already in `textMetrics.ts`, which accepts the CSS font
 shorthand), so a box actually fits its bold text.

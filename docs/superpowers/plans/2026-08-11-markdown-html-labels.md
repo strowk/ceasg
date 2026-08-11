@@ -15,7 +15,7 @@
 - **No new runtime dependencies.** The tokenizer is hand-written; do not add `marked`, `markdown-it`, or an HTML sanitizer.
 - **Round-trip is sacred.** An unedited diagram must re-serialize byte-identical. `roundtrip.spec.ts` already enforces idempotency — never weaken those tests.
 - **Never throw from render or layout paths.** `renderFlowchartToSvg` runs inside the Markdown preview; an exception blanks the whole fenced block. Malformed markup degrades to literal text.
-- **Existing geometry must not shift.** A plain single-line label with no markup must produce byte-identical `w`/`h` to today.
+- **Existing geometry must not shift — for labels with no markup.** A plain single-line label containing no tags, entities or emphasis must produce byte-identical `w`/`h` to today. A label that *does* carry markup is deliberately re-sized: the box must fit the text that is actually painted, so `A["A &amp; B"]` sizes to `A & B` and `<b>x</b>` sizes to a bold `x`. Sizing follows painting — that is the central invariant of this design, not a violation of it.
 - **Indentation:** `src/core/*.ts` uses **tabs**. `src/webview/**/*.ts` uses **2 spaces**. Match the file you are editing.
 - **Trailing comments explain _why_, not _what_** — match the existing density in the file (see `render.ts` lines 24-29 for the house style).
 - Test command for every task: `cd extension && npx vitest run` (single file: `npx vitest run src/path/file.spec.ts`).
