@@ -273,4 +273,37 @@ describe('formatted labels', () => {
     expect(tspans[0]!.textContent).toBe('G');
     expect((tspans[0] as SVGElement).style.fontWeight).toBe('bold');
   });
+
+  // The group box is sized from its member nodes, not the title, so there is
+  // no reserved space for a wrapped second line — a long markdown title (over
+  // layoutLabel's 200px markdown wrap default) must still render as one line.
+  it('does not wrap a long markdown subgraph title', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S["`This is a really long subgraph title that would wrap **bold**`"]\nA\nend\n',
+    );
+    place(model);
+    const title = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-title')!;
+    const tspans = title.querySelectorAll('tspan');
+    // One line means exactly one x-carrying tspan: only the first run of the
+    // first (only) line gets one.
+    const xCarrying = [...tspans].filter((t) => t.hasAttribute('x'));
+    expect(xCarrying.length).toBe(1);
+    expect(title.textContent).toContain('This is a really long subgraph title that would wrap bold');
+  });
+
+  // SVG has no per-line xml:space: it is an attribute of the whole <text>, so
+  // one multi-run line in an otherwise single-run label still turns it on for
+  // every line, including the plain one. Pinning that rather than asserting
+  // it is unintended.
+  it('sets xml:space on the whole label when only one of several lines has multiple runs', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`plain line<br/>**bold** and plain`"]\n');
+    place(model);
+    const text = renderDiagram(model).refs.nodeEls.get('A')!.querySelector('text')!;
+    expect(text.getAttribute('xml:space')).toBe('preserve');
+    const tspans = text.querySelectorAll('tspan');
+    expect(tspans[0]!.textContent).toBe('plain line');
+    expect(tspans[1]!.textContent).toBe('bold');
+    expect(tspans[2]!.textContent).toBe(' and plain');
+  });
 });

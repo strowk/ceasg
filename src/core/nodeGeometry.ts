@@ -99,14 +99,20 @@ const EDGE_LABEL_PAD_H = 6;
  *
  * An unlabelled edge is a zero box, which is dagre's default: no extra space.
  */
-export function edgeLabelSize(edge: DiagramEdge): { w: number; h: number } {
+// `layout` is optional so a caller who already ran `edgeLabelLayout` (the
+// renderer, painting the same edge's text right after sizing its background
+// rect) can pass it through instead of laying the label out twice. Left
+// unpassed, it is computed here as before — kept lazy (not a default
+// parameter) so an unlabelled edge, the common case, still returns its zero
+// box without ever calling into layout.
+export function edgeLabelSize(edge: DiagramEdge, layout?: LabelLayout): { w: number; h: number } {
 	if (!edge.label) {
 		return { w: 0, h: 0 };
 	}
 	const fontSize = edge.style?.fontSize ?? EDGE_LABEL_FONT_SIZE;
-	const layout = edgeLabelLayout(edge);
+	const lay = layout ?? edgeLabelLayout(edge);
 	return {
-		w: Math.ceil(layout.width) + EDGE_LABEL_PAD_W,
-		h: fontSize * layout.lines.length + EDGE_LABEL_PAD_H,
+		w: Math.ceil(lay.width) + EDGE_LABEL_PAD_W,
+		h: fontSize * lay.lines.length + EDGE_LABEL_PAD_H,
 	};
 }

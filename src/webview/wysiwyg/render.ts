@@ -127,11 +127,13 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
 
   if (edge.label) {
     const mid = bezierMidpoint(d);
+    const layout = edgeLabelLayout(edge);
     // Background rect so the label reads clearly over the edge line. Sized from
     // measured text width (getBBox isn't available on a detached SVG at build time)
     // via the same helper the auto layout reserves rank space with, so the box
-    // always fits the gap the layout opened for it.
-    const { w: boxW, h: boxH } = edgeLabelSize(edge);
+    // always fits the gap the layout opened for it. Pass the layout already
+    // computed above, so it isn't laid out a second time just to size the box.
+    const { w: boxW, h: boxH } = edgeLabelSize(edge, layout);
     const bg = el('rect');
     bg.setAttribute('class', 'ceasg-edge-label-bg');
     bg.setAttribute('x', String(mid.x - boxW / 2));
@@ -148,7 +150,7 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
     label.setAttribute('dominant-baseline', 'central');
     if (style?.textColor) { label.style.fill = style.textColor; }
     if (style?.fontSize) { label.style.fontSize = `${style.fontSize}px`; }
-    paintLabelLines(label, edgeLabelLayout(edge).lines, mid.x, style?.fontSize ?? EDGE_LABEL_FONT_SIZE);
+    paintLabelLines(label, layout.lines, mid.x, style?.fontSize ?? EDGE_LABEL_FONT_SIZE);
     g.appendChild(label);
   }
   return g;
@@ -171,10 +173,15 @@ function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
   title.setAttribute('class', 'ceasg-group-title');
   title.setAttribute('x', String(b.x + 10));
   title.setAttribute('y', String(b.y + 16));
-  // The title is anchored at the box's top-left, and the box is sized from its
-  // members, so the title never wraps — only its markup is styled.
+  // The box is sized from its members, not the title, so there is no reserved
+  // space for a wrapped second line — an overlong title must overflow
+  // sideways rather than wrap down into the member nodes below it. Passing no
+  // wrapWidth would NOT achieve that: layoutLabel defaults an unset wrapWidth
+  // to DEFAULT_WRAP_WIDTH (200px) whenever markdown is on, so a markdown title
+  // longer than ~200px would wrap. Infinity opts out of wrapping entirely,
+  // matching the plain (non-markdown) title, which never wrapped either.
   const lines = layoutLabel(group.title, {
-    markdown: group.titleFormat === 'markdown', fontSize: GROUP_TITLE_FONT_SIZE,
+    markdown: group.titleFormat === 'markdown', fontSize: GROUP_TITLE_FONT_SIZE, wrapWidth: Infinity,
   }).lines;
   paintLabelLines(title, lines, b.x + 10, GROUP_TITLE_FONT_SIZE);
   g.appendChild(title);
