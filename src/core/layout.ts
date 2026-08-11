@@ -18,7 +18,12 @@
 
 import * as dagre from "@dagrejs/dagre";
 import type { EdgeLabel, GraphLabel, NodeLabel } from "@dagrejs/dagre";
-import { DiagramModel, materializeGroupBounds, nodeSize } from "./model";
+import {
+	DiagramModel,
+	groupDescendantNodeIds,
+	materializeGroupBounds,
+	nodeSize,
+} from "./model";
 import { warn } from "./diagnostics";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
@@ -80,11 +85,26 @@ function dagreLayout(model: DiagramModel): void {
 		}
 	}
 
+	// An edge endpoint may name a group. dagre refuses an edge incident to a
+	// cluster node, so a group is proxied by one of its descendant nodes: enough
+	// for the cluster to rank near its neighbours instead of as an unconnected
+	// component. It is an approximation, not exact cluster routing — the drawn
+	// edge still terminates on the subgraph box.
+	const rankProxy = (id: string): string | undefined => {
+		if (nodeIds.has(id)) return id;
+		if (!groupIds.has(id)) return undefined;
+		return groupDescendantNodeIds(model, id).find((n) => nodeIds.has(n));
+	};
+
 	for (const e of model.edges) {
 		// Self-loops don't affect ranking; dangling edges have no geometry.
 		if (e.from === e.to) continue;
-		if (!nodeIds.has(e.from) || !nodeIds.has(e.to)) continue;
-		g.setEdge(e.from, e.to);
+		const from = rankProxy(e.from);
+		const to = rankProxy(e.to);
+		// Unresolvable (dangling, or a group holding no nodes), or both endpoints
+		// proxied to the same node — neither tells dagre anything.
+		if (from === undefined || to === undefined || from === to) continue;
+		g.setEdge(from, to);
 	}
 
 	dagre.layout(g);

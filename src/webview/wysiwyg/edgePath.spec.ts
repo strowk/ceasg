@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { nodeBorderPoint, edgePathD } from './edgePath';
+import { nodeBorderPoint, edgePathD, endpointBorderPoint } from './edgePath';
 import { emptyModel, type DiagramModel, type DiagramNode } from '../../core';
 
-const node = (x: number, y: number): DiagramNode => ({ id: 'n', label: 'n', shape: 'rect' as const, x, y, w: 80, h: 44 });
+const node = (x: number, y: number, id = 'n'): DiagramNode => ({ id, label: id, shape: 'rect' as const, x, y, w: 80, h: 44 });
 const modelWith = (...nodes: DiagramNode[]): DiagramModel => ({ ...emptyModel('TB'), nodes });
 
 describe('nodeBorderPoint', () => {
@@ -24,10 +24,32 @@ describe('nodeBorderPoint', () => {
 
 describe('edgePathD', () => {
   it('produces a cubic path string starting with M and containing C', () => {
-    const a = node(0, 0), b = node(0, 200);
-    const d = edgePathD(modelWith(a, b), a, b, 'TB');
-    expect(d.startsWith('M')).toBe(true);
+    const a = node(0, 0, 'a'), b = node(0, 200, 'b');
+    const d = edgePathD(modelWith(a, b), 'a', 'b', 'TB');
+    expect(d!.startsWith('M')).toBe(true);
     expect(d).toContain('C');
+  });
+
+  it('returns null rather than throwing when an endpoint resolves to nothing', () => {
+    const a = node(0, 0, 'a');
+    expect(edgePathD(modelWith(a), 'a', 'ghost', 'TB')).toBeNull();
+  });
+
+  it('anchors an edge on a subgraph box border', () => {
+    const m = modelWith(node(0, 0, 'a'));
+    m.groups.push({ id: 'S1', title: 'S1', nodeIds: [], x: 100, y: -50, w: 200, h: 100 });
+    // Box spans x 100..300 centred at (200, 0); an edge from the left meets its
+    // left border, not its centre.
+    const p = endpointBorderPoint(m, 'S1', 0, 0);
+    expect(p).toEqual({ x: 100, y: 0 });
+  });
+
+  it('resolves a subgraph id as an edge endpoint', () => {
+    const m = modelWith(node(0, 0, 'a'));
+    m.groups.push({ id: 'S1', title: 'S1', nodeIds: [], x: 100, y: -50, w: 200, h: 100 });
+    const d = edgePathD(m, 'a', 'S1', 'LR');
+    expect(d).not.toBeNull();
+    expect(d!.startsWith('M40,0')).toBe(true); // leaves node 'a' at its right edge
   });
 });
 

@@ -68,14 +68,16 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
 }
 
 function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVGGElement | null {
-  const from = model.nodes.find((n) => n.id === edge.from);
-  const to = model.nodes.find((n) => n.id === edge.to);
-  if (!from || !to) { return null; }
+  // An endpoint id may name a node or a subgraph; either may also be dangling.
+  // A dangling edge is skipped rather than raised, because an exception here
+  // blanks the whole fenced block in the Markdown preview.
+  const d = edge.from === edge.to
+    ? selfLoopPathD(model, edge.from, model.direction)
+    : edgePathD(model, edge.from, edge.to, model.direction, offset);
+  if (d === null) { return null; }
   const g = el('g');
   g.setAttribute('class', `ceasg-edge ceasg-edge-${edge.kind}`);
   g.setAttribute('data-edge-id', edge.id);
-
-  const d = from.id === to.id ? selfLoopPathD(model, from, model.direction) : edgePathD(model, from, to, model.direction, offset);
 
   const hit = el('path');
   hit.setAttribute('class', 'ceasg-edge-hit');

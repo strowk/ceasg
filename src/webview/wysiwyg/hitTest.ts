@@ -37,10 +37,12 @@ export const EDGE_HIT_TOLERANCE = 12;
 export function edgeAtPoint(model: DiagramModel, x: number, y: number, tol: number): string | undefined {
   for (let i = model.edges.length - 1; i >= 0; i--) {
     const e = model.edges[i];
-    const from = model.nodes.find((n) => n.id === e.from);
-    const to = model.nodes.find((n) => n.id === e.to);
-    if (!from || !to) { continue; }
-    const d = e.from === e.to ? selfLoopPathD(model, from, model.direction) : edgePathD(model, from, to, model.direction);
+    // Endpoint ids resolve to a node or a subgraph box; an unresolvable one
+    // gives no path, so that edge is simply not clickable.
+    const d = e.from === e.to
+      ? selfLoopPathD(model, e.from, model.direction)
+      : edgePathD(model, e.from, e.to, model.direction);
+    if (d === null) { continue; }
     const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
     if (nums.length < 8) { continue; }
     const [x0, y0, x1, y1, x2, y2, x3, y3] = nums;
@@ -111,6 +113,25 @@ export function groupHandleAtPoint(
     if (Math.abs(x - h.x) <= tol && Math.abs(y - h.y) <= tol) { return h.corner; }
   }
   return undefined;
+}
+
+/** The four connection-anchor points (box edge midpoints) of a subgraph — the
+ *  group counterpart of nodeAnchorPoints. Midpoints never coincide with the
+ *  corner resize handles, so the two need no hit-test priority rule. */
+export function groupAnchorPoints(
+  model: DiagramModel, groupId: string,
+): Array<{ dir: 'N' | 'S' | 'E' | 'W'; x: number; y: number }> {
+  const g = model.groups.find((gr) => gr.id === groupId);
+  if (!g) { return []; }
+  const b = groupBounds(model, g);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  return [
+    { dir: 'N', x: cx, y: b.y },
+    { dir: 'S', x: cx, y: b.y + b.h },
+    { dir: 'E', x: b.x + b.w, y: cy },
+    { dir: 'W', x: b.x, y: cy },
+  ];
 }
 
 /** Apply a corner-resize delta to a box, keeping the opposite edge anchored and

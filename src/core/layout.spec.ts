@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { autoLayout, layoutMissing } from './layout';
 import { emptyModel, groupBounds } from './model';
 import { mermaidToModel } from './parser';
+import { clearDiagnostics, setDiagnosticSink, type Diagnostic } from './diagnostics';
 
 describe('autoLayout', () => {
   it('assigns finite non-overlapping positions to a chain', () => {
@@ -45,5 +46,54 @@ describe('auto layout with nested groups', () => {
     expect(outer.y).toBeLessThanOrEqual(inner.y);
     expect(outer.x + outer.w).toBeGreaterThanOrEqual(inner.x + inner.w);
     expect(outer.y + outer.h).toBeGreaterThanOrEqual(inner.y + inner.h);
+  });
+});
+
+describe('auto layout with subgraph edge endpoints', () => {
+  /** Collects diagnostics so a dagre throw (which autoLayout catches) is visible. */
+  function captureDiagnostics(): Diagnostic[] {
+    const seen: Diagnostic[] = [];
+    clearDiagnostics();
+    setDiagnosticSink((d) => { seen.push(d); });
+    return seen;
+  }
+
+  it('ranks a node below a subgraph that points at it', () => {
+    const diagnostics = captureDiagnostics();
+    const m = emptyModel('TB');
+    for (const id of ['A', 'B', 'D']) { m.nodes.push({ id, label: id, shape: 'rect', x: 0, y: 0 }); }
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: ['A', 'B'] });
+    m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
+    m.edges.push({ id: 'e2', from: 'S1', to: 'D', label: '', kind: 'arrow' });
+    autoLayout(m);
+    const y = (id: string) => m.nodes.find((n) => n.id === id)!.y;
+    // Without the proxy D is an unconnected component and dagre puts it on rank 0
+    // alongside A; the proxied edge pushes it below.
+    expect(y('D')).toBeGreaterThan(y('A'));
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('skips an edge whose group has no descendant nodes', () => {
+    const diagnostics = captureDiagnostics();
+    const m = emptyModel('TB');
+    m.nodes.push({ id: 'D', label: 'D', shape: 'rect', x: 0, y: 0 });
+    m.groups.push({ id: 'S1', title: 'Empty', nodeIds: [] });
+    m.edges.push({ id: 'e1', from: 'S1', to: 'D', label: '', kind: 'arrow' });
+    autoLayout(m);
+    const d = m.nodes.find((n) => n.id === 'D')!;
+    expect(Number.isFinite(d.x) && Number.isFinite(d.y)).toBe(true);
+    expect(diagnostics).toHaveLength(0); // dagre ran; no fallback
+  });
+
+  it('skips an edge whose endpoints proxy to the same node', () => {
+    const diagnostics = captureDiagnostics();
+    const m = emptyModel('TB');
+    m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0 });
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: ['A'] });
+    m.edges.push({ id: 'e1', from: 'S1', to: 'A', label: '', kind: 'arrow' });
+    autoLayout(m);
+    const a = m.nodes.find((n) => n.id === 'A')!;
+    expect(Number.isFinite(a.x) && Number.isFinite(a.y)).toBe(true);
+    expect(diagnostics).toHaveLength(0);
   });
 });

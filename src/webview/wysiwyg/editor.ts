@@ -1,10 +1,10 @@
-import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth, findFreeSpot } from '../../core';
+import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth, findFreeSpot, isGroupId } from '../../core';
 import { renderDiagram, RenderRefs } from './render';
 import { Viewport, computeContentBounds } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
 import { SelectionState, PointerController } from './pointer';
-import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles, EDGE_HIT_TOLERANCE } from './hitTest';
+import { nodeAtPoint, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupResizeHandles, groupAnchorPoints, EDGE_HIT_TOLERANCE } from './hitTest';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 import { openLabelEditor } from './labelEditor';
 import { Toolbar } from './toolbar';
@@ -169,7 +169,6 @@ export class WysiwygEditor {
 
   getModel(): DiagramModel { return this.model; }
   getRefs(): RenderRefs { return this.refs; }
-  isGroupId(id: string): boolean { return this.model.groups.some((g) => g.id === id); }
 
   addNodeOfShape(shape: NodeShape, clientX: number, clientY: number): void {
     const p = this.viewport?.screenToSvg(clientX, clientY) ?? { x: 100, y: 100 };
@@ -259,12 +258,13 @@ export class WysiwygEditor {
       const edgeId = edgeAtPoint(this.model, p.x, p.y, EDGE_HIT_TOLERANCE / this.viewport!.scale);
       if (edgeId === undefined) { return; }
       const edge = this.model.edges.find((ed) => ed.id === edgeId);
-      const from = edge && this.model.nodes.find((n) => n.id === edge.from);
-      const to = edge && this.model.nodes.find((n) => n.id === edge.to);
-      if (!edge || !from || !to) { return; }
+      if (!edge) { return; }
+      // Endpoints may name nodes or subgraphs; an unresolvable one has no path
+      // and therefore no midpoint to place the label editor at.
       const d = edge.from === edge.to
-        ? selfLoopPathD(this.model, from, this.model.direction)
-        : edgePathD(this.model, from, to, this.model.direction);
+        ? selfLoopPathD(this.model, edge.from, this.model.direction)
+        : edgePathD(this.model, edge.from, edge.to, this.model.direction);
+      if (d === null) { return; }
       const mid = bezierMidpoint(d);
       openLabelEditor(this.canvasHost, this.viewport!, { x: mid.x, y: mid.y, text: edge.label }, (text) => {
         this.mutate((m) => { const ed = m.edges.find((e2) => e2.id === edgeId); if (ed) { ed.label = text; } }, { commit: true });
@@ -285,7 +285,7 @@ export class WysiwygEditor {
       if (n) {
         const { w, h } = nodeSize(this.model, n);
         this.overlay.outline(n.x - w / 2 - 3, n.y - h / 2 - 3, w + 6, h + 6);
-      } else if (this.isGroupId(id)) {
+      } else if (isGroupId(this.model, id)) {
         const gEl = this.refs.groupEls.get(id);
         if (gEl) { gEl.classList.add('ceasg-group-selected'); }
       } else {
@@ -303,10 +303,14 @@ export class WysiwygEditor {
         for (const a of nodeAnchorPoints(this.model, n)) { this.overlay.handle(a.x, a.y, r); }
       }
     }
-    if (this.selection.single && this.isGroupId(this.selection.single)) {
+    if (this.selection.single && isGroupId(this.model, this.selection.single)) {
       const r = 5 / (this.viewport?.scale ?? 1);
       for (const h of groupResizeHandles(this.model, this.selection.single)) {
-        this.overlay.handle(h.x, h.y, r);
+        this.overlay.handle(h.x, h.y, r, 'resize');
+      }
+      // Edge midpoints connect, corners resize — same circle, told apart by fill.
+      for (const a of groupAnchorPoints(this.model, this.selection.single)) {
+        this.overlay.handle(a.x, a.y, r);
       }
     }
   }
@@ -371,7 +375,7 @@ export class WysiwygEditor {
   }
 
   ungroupSelection(): void {
-    if (!this.selection || !this.selection.single || !this.isGroupId(this.selection.single)) { return; }
+    if (!this.selection || !this.selection.single || !isGroupId(this.model, this.selection.single)) { return; }
     const gid = this.selection.single;
     this.mutate((m) => { ungroup(m, gid); }, { commit: true });
     this.selection.clear();
@@ -382,7 +386,7 @@ export class WysiwygEditor {
     if (this.selection === null || this.selection.multi.size === 0) { return; }
     const ids = [...this.selection.multi];
     // Evaluate group membership before mutate (this.model is replaced after callback runs)
-    const groupIds = new Set(ids.filter((id) => this.isGroupId(id)));
+    const groupIds = new Set(ids.filter((id) => isGroupId(this.model, id)));
     this.mutate((m) => {
       for (const id of ids) {
         // Groups are ungrouped (contents kept); nodes/edges are removed.

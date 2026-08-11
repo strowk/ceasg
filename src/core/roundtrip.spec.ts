@@ -105,6 +105,53 @@ describe('nested subgraph round-trip', () => {
   });
 });
 
+describe('subgraph-edge round-trip', () => {
+  // The regression that motivated the work: the parser used to invent a node
+  // for the subgraph id and the serializer wrote it back as `S1["S1"]`, so
+  // opening a valid diagram in the editor and saving produced a broken one.
+  it('never writes back a phantom node declaration for the subgraph id', () => {
+    const src =
+      'flowchart TB\n    subgraph S1 [Pipeline]\n        A[Ingest] --> B[Transform]\n    end\n    S1 --> D[Report]\n';
+    const out = roundtrip(src);
+    expect(out).not.toContain('S1["S1"]');
+    expect(out).toContain('S1 --> D');
+    expect(out).toContain('subgraph S1 ["Pipeline"]');
+  });
+
+  it('reproduces canonical subgraph-edge text byte for byte', () => {
+    const canonical = [
+      'flowchart TB',
+      '    subgraph S1 ["Pipeline"]',
+      '        A["Ingest"]',
+      '        B["Transform"]',
+      '    end',
+      '    D["Report"]',
+      '    A --> B',
+      '    S1 --> D',
+    ].join('\n');
+    expect(roundtrip(canonical)).toBe(canonical);
+  });
+
+  it('keeps style and class lines that target the subgraph id', () => {
+    const src =
+      'flowchart TB\n    subgraph S1 [Pipeline]\n        A[Ingest]\n    end\n    S1 --> D[Report]\n    classDef hot fill:#f00\n    class A,S1 hot\n    style S1 stroke:#00f\n';
+    const out = roundtrip(src);
+    expect(out).toContain('style S1 stroke:#00f');
+    expect(out).toContain('class S1 hot');
+    expect(out).toContain('class A hot');
+    expect(out.match(/class A hot/g)!.length).toBe(1);
+    expect(roundtrip(out)).toBe(out);
+  });
+
+  it('round-trips a forward reference into its canonical order', () => {
+    const forward =
+      'flowchart TB\n    S1 --> D[Report]\n    subgraph S1 [Pipeline]\n        A[Ingest] --> B[Transform]\n    end\n';
+    const out = roundtrip(forward);
+    expect(out).not.toContain('S1["S1"]');
+    expect(roundtrip(out)).toBe(out);
+  });
+});
+
 describe('bracket serialization comes from the registry', () => {
   it('every registered bracket form round-trips through the parser', () => {
     for (const def of ALL_SHAPES) {

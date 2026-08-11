@@ -4,7 +4,7 @@ import { ALL_SHAPES } from './shapes';
 import {
   groupChildren, groupBounds, assignGroupToParent,
   groupDescendantNodeIds, translateGroup, removeGroup, GROUP_PAD,
-  materializeGroupBounds,
+  materializeGroupBounds, endpointGeometry, isGroupId, newGroupId,
 } from './model';
 
 function nodeAt(id: string, x: number, y: number) {
@@ -121,6 +121,75 @@ describe('group tree helpers', () => {
     expect(m.groups.find((g) => g.id === 'leaf')!.parentId).toBe('outer');
     // member A had innermost 'inner'; after ungroup it belongs to outer
     expect(m.groups.find((g) => g.id === 'outer')!.nodeIds).toContain('A');
+  });
+
+  it('removeGroup drops edges touching the group but keeps unrelated ones', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 0, 0), nodeAt('D', 200, 0));
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: ['A'] });
+    m.edges.push({ id: 'e1', from: 'S1', to: 'D', label: '', kind: 'arrow' });
+    m.edges.push({ id: 'e2', from: 'D', to: 'S1', label: '', kind: 'arrow' });
+    m.edges.push({ id: 'e3', from: 'A', to: 'D', label: '', kind: 'arrow' });
+    removeGroup(m, 'S1');
+    expect(m.edges.map((e) => e.id)).toEqual(['e3']);
+    // ...and the members it carried are still there.
+    expect(m.nodes.map((n) => n.id)).toEqual(['A', 'D']);
+  });
+});
+
+describe('endpoint id namespace', () => {
+  it('endpointGeometry gives a node its centre and rendered size', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 60));
+    expect(endpointGeometry(m, 'A')).toEqual({ x: 100, y: 60, w: 80, h: 40, shape: 'rect' });
+  });
+
+  it('endpointGeometry converts a stored group box to its centre', () => {
+    const m = emptyModel('TB');
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: [], x: 10, y: 20, w: 100, h: 60 });
+    expect(endpointGeometry(m, 'S1')).toEqual({ x: 60, y: 50, w: 100, h: 60, shape: 'rect' });
+  });
+
+  it('endpointGeometry centres a derived group box the same way', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 100, 100), nodeAt('B', 300, 100));
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: ['A', 'B'] });
+    const b = groupBounds(m, m.groups[0]);
+    expect(endpointGeometry(m, 'S1')).toEqual({
+      x: b.x + b.w / 2, y: b.y + b.h / 2, w: b.w, h: b.h, shape: 'rect',
+    });
+  });
+
+  it('endpointGeometry returns undefined for an unknown id', () => {
+    expect(endpointGeometry(emptyModel('TB'), 'nope')).toBeUndefined();
+  });
+
+  it('a node wins over a group of the same id, so a collision stays defined', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('S1', 5, 5));
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: [], x: 900, y: 900, w: 10, h: 10 });
+    expect(endpointGeometry(m, 'S1')).toMatchObject({ x: 5, y: 5 });
+  });
+
+  it('isGroupId distinguishes a subgraph id from a node id', () => {
+    const m = emptyModel('TB');
+    m.nodes.push(nodeAt('A', 0, 0));
+    m.groups.push({ id: 'S1', title: 'Pipeline', nodeIds: ['A'] });
+    expect(isGroupId(m, 'S1')).toBe(true);
+    expect(isGroupId(m, 'A')).toBe(false);
+  });
+
+  it('nextNodeId skips an id already taken by a group', () => {
+    const m = emptyModel('TB');
+    m.groups.push({ id: 'A', title: 'A', nodeIds: [] });
+    expect(nextNodeId(m)).toBe('B');
+  });
+
+  it('newGroupId skips ids already taken by nodes', () => {
+    const m = emptyModel('TB');
+    for (let i = 1; i <= 100; i++) m.nodes.push(nodeAt(`sub${i}`, 0, 0));
+    const id = newGroupId(m);
+    expect(m.nodes.some((n) => n.id === id)).toBe(false);
   });
 });
 

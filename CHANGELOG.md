@@ -7,6 +7,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Edges to and from subgraphs.** A diagram can connect a whole subgraph to a node, a node to a subgraph, or one subgraph to another — `S1 --> D` where `S1` is a subgraph id, in either direction and in both positions. Diagrams written by hand now render instead of being mangled, and edges can be drawn in the visual editor: select a subgraph and drag from one of the four hollow connect anchors at its box edges. Releasing over a member node targets that node; releasing over a subgraph's empty interior, border or title targets the subgraph. Connect mode (`↳`) accepts a subgraph at either end too.
+- Subgraph handles now read at a glance: hollow circles at the box edge midpoints create edges, solid circles at the corners resize.
 - All 48 Mermaid v11.3.0 node shapes are now supported, up from 14.
 - Shapes are grouped into six families in the palette, dropdown and sidebar.
 - Node syntax is preserved: nodes written as `A[Label]` stay that way, and `@{…}` attributes ceasg does not model are round-tripped untouched.
@@ -19,6 +21,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Panning now stops at the edge of the diagram instead of scrolling it off-screen. Push past the edge and the canvas resists, then springs back, always leaving part of the diagram in view. Applies to every pan gesture, including the existing space-drag and middle-button drag.
 
 ### Fixed
+- A subgraph named as an edge endpoint is no longer turned into a stray box. `S1 --> D`, where `S1` is a subgraph, used to invent a rectangle node sharing the subgraph's id, draw it over the diagram, and write an `S1["S1"]` declaration back into the Markdown file that the source never had. The edge now attaches to the subgraph itself, and the diagram round-trips unchanged. This works whether the edge is written before or after the `subgraph` block.
+- `style` and `class` lines targeting a subgraph id are preserved instead of being dropped on save.
+- Auto layout no longer ignores edges attached to a subgraph, so a connected subgraph is placed near its neighbours rather than as if it had no connections.
 - Shape palette icons draw their stroke-only detail again. They were styled by a class no stylesheet defined, so they fell back to a black fill and no stroke: every comment shape was invisible, as were the divider lines inside the framed, lined and windowed shapes and the inner ring of a double circle. Icons now use the same styling as the canvas, so a preview matches the node it inserts.
 - Shape names ceasg does not recognise no longer lose their original shape name. They still draw as a rectangle, but the name is kept and written back unchanged instead of being replaced with `rect`.
 - Holding space and switching away from the editor no longer leaves the canvas stuck in pan mode.

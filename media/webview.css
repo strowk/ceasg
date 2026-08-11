@@ -15,6 +15,9 @@ html, body { height: 100%; margin: 0; font-family: var(--vscode-font-family); }
 .ceasg-ghost { fill: none; stroke: var(--vscode-focusBorder); stroke-width: 1.5; stroke-dasharray: 4 2; }
 .ceasg-handle { fill: var(--vscode-editor-background); stroke: var(--vscode-focusBorder); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: auto; cursor: crosshair; }
 .ceasg-handle:hover { fill: var(--vscode-focusBorder); }
+/* Solid = resize, hollow = connect. A selected subgraph draws both, and without
+   the fill its four corners and four edge midpoints are indistinguishable. */
+.ceasg-handle-resize { fill: var(--vscode-focusBorder); }
 .ceasg-label-editor { position: fixed; z-index: 10; font-family: var(--vscode-editor-font-family); background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); border: 1px solid var(--vscode-focusBorder); padding: 2px; font-size: 14px; }
 .ceasg-toolbar { display: flex; gap: 4px; padding: 4px; border-bottom: 1px solid var(--vscode-panel-border); }
 .ceasg-tb-btn { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 2px 8px; cursor: pointer; }

@@ -16,11 +16,13 @@ export class Overlay {
     this.g.appendChild(r);
   }
   marquee(x: number, y: number, w: number, h: number): void { this.outline(x, y, w, h, 'ceasg-marquee'); }
-  handle(cx: number, cy: number, r: number): void {
+  /** A selected subgraph shows both kinds at once, so they must not look alike:
+   *  'resize' paints solid, 'connect' stays hollow (see media/webview.css). */
+  handle(cx: number, cy: number, r: number, kind: 'connect' | 'resize' = 'connect'): void {
     const c = document.createElementNS(SVG_NS, 'circle');
     c.setAttribute('cx', String(cx)); c.setAttribute('cy', String(cy));
     c.setAttribute('r', String(r));
-    c.setAttribute('class', 'ceasg-handle');
+    c.setAttribute('class', kind === 'resize' ? 'ceasg-handle ceasg-handle-resize' : 'ceasg-handle');
     this.g.appendChild(c);
   }
   ghostLine(x1: number, y1: number, x2: number, y2: number): void {

@@ -151,9 +151,21 @@ export class PropertiesPanel {
     this.host.appendChild(actions);
   }
 
+  /** An edge endpoint id may name a node or a subgraph, and neither reads well
+   *  raw — show whatever the canvas draws on it. */
+  private endpointName(id: string): string {
+    const model = this.editor.getModel();
+    const node = model.nodes.find((n) => n.id === id);
+    if (node) { return node.label || id; }
+    const group = model.groups.find((g) => g.id === id);
+    if (group) { return group.title || id; }
+    return id;
+  }
+
   private edgePanel(id: string): void {
     const edge = () => this.editor.getModel().edges.find((e) => e.id === id)!;
-    const head = document.createElement('div'); head.className = 'ceasg-panel-head'; head.textContent = `${edge().from} → ${edge().to}`;
+    const head = document.createElement('div'); head.className = 'ceasg-panel-head';
+    head.textContent = `${this.endpointName(edge().from)} → ${this.endpointName(edge().to)}`;
     this.host.appendChild(head);
 
     const label = document.createElement('input'); label.type = 'text'; label.value = edge().label;

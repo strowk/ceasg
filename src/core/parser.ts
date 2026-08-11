@@ -383,6 +383,10 @@ export function mermaidToModel(text: string): ParseResult {
 	const groupedNodes = new Set<string>();
 	const linkStyleDirectives: Array<{ index: number; props: string }> = [];
 	const clickBindings: Array<{ id: string; target: string; raw: string }> = [];
+	// Raw `style <id> <props>` text per id. `style S1 fill:#f00` is how Mermaid
+	// styles a *subgraph*, and we only learn that `S1` names a group after the
+	// whole document is read — see the reconciliation pass at the end.
+	const rawStyleProps = new Map<string, string[]>();
 
 	const ensureNode = (token: ParsedToken): DiagramNode => {
 		let node = nodeMap.get(token.id);
@@ -541,6 +545,9 @@ export function mermaidToModel(text: string): ParseResult {
 		if (styleMatch && styleMatch[1] && styleMatch[2]) {
 			const node = ensureNode({ id: styleMatch[1] });
 			applyStyleProps(node, styleMatch[2]);
+			const prev = rawStyleProps.get(styleMatch[1]);
+			if (prev) prev.push(styleMatch[2]);
+			else rawStyleProps.set(styleMatch[1], [styleMatch[2]]);
 			continue;
 		}
 
@@ -643,13 +650,50 @@ export function mermaidToModel(text: string): ParseResult {
 		edge.style = { ...edge.style, ...parsed };
 	}
 
-	// Drop groups with no members AND no child groups.
+	// Drop groups with no members AND no child groups — unless an edge names the
+	// group. `subgraph S1 \n end` plus `S1 --> D` would otherwise drop the group
+	// and leave the placeholder node the reconciliation below exists to remove.
 	const parents = new Set(
 		model.groups.map((g) => g.parentId).filter((p): p is string => !!p),
 	);
+	const edgeEndpoints = new Set(model.edges.flatMap((e) => [e.from, e.to]));
 	model.groups = model.groups.filter(
-		(g) => g.nodeIds.length > 0 || parents.has(g.id),
+		(g) => g.nodeIds.length > 0 || parents.has(g.id) || edgeEndpoints.has(g.id),
 	);
+
+	// Mermaid lets a subgraph id stand wherever an edge expects a node
+	// (`S1 --> D`). The line loop cannot tell the two apart — the edge may be
+	// written *before* its `subgraph` block, so the group does not exist yet —
+	// and `ensureNode` invents a placeholder. Reconcile once every group is
+	// known: drop those placeholders and let the edges, which still carry the
+	// id, resolve to the group instead. This runs before the position-hint
+	// loops so a stale `pos` hint is never applied to a node that is now gone,
+	// and it clears `nodeMap` so a `click <group id>` binding falls through to
+	// extras and round-trips verbatim.
+	const groupIds = new Set(model.groups.map((g) => g.id));
+	for (const phantom of model.nodes.filter((n) => groupIds.has(n.id))) {
+		// `style S1 ...` and `class S1 hot` are how Mermaid styles a subgraph, and
+		// both routed through `ensureNode` into this phantom. Subgraph styling is
+		// not modelled, so preserve the lines verbatim in extras rather than
+		// losing them with the node. Class assignments are re-emitted one id per
+		// line: any node co-listed on the original `class A,S1 hot` still gets its
+		// assignment from the serializer's own grouping, so repeating the combined
+		// line here would assign it twice.
+		for (const props of rawStyleProps.get(phantom.id) ?? []) {
+			model.extras.push(`style ${phantom.id} ${props}`);
+		}
+		for (const cls of phantom.classes ?? []) {
+			model.extras.push(`class ${phantom.id} ${cls}`);
+		}
+	}
+	model.nodes = model.nodes.filter((n) => !groupIds.has(n.id));
+	for (const id of groupIds) {
+		nodeMap.delete(id);
+	}
+	for (const group of model.groups) {
+		// A subgraph id can also be mentioned inside another subgraph's body.
+		group.nodeIds = group.nodeIds.filter((id) => !groupIds.has(id));
+	}
 
 	// Apply stored group bounds from gpos hint comments.
 	for (const group of model.groups) {

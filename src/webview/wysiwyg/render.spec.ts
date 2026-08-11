@@ -156,6 +156,30 @@ describe('renderDiagram groups', () => {
     expect(groupLayer.compareDocumentPosition(nodeLayer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('anchors an edge to a subgraph on the group box border', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph g1\nA\nend\nB\n');
+    const a = model.nodes.find((n) => n.id === 'A')!;
+    const b = model.nodes.find((n) => n.id === 'B')!;
+    a.x = 0; a.y = 0; b.x = 500; b.y = 0;
+    const g1 = model.groups.find((g) => g.id === 'g1')!;
+    g1.x = -100; g1.y = -100; g1.w = 200; g1.h = 200;
+    model.edges.push({ id: 'e1', from: 'g1', to: 'B', label: '', kind: 'arrow' });
+    const { refs } = renderDiagram(model);
+    const d = refs.edgeEls.get('e1')!.querySelector('.ceasg-edge-line')!.getAttribute('d')!;
+    // Group centre is (0, 0), B is due east, so the path leaves the box's right
+    // border at x = 100 — not the centre and not a member node's border.
+    expect(d.startsWith('M100,0')).toBe(true);
+  });
+
+  it('skips an edge with an unresolvable endpoint instead of throwing', () => {
+    const { model } = mermaidToModel('flowchart LR\nA-->B\n');
+    model.nodes.forEach((n, i) => { n.x = i * 200; n.y = 0; });
+    model.edges.push({ id: 'ghost', from: 'A', to: 'nope', label: '', kind: 'arrow' });
+    const { refs } = renderDiagram(model);
+    expect(refs.edgeEls.has('ghost')).toBe(false);
+    expect(refs.edgeEls.size).toBe(1);
+  });
+
   it('renders an outer group before its nested child (outer behind)', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph outer\nsubgraph inner\nA-->B\nend\nend\n',

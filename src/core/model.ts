@@ -278,9 +278,20 @@ export function findNode(
 	return model.nodes.find((n) => n.id === id);
 }
 
-/** Generate a node id that does not collide with existing nodes. */
-export function nextNodeId(model: DiagramModel): string {
+/**
+ * Every id an edge endpoint could name. Node ids and group ids share one
+ * namespace because `S1 --> D` is textually identical whether `S1` is a node
+ * or a subgraph, so a collision would make the edge unresolvable.
+ */
+function usedIds(model: DiagramModel): Set<string> {
 	const used = new Set(model.nodes.map((n) => n.id));
+	for (const g of model.groups) used.add(g.id);
+	return used;
+}
+
+/** Generate a node id that collides with no existing node *or* group. */
+export function nextNodeId(model: DiagramModel): string {
+	const used = usedIds(model);
 	// Try single uppercase letters first (A, B, C, ...), then N1, N2, ...
 	for (let i = 0; i < 26; i++) {
 		const id = String.fromCharCode(65 + i);
@@ -306,8 +317,9 @@ export function removeNode(model: DiagramModel, id: string): void {
 }
 
 let groupCounter = 0;
+/** Generate a group id that collides with no existing group *or* node. */
 export function newGroupId(model: DiagramModel): string {
-	const used = new Set(model.groups.map((g) => g.id));
+	const used = usedIds(model);
 	let n = ++groupCounter;
 	while (used.has(`sub${n}`)) n++;
 	groupCounter = n;
@@ -386,6 +398,41 @@ export function groupBounds(
 		w: maxX - minX + GROUP_PAD * 2,
 		h: maxY - minY + GROUP_PAD * 2 + GROUP_TITLE_H,
 	};
+}
+
+/** True if `id` names a subgraph. */
+export function isGroupId(model: DiagramModel, id: string): boolean {
+	return model.groups.some((g) => g.id === id);
+}
+
+/**
+ * Geometry for an edge endpoint id, which may name a node *or* a subgraph —
+ * Mermaid accepts a subgraph id wherever an edge expects a node. The single
+ * resolution point for edge endpoints, so the renderer, hit testing and layout
+ * cannot disagree, exactly as `nodeSize()` does for node boxes.
+ *
+ * `x`/`y` are the **centre**, matching `DiagramNode`; `groupBounds()` reports a
+ * top-left origin and is converted here. An unknown id returns undefined and
+ * the caller skips that edge, as it already does for a dangling edge.
+ */
+export function endpointGeometry(
+	model: DiagramModel,
+	id: string,
+): { x: number; y: number; w: number; h: number; shape: NodeShape } | undefined {
+	// A node wins over a group so behaviour stays defined even if the
+	// disjoint-id invariant is ever violated.
+	const node = findNode(model, id);
+	if (node) {
+		const s = nodeSize(model, node);
+		return { x: node.x, y: node.y, w: s.w, h: s.h, shape: node.shape };
+	}
+	const group = model.groups.find((g) => g.id === id);
+	if (group) {
+		const b = groupBounds(model, group);
+		// A subgraph box has no shape outline; plain rect box math applies.
+		return { x: b.x + b.w / 2, y: b.y + b.h / 2, w: b.w, h: b.h, shape: "rect" };
+	}
+	return undefined;
 }
 
 /** True if `maybeAncestor` is `id` or an ancestor of `id` in the group tree. */
@@ -527,6 +574,10 @@ export function removeGroup(model: DiagramModel, groupId: string): void {
 		}
 	}
 	model.groups = model.groups.filter((g) => g.id !== groupId);
+	// Edges that named the box have no meaningful survivor: reattaching them to
+	// the parent group would invent a connection the author never drew. Dropping
+	// is predictable, and undo restores them.
+	model.edges = model.edges.filter((e) => e.from !== groupId && e.to !== groupId);
 }
 
 export function removeEdge(model: DiagramModel, id: string): void {

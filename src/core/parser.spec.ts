@@ -64,6 +64,109 @@ describe('subgraph nesting + geometry', () => {
   });
 });
 
+describe('edges naming a subgraph id', () => {
+  const PIPELINE =
+    'flowchart TB\n    subgraph S1 [Pipeline]\n        A[Ingest] --> B[Transform]\n    end\n    S1 --> D[Report]\n';
+
+  it('does not invent a phantom node for the subgraph id', () => {
+    const { model } = mermaidToModel(PIPELINE);
+    expect(model.nodes.map((n) => n.id).sort()).toEqual(['A', 'B', 'D']);
+    expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
+    expect(model.edges.map((e) => `${e.from}->${e.to}`)).toEqual(['A->B', 'S1->D']);
+    const g = model.groups.find((gr) => gr.id === 'S1')!;
+    expect(g.title).toBe('Pipeline');
+    expect(g.nodeIds).toEqual(['A', 'B']);
+  });
+
+  // Node insertion order differs (the forward reference declares D first), so
+  // compare by sorted id — everything that carries meaning must match.
+  const shape = (src: string) => {
+    const { model } = mermaidToModel(src);
+    return {
+      nodes: model.nodes.map((n) => n.id).sort(),
+      groups: model.groups.map((g) => ({ id: g.id, nodeIds: [...g.nodeIds].sort() })),
+      edges: model.edges.map((e) => `${e.from}->${e.to}`).sort(),
+    };
+  };
+
+  it('gives the same model whether the edge precedes or follows the block', () => {
+    const forward =
+      'flowchart TB\n    S1 --> D[Report]\n    subgraph S1 [Pipeline]\n        A[Ingest] --> B[Transform]\n    end\n';
+    expect(shape(forward)).toEqual(shape(PIPELINE));
+  });
+
+  it('resolves a node -> subgraph edge', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nD[Report]\nsubgraph S1\nA-->B\nend\nD --> S1\n',
+    );
+    expect(model.nodes.map((n) => n.id).sort()).toEqual(['A', 'B', 'D']);
+    expect(model.edges.map((e) => `${e.from}->${e.to}`)).toContain('D->S1');
+  });
+
+  it('resolves a subgraph -> subgraph edge', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA\nend\nsubgraph S2\nB\nend\nS1 --> S2\n',
+    );
+    expect(model.nodes.map((n) => n.id).sort()).toEqual(['A', 'B']);
+    expect(model.groups.map((g) => g.id).sort()).toEqual(['S1', 'S2']);
+    expect(model.edges.map((e) => `${e.from}->${e.to}`)).toEqual(['S1->S2']);
+  });
+
+  it('keeps an empty subgraph that an edge references', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph S1\nend\nS1 --> D\n');
+    expect(model.groups.find((g) => g.id === 'S1')).toBeTruthy();
+    expect(model.nodes.map((n) => n.id)).toEqual(['D']);
+  });
+
+  it('strips a subgraph id mentioned inside another subgraph body', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA\nend\nsubgraph S2\nS1\nB\nend\nS1 --> B\n',
+    );
+    const s2 = model.groups.find((g) => g.id === 'S2')!;
+    expect(s2.nodeIds).toEqual(['B']);
+    expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
+  });
+
+  it('keeps a click binding on a subgraph id in extras', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA-->B\nend\nS1 --> D\nclick S1 "https://x"\n',
+    );
+    expect(model.extras.join('\n')).toContain('click S1 "https://x"');
+    expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
+  });
+
+  // `style S1 ...` / `class S1 hot` is how Mermaid styles a subgraph. ceasg does
+  // not model subgraph styling, so the lines must survive as extras rather than
+  // disappearing with the placeholder node they were folded into.
+  it('preserves a style line targeting a subgraph id', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA-->B\nend\nS1 --> D\nstyle S1 fill:#f00\n',
+    );
+    expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
+    expect(model.extras).toContain('style S1 fill:#f00');
+  });
+
+  it('preserves a class assignment targeting a subgraph id without duplicating it', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA-->B\nend\nS1 --> D\nclassDef hot fill:#f00\nclass A,S1 hot\n',
+    );
+    expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
+    expect(model.extras).toContain('class S1 hot');
+    // A still carries the class in the model, so the serializer emits its
+    // assignment; the extras line must not repeat it.
+    expect(model.nodes.find((n) => n.id === 'A')!.classes).toEqual(['hot']);
+    expect(model.extras.filter((e) => e.startsWith('class '))).toEqual(['class S1 hot']);
+  });
+
+  it('does not apply a stale pos hint left over from a removed phantom', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n%% mermaid-flow:pos S1=500,500 D=80,60\nsubgraph S1\nA-->B\nend\nS1 --> D\n',
+    );
+    expect(model.nodes.map((n) => n.id).sort()).toEqual(['A', 'B', 'D']);
+    expect(model.nodes.find((n) => n.id === 'D')).toMatchObject({ x: 80, y: 60 });
+  });
+});
+
 describe('node style props', () => {
   it('parses stroke-width and stroke-dasharray as typed fields, not extras', () => {
     const { model } = mermaidToModel(

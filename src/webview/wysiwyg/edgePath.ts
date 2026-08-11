@@ -1,5 +1,19 @@
 import { DiagramModel, DiagramNode, DiagramEdge, Direction } from '../../core';
-import { nodeSize, SHAPES, geom, rayPolygonHit } from '../../core';
+import { nodeSize, SHAPES, geom, rayPolygonHit, endpointGeometry } from '../../core';
+
+/** Where a ray from a box's centre toward (dx, dy) crosses the box border.
+ *  Shared by nodes and subgraph boxes so both meet an edge the same way. */
+function boxBorderPoint(
+  cx: number, cy: number, w: number, h: number, dx: number, dy: number,
+): { x: number; y: number } {
+  // Coincident centres give no direction to cast along; the right edge keeps the
+  // path's two ends distinct instead of collapsing onto the centre.
+  if (dx === 0 && dy === 0) { return { x: cx + w / 2, y: cy }; }
+  const hw = w / 2;
+  const hh = h / 2;
+  const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+  return { x: cx + dx * scale, y: cy + dy * scale };
+}
 
 // `model` is needed to resolve the node's font (classDef layers included), which
 // decides the box size and therefore where the edge meets its border.
@@ -7,7 +21,7 @@ export function nodeBorderPoint(model: DiagramModel, node: DiagramNode, towardX:
   const { w, h } = nodeSize(model, node);
   const dx = towardX - node.x;
   const dy = towardY - node.y;
-  if (dx === 0 && dy === 0) { return { x: node.x + w / 2, y: node.y }; }
+  if (dx === 0 && dy === 0) { return boxBorderPoint(node.x, node.y, w, h, dx, dy); }
   // Shapes whose filled region diverges sharply from their box declare an
   // outline; everything else keeps the box math this function has always used.
   const outline = SHAPES[node.shape]?.outline;
@@ -15,15 +29,30 @@ export function nodeBorderPoint(model: DiagramModel, node: DiagramNode, towardX:
     const hit = rayPolygonHit(node.x, node.y, dx, dy, outline(geom(node.x, node.y, w, h)));
     if (hit) { return hit; }
   }
-  const hw = w / 2;
-  const hh = h / 2;
-  const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
-  return { x: node.x + dx * scale, y: node.y + dy * scale };
+  return boxBorderPoint(node.x, node.y, w, h, dx, dy);
 }
 
-export function edgePathD(model: DiagramModel, from: DiagramNode, to: DiagramNode, dir: Direction, offset = 0): string {
-  const a = nodeBorderPoint(model, from, to.x, to.y);
-  const b = nodeBorderPoint(model, to, from.x, from.y);
+/** Border point for an edge endpoint id, which may name a node *or* a subgraph.
+ *  Undefined when the id names neither, so callers can skip the edge. */
+export function endpointBorderPoint(
+  model: DiagramModel, id: string, towardX: number, towardY: number,
+): { x: number; y: number } | undefined {
+  // Nodes go through `nodeBorderPoint` to keep the shape-outline ray cast; a
+  // subgraph box is a plain rect and has no outline to cast against.
+  const node = model.nodes.find((n) => n.id === id);
+  if (node) { return nodeBorderPoint(model, node, towardX, towardY); }
+  const g = endpointGeometry(model, id);
+  if (!g) { return undefined; }
+  return boxBorderPoint(g.x, g.y, g.w, g.h, towardX - g.x, towardY - g.y);
+}
+
+export function edgePathD(model: DiagramModel, fromId: string, toId: string, dir: Direction, offset = 0): string | null {
+  const from = endpointGeometry(model, fromId);
+  const to = endpointGeometry(model, toId);
+  if (!from || !to) { return null; }
+  const a = endpointBorderPoint(model, fromId, to.x, to.y);
+  const b = endpointBorderPoint(model, toId, from.x, from.y);
+  if (!a || !b) { return null; }
   // Approach axis follows the actual geometry of this edge, so the arrowhead
   // points the natural way (down when the target is below, right when it's to the
   // right, etc.) even after nodes are dragged around. Fall back to the diagram's
@@ -45,16 +74,17 @@ export function edgePathD(model: DiagramModel, from: DiagramNode, to: DiagramNod
   return `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`;
 }
 
-export function selfLoopPathD(model: DiagramModel, node: DiagramNode, dir: Direction): string {
-  const { w, h } = nodeSize(model, node);
+export function selfLoopPathD(model: DiagramModel, id: string, dir: Direction): string | null {
+  const g = endpointGeometry(model, id);
+  if (!g) { return null; }
   const horizontal = dir === 'LR' || dir === 'RL';
   if (horizontal) {
-    const x = node.x + w / 2;
-    const y = node.y;
+    const x = g.x + g.w / 2;
+    const y = g.y;
     return `M${x},${y - 8} C${x + 60},${y - 40} ${x + 60},${y + 40} ${x},${y + 8}`;
   }
-  const x = node.x;
-  const y = node.y + h / 2;
+  const x = g.x;
+  const y = g.y + g.h / 2;
   return `M${x - 8},${y} C${x - 40},${y + 60} ${x + 40},${y + 60} ${x + 8},${y}`;
 }
 

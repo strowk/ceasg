@@ -1,5 +1,5 @@
-import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, resizeBox, EDGE_HIT_TOLERANCE } from './hitTest';
+import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal, isGroupId, endpointGeometry, DiagramModel } from '../../core';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, groupAnchorPoints, resizeBox, EDGE_HIT_TOLERANCE } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
@@ -99,6 +99,21 @@ export class PointerController {
     return this.editor.viewport!.screenToSvg(e.clientX, e.clientY);
   }
 
+  /** The edge endpoint a point names: a node wins over the box it sits in,
+   *  otherwise the innermost enclosing subgraph, otherwise nothing. Shared by
+   *  anchor-drag release and connect mode so both gestures agree on what a
+   *  release over a subgraph's interior, border or title means. */
+  private endpointAtPoint(model: DiagramModel, x: number, y: number): string | undefined {
+    return nodeAtPoint(model, x, y)?.id ?? groupAtPoint(model, x, y);
+  }
+
+  /** Where the ghost line starts from for an endpoint id, falling back to the
+   *  pointer so an unresolvable id can never throw mid-gesture. */
+  private endpointCentre(model: DiagramModel, id: string, fallback: { x: number; y: number }): { x: number; y: number } {
+    const g = endpointGeometry(model, id);
+    return g ? { x: g.x, y: g.y } : { x: fallback.x, y: fallback.y };
+  }
+
   private onDown(e: PointerEvent, svg: SVGSVGElement): void {
     svg.setPointerCapture(e.pointerId);
     this.capturedPointerId = e.pointerId;
@@ -135,23 +150,24 @@ export class PointerController {
 
     // Click-click connect mode
     if (this.mode === 'connect') {
-      const clickedNode = nodeAtPoint(model, p.x, p.y);
-      if (clickedNode) {
+      // Both clicks resolve the same way, so a subgraph can be either end.
+      const clickedId = this.endpointAtPoint(model, p.x, p.y);
+      if (clickedId) {
         if (!this.connectFrom) {
-          // First click: set source node, wait for second click
-          this.connectFrom = clickedNode.id;
-          this.connectFromPt = { x: clickedNode.x, y: clickedNode.y };
+          // First click: set source, wait for second click
+          this.connectFrom = clickedId;
+          this.connectFromPt = this.endpointCentre(model, clickedId, p);
           this.connectClickWaiting = true;
           this.editor.repaint();
           return;
-        } else if (clickedNode.id !== this.connectFrom) {
-          // Second click on a different node: create edge
+        } else if (clickedId !== this.connectFrom) {
+          // Second click on a different endpoint: create edge
           const from = this.connectFrom;
           this.connectFrom = null;
           this.connectFromPt = null;
           this.connectClickWaiting = false;
           this.editor.mutate((m) => {
-            m.edges.push({ id: newEdgeId(), from, to: clickedNode.id, label: '', kind: 'arrow' });
+            m.edges.push({ id: newEdgeId(), from, to: clickedId, label: '', kind: 'arrow' });
           }, { commit: true });
           return;
         } else {
@@ -171,7 +187,7 @@ export class PointerController {
       return;
     }
 
-    if (this.selection.single && this.editor.isGroupId(this.selection.single)) {
+    if (this.selection.single && isGroupId(model, this.selection.single)) {
       const corner = groupHandleAtPoint(model, this.selection.single, p.x, p.y, 8 / this.editor.viewport!.scale);
       if (corner) {
         // Materialise current bounds so the resize edits explicit values.
@@ -181,6 +197,16 @@ export class PointerController {
           g.x = b.x; g.y = b.y; g.w = b.w; g.h = b.h;
         });
         this.resize = { groupId: this.selection.single, corner };
+        return;
+      }
+      // Corner handles and edge midpoints never coincide, so this only ever
+      // runs on a genuine miss above — the resize gesture keeps its behaviour.
+      const tol = 9 / this.editor.viewport!.scale;
+      const anchor = groupAnchorPoints(model, this.selection.single)
+        .find((a) => Math.abs(p.x - a.x) <= tol && Math.abs(p.y - a.y) <= tol);
+      if (anchor) {
+        this.connectFrom = this.selection.single;
+        this.connectFromPt = { x: anchor.x, y: anchor.y };
         return;
       }
     }
@@ -264,10 +290,7 @@ export class PointerController {
       return;
     }
     if (this.connectFrom) {
-      const fromPt = this.connectFromPt ?? (() => {
-        const from = this.editor.getModel().nodes.find((n) => n.id === this.connectFrom)!;
-        return { x: from.x, y: from.y };
-      })();
+      const fromPt = this.connectFromPt ?? this.endpointCentre(this.editor.getModel(), this.connectFrom, p);
       this.editor.repaint();
       this.overlay0().ghostLine(fromPt.x, fromPt.y, p.x, p.y);
       return;
@@ -316,12 +339,13 @@ export class PointerController {
       this.groupDragId = null;
       this.down = null;
     } else if (this.connectFrom && !this.connectClickWaiting) {
-      // Anchor-drag connect: pointer released on a target node creates the edge
-      const target = nodeAtPoint(this.editor.getModel(), p.x, p.y);
-      if (target && target.id !== this.connectFrom) {
+      // Anchor-drag connect: releasing on a node or subgraph creates the edge.
+      // Self-edges stay refused, which also rules out subgraph self-loops.
+      const target = this.endpointAtPoint(this.editor.getModel(), p.x, p.y);
+      if (target && target !== this.connectFrom) {
         const from = this.connectFrom;
         this.editor.mutate((m) => {
-          m.edges.push({ id: newEdgeId(), from, to: target.id, label: '', kind: 'arrow' });
+          m.edges.push({ id: newEdgeId(), from, to: target, label: '', kind: 'arrow' });
         }, { commit: true });
       } else { this.editor.repaint(); }
       this.connectFrom = null;
