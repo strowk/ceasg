@@ -1,5 +1,5 @@
 import { mermaidToModel, modelToMermaid, layoutMissing, cloneModel, DiagramModel, nodeSize, removeNode, removeEdge, NodeShape, nextNodeId, groupBounds, assignNodeToGroup, assignGroupToParent, newGroupId, removeGroup, groupOf, materializeGroupBounds, measureTextWidth, findFreeSpot, isGroupId } from '../../core';
-import { renderDiagram, RenderRefs } from './render';
+import { renderDiagram, RenderRefs, GROUP_TITLE_FONT_SIZE } from './render';
 import { Viewport, computeContentBounds } from './viewport';
 import { UpdateMessage } from '../../shared/messages';
 import { Overlay } from './overlay';
@@ -13,8 +13,9 @@ import { ShapeSidebar } from './sidebar';
 import { findPaletteItem } from './paletteModel';
 
 /** Must match the .ceasg-group-title font in media/diagram.css so the rename
- *  editor is sized to the same text the box renders. */
-const GROUP_TITLE_FONT = '600 13px "trebuchet ms", verdana, arial, sans-serif';
+ *  editor is sized to the same text the box renders. Size comes from
+ *  GROUP_TITLE_FONT_SIZE (render.ts) so the two never drift apart. */
+const GROUP_TITLE_FONT = `600 ${GROUP_TITLE_FONT_SIZE}px "trebuchet ms", verdana, arial, sans-serif`;
 
 /** After a node drag ends, set the node's membership to the innermost group its
  *  centre lands in (or ungroup when it lands on empty canvas). */

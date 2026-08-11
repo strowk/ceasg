@@ -1,7 +1,12 @@
-import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, edgeLabelSize, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, edgeLabelSize, groupBounds, groupChildren, BASE_FONT_SIZE, nodeLabelLayout, edgeLabelLayout, layoutLabel, EDGE_LABEL_FONT_SIZE, type LabelLine } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Must match the .ceasg-group-title font-size in media/diagram.css. Exported
+// so editor.ts's GROUP_TITLE_FONT (the same size, as a measureText shorthand
+// for the rename editor) is built from this one number instead of repeating it.
+export const GROUP_TITLE_FONT_SIZE = 13;
 
 export interface RenderRefs {
   nodeEls: Map<string, SVGGElement>;
@@ -11,6 +16,35 @@ export interface RenderRefs {
 
 function el<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
   return document.createElementNS(SVG_NS, name);
+}
+
+/**
+ * Paint laid-out label lines into a `<text>` as one `<tspan>` per styled run.
+ *
+ * Only the first run of a line carries `x`/`dy`. That keeps the whole line a
+ * single SVG text chunk, so the browser centres it exactly under the inherited
+ * `text-anchor` — no measurement, and no drift between runs. `xml:space` is set
+ * only for multi-run lines, so the space in `**Bold** and _italic_` survives the
+ * tspan boundary while single-run labels keep their existing whitespace handling.
+ */
+function paintLabelLines(text: SVGTextElement, lines: LabelLine[], x: number, lineH: number): void {
+  if (lines.some((line) => line.length > 1)) { text.setAttribute('xml:space', 'preserve'); }
+  const top = -((lines.length - 1) / 2) * lineH;
+  lines.forEach((line, i) => {
+    // An empty line still needs a tspan, or the lines below it shift up.
+    const runs = line.length > 0 ? line : [{ text: '' }];
+    runs.forEach((run, j) => {
+      const tspan = el('tspan');
+      if (j === 0) {
+        tspan.setAttribute('x', String(x));
+        tspan.setAttribute('dy', i === 0 ? String(top) : String(lineH));
+      }
+      if (run.bold) { tspan.style.fontWeight = 'bold'; }
+      if (run.italic) { tspan.style.fontStyle = 'italic'; }
+      tspan.textContent = run.text;
+      text.appendChild(tspan);
+    });
+  });
 }
 
 function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
@@ -43,7 +77,7 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   // is nowhere inside it to draw one; Mermaid drops the label for these too.
   // The label stays on the node and in the properties panel — only unpainted.
   if (lookupShape(node.shape)?.hideLabel) { return g; }
-  const lines = node.label.split('\n');
+  const layout = nodeLabelLayout(node, style);
   const text = el('text');
   text.setAttribute('class', 'ceasg-label');
   text.setAttribute('x', String(node.x));
@@ -55,14 +89,7 @@ function renderNode(node: DiagramNode, model: DiagramModel): SVGGElement {
   if (style?.fontFamily) { text.style.fontFamily = style.fontFamily; }
   // Line height tracks the font so multi-line labels stay spaced at any size,
   // and agrees with the height `estimateNodeSize` reserved for them.
-  const lineH = style?.fontSize ?? BASE_FONT_SIZE;
-  lines.forEach((line, i) => {
-    const tspan = el('tspan');
-    tspan.setAttribute('x', String(node.x));
-    tspan.setAttribute('dy', i === 0 ? `${-((lines.length - 1) / 2) * lineH}` : `${lineH}`);
-    tspan.textContent = line;
-    text.appendChild(tspan);
-  });
+  paintLabelLines(text, layout.lines, node.x, style?.fontSize ?? BASE_FONT_SIZE);
   g.appendChild(text);
   return g;
 }
@@ -121,7 +148,7 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
     label.setAttribute('dominant-baseline', 'central');
     if (style?.textColor) { label.style.fill = style.textColor; }
     if (style?.fontSize) { label.style.fontSize = `${style.fontSize}px`; }
-    label.textContent = edge.label;
+    paintLabelLines(label, edgeLabelLayout(edge).lines, mid.x, style?.fontSize ?? EDGE_LABEL_FONT_SIZE);
     g.appendChild(label);
   }
   return g;
@@ -144,7 +171,12 @@ function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
   title.setAttribute('class', 'ceasg-group-title');
   title.setAttribute('x', String(b.x + 10));
   title.setAttribute('y', String(b.y + 16));
-  title.textContent = group.title;
+  // The title is anchored at the box's top-left, and the box is sized from its
+  // members, so the title never wraps — only its markup is styled.
+  const lines = layoutLabel(group.title, {
+    markdown: group.titleFormat === 'markdown', fontSize: GROUP_TITLE_FONT_SIZE,
+  }).lines;
+  paintLabelLines(title, lines, b.x + 10, GROUP_TITLE_FONT_SIZE);
   g.appendChild(title);
   return g;
 }

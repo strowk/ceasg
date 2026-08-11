@@ -190,3 +190,87 @@ describe('renderDiagram groups', () => {
     expect(ids.indexOf('outer')).toBeLessThan(ids.indexOf('inner'));
   });
 });
+
+describe('formatted labels', () => {
+  const place = (model: ReturnType<typeof mermaidToModel>['model']) => {
+    model.nodes.forEach((n, i) => { n.x = i * 300; n.y = 0; });
+  };
+
+  it('emits one tspan per styled run', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`**Bold** and _italic_`"]\n');
+    place(model);
+    const { refs } = renderDiagram(model);
+    const tspans = refs.nodeEls.get('A')!.querySelectorAll('tspan');
+    expect(tspans.length).toBe(3);
+    expect(tspans[0]!.textContent).toBe('Bold');
+    expect(tspans[0]!.style.fontWeight).toBe('bold');
+    expect(tspans[1]!.textContent).toBe(' and ');
+    expect(tspans[1]!.style.fontWeight).toBe('');
+    expect(tspans[2]!.textContent).toBe('italic');
+    expect(tspans[2]!.style.fontStyle).toBe('italic');
+  });
+
+  // Only the first run of a line carries x, so the whole line stays one SVG
+  // text chunk and the browser centres it under text-anchor: middle.
+  it('gives only the first run of a line an x', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`**a** b`"]\n');
+    place(model);
+    const { refs } = renderDiagram(model);
+    const tspans = refs.nodeEls.get('A')!.querySelectorAll('tspan');
+    expect(tspans[0]!.hasAttribute('x')).toBe(true);
+    expect(tspans[1]!.hasAttribute('x')).toBe(false);
+    expect(tspans[1]!.hasAttribute('dy')).toBe(false);
+  });
+
+  it('preserves whitespace only when a line has several runs', () => {
+    const { model: multi } = mermaidToModel('flowchart LR\nA["`**a** b`"]\n');
+    place(multi);
+    expect(renderDiagram(multi).refs.nodeEls.get('A')!
+      .querySelector('text')!.getAttribute('xml:space')).toBe('preserve');
+
+    const { model: single } = mermaidToModel('flowchart LR\nA[Plain]\n');
+    place(single);
+    expect(renderDiagram(single).refs.nodeEls.get('A')!
+      .querySelector('text')!.hasAttribute('xml:space')).toBe(false);
+  });
+
+  it('renders HTML markup in a plain label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["one<br/><b>two</b>"]\n');
+    place(model);
+    const g = renderDiagram(model).refs.nodeEls.get('A')!;
+    const tspans = g.querySelectorAll('tspan');
+    expect(tspans.length).toBe(2);
+    expect(tspans[0]!.textContent).toBe('one');
+    expect(tspans[1]!.textContent).toBe('two');
+    expect(tspans[1]!.style.fontWeight).toBe('bold');
+    // Second line: its own x, and a dy that steps down one line.
+    expect(tspans[1]!.hasAttribute('x')).toBe(true);
+  });
+
+  it('decodes entities', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["Tom &amp; Jerry"]\n');
+    place(model);
+    expect(renderDiagram(model).refs.nodeEls.get('A')!.textContent).toBe('Tom & Jerry');
+  });
+
+  it('renders a markdown edge label as styled runs', () => {
+    const { model } = mermaidToModel('flowchart LR\nA -->|"`**yes**`"| B\n');
+    place(model);
+    const label = renderDiagram(model).refs.edgeEls.get(model.edges[0]!.id)!
+      .querySelector('.ceasg-edge-label')!;
+    const tspans = label.querySelectorAll('tspan');
+    expect(tspans.length).toBe(1);
+    expect(tspans[0]!.textContent).toBe('yes');
+    expect((tspans[0] as SVGElement).style.fontWeight).toBe('bold');
+  });
+
+  it('renders a markdown subgraph title as styled runs', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph S["`**G**`"]\nA\nend\n');
+    place(model);
+    const title = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-title')!;
+    const tspans = title.querySelectorAll('tspan');
+    expect(tspans[0]!.textContent).toBe('G');
+    expect((tspans[0] as SVGElement).style.fontWeight).toBe('bold');
+  });
+});
