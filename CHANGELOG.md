@@ -4,7 +4,7 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.7.0] - Unreleased
+## [0.7.0] - 2026-08-11
 
 ### Added
 - **Edges to and from subgraphs.** A diagram can connect a whole subgraph to a node, a node to a subgraph, or one subgraph to another — `S1 --> D` where `S1` is a subgraph id, in either direction and in both positions. Diagrams written by hand now render instead of being mangled, and edges can be drawn in the visual editor: select a subgraph and drag from one of the four hollow connect anchors at its box edges. Releasing over a member node targets that node; releasing over a subgraph's empty interior, border or title targets the subgraph. Connect mode (`↳`) accepts a subgraph at either end too.
