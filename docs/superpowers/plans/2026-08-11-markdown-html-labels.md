@@ -1368,6 +1368,8 @@ In `renderGroup`, replace `title.textContent = group.title;` (line 147) with:
   paintLabelLines(title, lines, b.x + 10, GROUP_TITLE_FONT_SIZE);
 ```
 
+Pass an explicit non-wrapping `wrapWidth` in that call. `layoutLabel` ignores a caller-supplied `wrapWidth` in plain mode, but when `markdown` is set and `wrapWidth` is unset it **defaults to `DEFAULT_WRAP_WIDTH` (200)** — so omitting it makes long markdown titles wrap into a box that reserved no room for them.
+
 `GROUP_TITLE_FONT_SIZE` must match the `.ceasg-group-title` rule in `media/diagram.css`. Read that rule and declare the constant at the top of `render.ts` with a comment pointing at the CSS, in the style of the existing `properties.ts` defaults:
 
 ```ts
