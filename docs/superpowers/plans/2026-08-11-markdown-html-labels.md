@@ -214,7 +214,6 @@ export type LabelLine = LabelRun[];
 /** Tags we can actually draw in SVG text. Anything else stays literal, because
  *  silently swallowing `A <B> C` is worse than showing the angle brackets. */
 const TAG_RE = /^<(\/?)(b|strong|i|em)\s*>/i;
-const BR_RE = /^<br\s*\/?>/i;
 
 const NAMED_ENTITIES: Record<string, string> = {
 	amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0",
@@ -361,8 +360,6 @@ export function parseLabelMarkup(text: string, markdown = false): LabelLine[] {
 	return normalized.split("\n").map((line) => parseLine(line, markdown));
 }
 ```
-
-Note: `BR_RE` is declared for symmetry with `TAG_RE` but the `<br>` split happens in `parseLabelMarkup`. **Delete `BR_RE`** — an unused const will fail `pnpm run lint`.
 
 - [ ] **Step 4: Run the tests and verify they pass**
 
