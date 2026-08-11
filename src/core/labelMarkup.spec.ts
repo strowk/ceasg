@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLabelMarkup } from './labelMarkup';
+import { parseLabelMarkup, layoutLabel, DEFAULT_WRAP_WIDTH } from './labelMarkup';
 
 describe('parseLabelMarkup — plain text', () => {
   it('returns a single unstyled run', () => {
@@ -107,5 +107,70 @@ describe('parseLabelMarkup — markdown mode', () => {
     expect(parseLabelMarkup('**a** &amp; <i>b</i>', true)).toEqual([
       [{ text: 'a', bold: true }, { text: ' & ' }, { text: 'b', italic: true }],
     ]);
+  });
+});
+
+describe('layoutLabel', () => {
+  it('reports one line and a positive width for plain text', () => {
+    const l = layoutLabel('Hello');
+    expect(l.lines).toEqual([[{ text: 'Hello' }]]);
+    expect(l.width).toBeGreaterThan(0);
+    expect(l.height).toBe(16);
+  });
+  it('sizes height from the line count', () => {
+    expect(layoutLabel('a\nb\nc').height).toBe(48);
+  });
+  it('scales height with fontSize', () => {
+    expect(layoutLabel('a\nb', { fontSize: 24 }).height).toBe(48);
+  });
+  it('measures an empty label as zero width, one line high', () => {
+    const l = layoutLabel('');
+    expect(l.lines).toEqual([[]]);
+    expect(l.width).toBe(0);
+    expect(l.height).toBe(16);
+  });
+  it('measures a bold run wider than the same plain run', () => {
+    expect(layoutLabel('**Bold**', { markdown: true }).width)
+      .toBeGreaterThan(layoutLabel('Bold').width);
+  });
+  it('sums run widths across a line', () => {
+    const mixed = layoutLabel('**ab** cd', { markdown: true });
+    expect(mixed.lines[0]).toHaveLength(2);
+    expect(mixed.width).toBeGreaterThan(layoutLabel('ab cd').width);
+  });
+});
+
+describe('layoutLabel — wrapping', () => {
+  const long = 'the quick brown fox jumps over the lazy dog again and again';
+
+  it('does not wrap plain labels however long', () => {
+    expect(layoutLabel(long, { wrapWidth: 100 }).lines).toHaveLength(1);
+  });
+  it('wraps a markdown label at wrapWidth', () => {
+    const l = layoutLabel(long, { markdown: true, wrapWidth: 100 });
+    expect(l.lines.length).toBeGreaterThan(1);
+    expect(l.width).toBeLessThanOrEqual(100);
+  });
+  it('defaults to DEFAULT_WRAP_WIDTH', () => {
+    expect(DEFAULT_WRAP_WIDTH).toBe(200);
+    const l = layoutLabel(long, { markdown: true });
+    expect(l.lines.length).toBeGreaterThan(1);
+    expect(l.width).toBeLessThanOrEqual(200);
+  });
+  it('carries run styling across a wrap boundary', () => {
+    const l = layoutLabel(`**${long}**`, { markdown: true, wrapWidth: 100 });
+    expect(l.lines.length).toBeGreaterThan(1);
+    for (const line of l.lines) {
+      for (const run of line) { expect(run.bold).toBe(true); }
+    }
+  });
+  it('does not hard-break a word wider than wrapWidth', () => {
+    const l = layoutLabel('supercalifragilisticexpialidocious', { markdown: true, wrapWidth: 20 });
+    expect(l.lines).toHaveLength(1);
+    expect(l.lines[0]?.[0]?.text).toBe('supercalifragilisticexpialidocious');
+  });
+  it('keeps explicit line breaks while wrapping', () => {
+    const l = layoutLabel(`${long}\nshort`, { markdown: true, wrapWidth: 100 });
+    expect(l.lines[l.lines.length - 1]).toEqual([{ text: 'short' }]);
   });
 });

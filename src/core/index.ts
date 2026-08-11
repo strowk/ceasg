@@ -2,6 +2,7 @@ export * from './model';
 export * from './diagramType';
 export * from './nodeGeometry';
 export * from './textMetrics';
+export * from './labelMarkup';
 export * from './shapes';
 export * from './parser';
 export * from './serializer';

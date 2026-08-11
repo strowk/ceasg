@@ -16,6 +16,10 @@
 import { getDocument } from './dom';
 
 const FALLBACK_CHAR_W = 8.2;
+// Bold glyphs are wider than their regular counterparts. Real `measureText`
+// accounts for it; the per-codepoint fallback would not, which would size a
+// bold label exactly like a plain one and let its text overflow the shape.
+const FALLBACK_BOLD_FACTOR = 1.06;
 
 // Must stay in lockstep with the .mermaid-flow-node-label font in styles.css, so
 // the box we size matches the text we draw. Mermaid's stock flowchart font/size,
@@ -59,5 +63,6 @@ export function measureTextWidth(text: string, font: string = LABEL_FONT): numbe
 	// `font-size:32px` would get a box sized for 16px text.
 	const px = /(\d+(?:\.\d+)?)px/.exec(font);
 	const scale = px ? Number(px[1]) / BASE_FONT_SIZE : 1;
-	return units * FALLBACK_CHAR_W * scale;
+	const weight = /(^|\s)(bold|[6-9]00)(\s|$)/i.test(font) ? FALLBACK_BOLD_FACTOR : 1;
+	return units * FALLBACK_CHAR_W * scale * weight;
 }

@@ -17,3 +17,17 @@ describe('measureTextWidth', () => {
     expect(measureTextWidth('日本語')).toBeGreaterThan(measureTextWidth('abc'));
   });
 });
+
+describe('measureTextWidth — weight', () => {
+  const f = '"trebuchet ms", verdana, arial, sans-serif';
+  // Under vitest's jsdom there is no canvas, so measureTextWidth takes its
+  // per-codepoint fallback. That fallback used to be weight-blind, which made
+  // a bold label size exactly like a plain one.
+  it('estimates bold text wider than plain text', () => {
+    expect(measureTextWidth('Bold', `bold 16px ${f}`))
+      .toBeGreaterThan(measureTextWidth('Bold', `16px ${f}`));
+  });
+  it('leaves plain text unchanged', () => {
+    expect(measureTextWidth('Bold', `16px ${f}`)).toBe(32.8);
+  });
+});

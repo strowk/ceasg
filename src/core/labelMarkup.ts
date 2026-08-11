@@ -12,6 +12,8 @@
  * to the literal characters the author typed.
  */
 
+import { BASE_FONT_FAMILY, BASE_FONT_SIZE, measureTextWidth } from "./textMetrics";
+
 export interface LabelRun {
 	text: string;
 	bold?: boolean;
@@ -175,4 +177,113 @@ export function parseLabelMarkup(text: string, markdown = false): LabelLine[] {
 	// <br/> the author typed; normalize before splitting so both behave alike.
 	const normalized = text.replace(/<br\s*\/?>/gi, "\n");
 	return normalized.split("\n").map((line) => parseLine(line, markdown));
+}
+
+/** Mermaid's `flowchart.wrappingWidth` default: markdown labels wrap here. */
+export const DEFAULT_WRAP_WIDTH = 200;
+
+export interface LabelLayout {
+	/** Wrapped lines of styled runs. Never empty; a blank label is `[[]]`. */
+	lines: LabelLine[];
+	/** Widest laid-out line in px, each run measured in its own font. */
+	width: number;
+	/** `lines.length * fontSize`. */
+	height: number;
+}
+
+export interface LabelLayoutOpts {
+	markdown?: boolean;
+	fontSize?: number;
+	fontFamily?: string;
+	/** Wrap markdown labels at this width. Ignored when `markdown` is unset —
+	 *  a plain Mermaid string breaks only where the author wrote `<br/>`. */
+	wrapWidth?: number;
+}
+
+/** The CSS font shorthand for a run, in the order `measureText` expects. */
+function runFont(run: LabelRun, fontSize: number, fontFamily: string): string {
+	return `${run.italic ? "italic " : ""}${run.bold ? "bold " : ""}${fontSize}px ${fontFamily}`;
+}
+
+function lineWidth(line: LabelLine, fontSize: number, fontFamily: string): number {
+	let w = 0;
+	for (const run of line) {
+		w += measureTextWidth(run.text, runFont(run, fontSize, fontFamily));
+	}
+	return w;
+}
+
+/**
+ * Greedy word wrap. Words keep the styling of the run they came from, so a
+ * `**long bold phrase**` stays bold across the break. A single word wider than
+ * `max` is left to overflow rather than hard-broken, which is what Mermaid does.
+ */
+function wrapLine(line: LabelLine, max: number, fontSize: number, fontFamily: string): LabelLine[] {
+	if (line.length === 0) { return [line]; }
+	// Explode into words, each remembering its run's styling. Splitting on the
+	// space *before* a word keeps the separator out of the wrapped output.
+	const words: LabelRun[] = [];
+	for (const run of line) {
+		const parts = run.text.split(/(\s+)/).filter((p) => p !== "");
+		for (const p of parts) {
+			words.push({ ...run, text: p });
+		}
+	}
+	const out: LabelLine[] = [];
+	let current: LabelRun[] = [];
+	let currentW = 0;
+	for (const word of words) {
+		const w = measureTextWidth(word.text, runFont(word, fontSize, fontFamily));
+		const isSpace = /^\s+$/.test(word.text);
+		// A run of whitespace never starts a line: it is dropped at the break.
+		if (currentW > 0 && currentW + w > max && !isSpace) {
+			out.push(mergeRuns(current));
+			current = [];
+			currentW = 0;
+		}
+		if (currentW === 0 && isSpace) { continue; }
+		current.push(word);
+		currentW += w;
+	}
+	out.push(mergeRuns(current));
+	return out;
+}
+
+/** Re-join adjacent words that share styling, so the renderer emits one tspan
+ *  per style change rather than one per word. */
+function mergeRuns(words: LabelRun[]): LabelLine {
+	const out: LabelRun[] = [];
+	for (const word of words) {
+		const last = out[out.length - 1];
+		if (last && !!last.bold === !!word.bold && !!last.italic === !!word.italic) {
+			last.text += word.text;
+		} else {
+			out.push({ ...word });
+		}
+	}
+	// Trailing whitespace at a wrap point would push the visual centre off.
+	const last = out[out.length - 1];
+	if (last) {
+		last.text = last.text.replace(/\s+$/, "");
+		if (last.text === "" && out.length > 1) { out.pop(); }
+	}
+	return out;
+}
+
+/**
+ * Parse, wrap and measure a label in one call.
+ *
+ * Both `estimateNodeSize` and the renderer go through here, so the box a node
+ * reserves and the glyphs painted inside it always come from the same layout.
+ */
+export function layoutLabel(text: string, opts: LabelLayoutOpts = {}): LabelLayout {
+	const fontSize = opts.fontSize ?? BASE_FONT_SIZE;
+	const fontFamily = opts.fontFamily ?? BASE_FONT_FAMILY;
+	const parsed = parseLabelMarkup(text, opts.markdown);
+	const max = opts.markdown ? (opts.wrapWidth ?? DEFAULT_WRAP_WIDTH) : Infinity;
+	const lines = Number.isFinite(max)
+		? parsed.flatMap((line) => wrapLine(line, max, fontSize, fontFamily))
+		: parsed;
+	const width = Math.max(0, ...lines.map((l) => lineWidth(l, fontSize, fontFamily)));
+	return { lines, width, height: lines.length * fontSize };
 }
