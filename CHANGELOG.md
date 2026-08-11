@@ -4,6 +4,15 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.8.0] - 2026-08-11
+
+### Added
+- **Formatted labels.** Mermaid markdown-string labels — ``A["`**Bold** and _italic_`"]`` — now render as bold and italic text on the canvas and in the Markdown preview, and wrap onto several lines instead of stretching a node across the diagram. Basic HTML markup renders too: `<b>`, `<i>`, `<br/>` and HTML entities such as `&amp;`, `&lt;` and `&#169;`, in any label. Node labels, edge labels and subgraph titles are all covered.
+- A **Label format** control (Plain / Markdown) in the node and edge property panels — **Title format** for a subgraph — so formatted labels can be created from the visual editor rather than only read from hand-written Mermaid.
+
+### Changed
+- A node whose label contains markup now sizes to the text as drawn rather than to the markup itself, so `A["A &amp; B"]` is as wide as `A & B`. Labels without markup are measured exactly as before.
+
 ## [0.7.1] - 2026-08-11
 
 ### Fixed

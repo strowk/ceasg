@@ -128,18 +128,40 @@ flowchart TB
 
 ---
 
-## 5. Markdown-formatted and HTML labels
+## 5. Markdown-formatted and HTML labels — supported, with limits
 
 **Mermaid supports:** markdown string labels (`` A["`**bold** and _italic_`"] ``)
 with bold/italic/line-wrap, and HTML entities / `<b>`, `<i>` markup in labels.
 
-**Our editor supports:** plain text labels, with only `<br/>` ↔ `\n` conversion
-and `&quot;` handling.
+**Our editor supports:** both. A markdown string renders bold and italic runs and
+word-wraps at Mermaid's default `flowchart.wrappingWidth` of 200 (or at the
+node's own width once it has been resized by hand); HTML markup — `<b>`,
+`<strong>`, `<i>`, `<em>`, `<br>` and named, numeric and hex entities — renders
+in **any** label, plain or markdown, matching Mermaid's `htmlLabels: true`
+default. This covers node labels, edge labels and subgraph titles, on the
+WYSIWYG canvas and in the Markdown preview alike (they share one renderer), and
+a **Label format** (Plain / Markdown) control in the node and edge property
+panels — **Title format** for subgraphs — lets the markdown form be authored
+from the visual editor rather than only read from hand-written Mermaid.
 
-**Gap / consequence:**
-- Markdown/HTML inside a label is stored and displayed as **literal characters**
-  (e.g. you see `` `**bold**` `` with the backticks and asterisks), never
-  rendered as styled text. The label editor is single-style plain text.
+**Remaining gap / consequence:**
+- The wrapping width is a **constant 200**. It is not read from a
+  `%%{init: {flowchart: {wrappingWidth: …}}}%%` directive, so a diagram that
+  overrides it wraps at the default here and at its own width in Mermaid (see
+  §12 for flowchart config generally).
+- Only `<b>`, `<strong>`, `<i>`, `<em>` and `<br>` are recognized. **Any other
+  tag stays literal text** — `a <span> b` draws its angle brackets — where
+  Mermaid's HTML labels would interpret or swallow it.
+- There is **no rich-text editing UI**. The label field holds markup *source*:
+  you type `**bold**` and see it rendered on the canvas, the way a source-mode
+  Markdown editor works, rather than selecting text and pressing a bold button.
+- In markdown mode, underscore emphasis has **no CommonMark intraword
+  exclusion**, so `_snake_case_words_` italicizes its inner segments instead of
+  staying literal.
+- Nodes whose labels contain markup are now sized to the text actually
+  **painted** rather than to the markup source, so such nodes are narrower than
+  before — `A["A &amp; B"]` sizes for `A & B`. Labels containing no markup are
+  measured exactly as they always were.
 
 **Example:**
 
@@ -446,7 +468,7 @@ Rows follow the same priority order as the sections above.
 | 3 | Subgraph as edge endpoint | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
 | 3 | Subgraph styling | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
 | 4 | Per-subgraph direction | ⚠️ | ❌ | ❌ | ✅ extras |
-| 5 | Markdown / HTML labels | ⚠️ literal | ❌ | ❌ | ✅ (as text) |
+| 5 | Markdown / HTML labels | ✅ | ✅ | ✅ | ✅ |
 | 6 | Edge color / width / font | ✅ | ❌ | ⚠️ color only | ✅ |
 | 7 | Node font / stroke-width / dash | ⚠️ | ❌ | ❌ | ✅ (extra) |
 | 8 | v11 `@{ shape }` library (~30) | ⚠️ degrade→rect | ❌ | ❌ | ❌ (lost) |
