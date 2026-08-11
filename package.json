@@ -3,7 +3,7 @@
   "publisher": "ceasg",
   "displayName": "Visual Mermaid Editor in Markdown - ceasg",
   "description": "Edit Mermaid diagrams inside markdown files visually — custom layout by dragging flowchart nodes, text editing and more.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",

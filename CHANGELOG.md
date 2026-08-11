@@ -4,7 +4,7 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.7.1] - 2026-08-11
 
 ### Fixed
 - Auto layout now leaves room for edge labels. `A -->|Long long long text| B` used to place A and B the same distance apart as an unlabelled edge, so the text was drawn across both nodes; the gap now grows with the label, the way Mermaid's own render spaces them.
