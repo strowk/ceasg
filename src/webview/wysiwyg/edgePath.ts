@@ -46,13 +46,32 @@ export function endpointBorderPoint(
   return boxBorderPoint(g.x, g.y, g.w, g.h, towardX - g.x, towardY - g.y);
 }
 
+type Box = { x: number; y: number; w: number; h: number };
+
+/** True when `inner`'s centre lies within `outer`'s box — a subgraph and one of
+ *  its own members, or a nested subgraph. */
+function contains(outer: Box, inner: Box): boolean {
+  return Math.abs(inner.x - outer.x) <= outer.w / 2 && Math.abs(inner.y - outer.y) <= outer.h / 2;
+}
+
 export function edgePathD(model: DiagramModel, fromId: string, toId: string, dir: Direction, offset = 0): string | null {
   const from = endpointGeometry(model, fromId);
   const to = endpointGeometry(model, toId);
   if (!from || !to) { return null; }
-  const a = endpointBorderPoint(model, fromId, to.x, to.y);
-  const b = endpointBorderPoint(model, toId, from.x, from.y);
+  let a = endpointBorderPoint(model, fromId, to.x, to.y);
+  let b = endpointBorderPoint(model, toId, from.x, from.y);
   if (!a || !b) { return null; }
+  // Containment (a subgraph and a node inside it) breaks the usual assumption
+  // that each end can aim at the other's centre. The enclosed box's centre lies
+  // *past* the border the line actually arrives from, so aiming at it picks the
+  // far side: the path then crosses the enclosed box and parks its arrowhead
+  // under it, invisible beneath the node layer. Re-aim the enclosed end at the
+  // enclosing border point instead, so the line spans the gap between them.
+  if (contains(from, to)) {
+    b = endpointBorderPoint(model, toId, a.x, a.y) ?? b;
+  } else if (contains(to, from)) {
+    a = endpointBorderPoint(model, fromId, b.x, b.y) ?? a;
+  }
   // Approach axis follows the actual geometry of this edge, so the arrowhead
   // points the natural way (down when the target is below, right when it's to the
   // right, etc.) even after nodes are dragged around. Fall back to the diagram's

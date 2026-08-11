@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint, groupAnchorPoints, resizeBox } from './hitTest';
+import { nodeAtPoint, nodesInRect, edgeAtPoint, groupAtPoint, groupResizeHandles, groupHandleAtPoint, groupAnchorPoints, resizeBox, pickAtPoint } from './hitTest';
 import { emptyModel, mermaidToModel, groupBounds } from '../../core';
 
 function m2() {
@@ -127,5 +127,49 @@ describe('groupAnchorPoints', () => {
   });
   it('returns nothing for an unknown group id', () => {
     expect(groupAnchorPoints(emptyModel(), 'nope')).toEqual([]);
+  });
+});
+
+/**
+ * A group box covers its whole interior, so testing groups before edges makes
+ * every edge inside a subgraph unclickable — the click always lands on the box.
+ * Precedence is node, then edge, then group, then background: the specific
+ * target wins over the broad fallback region.
+ */
+describe('pickAtPoint', () => {
+  // Group box x 0..400, y 0..200, holding A at (100,100) and B at (300,100).
+  // The A->B edge runs across the box interior at y=100.
+  function boxed() {
+    const m = emptyModel();
+    m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 100, y: 100, w: 80, h: 44 });
+    m.nodes.push({ id: 'B', label: 'B', shape: 'rect', x: 300, y: 100, w: 80, h: 44 });
+    m.groups.push({ id: 'g1', title: 'g1', nodeIds: ['A', 'B'], x: 0, y: 0, w: 400, h: 200 });
+    m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
+    return m;
+  }
+
+  it('picks an edge lying inside a group box over the group', () => {
+    expect(pickAtPoint(boxed(), 200, 100, 8)).toEqual({ kind: 'edge', id: 'e1' });
+  });
+
+  it('picks an edge from a group to one of its own members', () => {
+    const m = boxed();
+    m.edges.push({ id: 'e2', from: 'g1', to: 'A', label: '', kind: 'arrow' });
+    // A sits left of the box centre, so the edge spans the group's left border
+    // (x=0) to A's left border (x=60) at y=100 — wholly inside the box, which
+    // is exactly the region a group-first hit test would swallow.
+    expect(pickAtPoint(m, 30, 100, 8)).toEqual({ kind: 'edge', id: 'e2' });
+  });
+
+  it('still picks a node over an edge terminating on it', () => {
+    expect(pickAtPoint(boxed(), 100, 100, 8)).toEqual({ kind: 'node', id: 'A' });
+  });
+
+  it('falls back to the group on empty interior space', () => {
+    expect(pickAtPoint(boxed(), 200, 30, 8)).toEqual({ kind: 'group', id: 'g1' });
+  });
+
+  it('reports background outside everything', () => {
+    expect(pickAtPoint(boxed(), 800, 800, 8)).toEqual({ kind: 'background' });
   });
 });

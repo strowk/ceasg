@@ -1,5 +1,5 @@
 import { newEdgeId, translateGroup, groupBounds as groupBoundsLocal, isGroupId, endpointGeometry, DiagramModel } from '../../core';
-import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, edgeAtPoint, groupAtPoint, groupHandleAtPoint, groupAnchorPoints, resizeBox, EDGE_HIT_TOLERANCE } from './hitTest';
+import { nodeAtPoint, nodesInRect, anchorForNode, nodeAnchorPoints, groupAtPoint, groupHandleAtPoint, groupAnchorPoints, resizeBox, pickAtPoint, EDGE_HIT_TOLERANCE } from './hitTest';
 import { Overlay } from './overlay';
 import type { WysiwygEditor } from './editor';
 import { reassignNodeMembership, reassignGroupParent } from './editor';
@@ -211,32 +211,30 @@ export class PointerController {
       }
     }
 
-    const node = nodeAtPoint(model, p.x, p.y);
-    if (node) {
-      if (e.shiftKey) { this.selection.toggle(node.id); }
-      else if (!this.selection.has(node.id)) { this.selection.select(node.id); }
-      this.dragIds = this.selection.multi.size > 0 ? [...this.selection.multi] : [node.id];
+    // Node, then edge, then group, then background. An edge must outrank the
+    // group box it lies inside, or every edge within a subgraph is unclickable.
+    const hit = pickAtPoint(model, p.x, p.y, EDGE_HIT_TOLERANCE / this.editor.viewport!.scale);
+    if (hit.kind === 'node') {
+      if (e.shiftKey) { this.selection.toggle(hit.id); }
+      else if (!this.selection.has(hit.id)) { this.selection.select(hit.id); }
+      this.dragIds = this.selection.multi.size > 0 ? [...this.selection.multi] : [hit.id];
       this.dragging = true;
       this.onSelectionChange();
       return;
     }
-    // Group box hit (nodes were checked first, so a node inside wins).
-    const groupId = groupAtPoint(model, p.x, p.y);
-    if (groupId) {
-      if (e.shiftKey) { this.selection.toggle(groupId); }
-      else { this.selection.select(groupId); }
-      if (this.selection.has(groupId)) {
-        this.groupDragId = groupId;
-        this.dragging = true;
-        this.dragIds = [];
-      }
+    if (hit.kind === 'edge') {
+      this.selection.select(hit.id);
       this.onSelectionChange();
       return;
     }
-    // edge hit-test
-    const edgeId = edgeAtPoint(model, p.x, p.y, EDGE_HIT_TOLERANCE / this.editor.viewport!.scale);
-    if (edgeId !== undefined) {
-      this.selection.select(edgeId);
+    if (hit.kind === 'group') {
+      if (e.shiftKey) { this.selection.toggle(hit.id); }
+      else { this.selection.select(hit.id); }
+      if (this.selection.has(hit.id)) {
+        this.groupDragId = hit.id;
+        this.dragging = true;
+        this.dragIds = [];
+      }
       this.onSelectionChange();
       return;
     }

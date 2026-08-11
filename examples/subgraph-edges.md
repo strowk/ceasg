@@ -126,3 +126,18 @@ flowchart LR
     Order[Order] --> Ship
     Ship --> Done[Delivered]
 ```
+
+## 9. Edge from a subgraph to one of its own members
+
+**Test:** confirm the `Staging → Health check` arrow is visible in the gap
+between the box border and the node (not hidden under it), then click that
+arrow and the `Deploy → Health check` arrow and confirm each one selects
+rather than selecting the `Staging` box.
+
+```mermaid
+flowchart TB
+    subgraph St [Staging]
+        Deploy[Deploy] --> Health[Health check]
+    end
+    St --> Health
+```

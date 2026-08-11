@@ -237,8 +237,13 @@ export class WysiwygEditor {
         });
         return;
       }
-      const gId = groupAtPoint(this.model, p.x, p.y);
-      if (gId) {
+      // Edge before group, matching the click precedence in PointerController:
+      // a group box covers its interior, so testing it first would make every
+      // edge inside a subgraph open the group's title editor instead.
+      const edgeId = edgeAtPoint(this.model, p.x, p.y, EDGE_HIT_TOLERANCE / this.viewport!.scale);
+      if (edgeId === undefined) {
+        const gId = groupAtPoint(this.model, p.x, p.y);
+        if (!gId) { return; }
         const grp = this.model.groups.find((g) => g.id === gId)!;
         const b = groupBounds(this.model, grp);
         // Size the editor to the title text (there's no natural node-sized box
@@ -255,8 +260,6 @@ export class WysiwygEditor {
         return;
       }
       // Double-click the edge line (or its label) to edit the edge label in place.
-      const edgeId = edgeAtPoint(this.model, p.x, p.y, EDGE_HIT_TOLERANCE / this.viewport!.scale);
-      if (edgeId === undefined) { return; }
       const edge = this.model.edges.find((ed) => ed.id === edgeId);
       if (!edge) { return; }
       // Endpoints may name nodes or subgraphs; an unresolvable one has no path

@@ -4,6 +4,7 @@ import { edgePathD, selfLoopPathD } from './edgePath';
 export type Hit =
   | { kind: 'node'; id: string }
   | { kind: 'edge'; id: string }
+  | { kind: 'group'; id: string }
   | { kind: 'anchor'; id: string; dir: 'N' | 'S' | 'E' | 'W' }
   | { kind: 'resize'; id: string }
   | { kind: 'background' };
@@ -81,6 +82,30 @@ export function anchorForNode(
     if (Math.abs(x - a.x) <= tol && Math.abs(y - a.y) <= tol) { return a.dir; }
   }
   return undefined;
+}
+
+/**
+ * What a click at (x, y) lands on, in precedence order: node, then edge, then
+ * group, then background.
+ *
+ * Edges must be tested before groups. A group's box covers its entire interior,
+ * so testing groups first makes every edge drawn inside a subgraph unreachable
+ * — the click is swallowed by the box and the edge can never be selected. The
+ * general rule is that the specific target beats the broad fallback region: a
+ * node and an edge are precise, a group box is the area left over.
+ *
+ * This is deliberately *not* the same rule as drag-drop targeting (see
+ * `PointerController.endpointAtPoint`), where an edge is not a legal target and
+ * a group's interior is a meaningful one.
+ */
+export function pickAtPoint(model: DiagramModel, x: number, y: number, tol: number): Hit {
+  const node = nodeAtPoint(model, x, y);
+  if (node) { return { kind: 'node', id: node.id }; }
+  const edgeId = edgeAtPoint(model, x, y, tol);
+  if (edgeId !== undefined) { return { kind: 'edge', id: edgeId }; }
+  const groupId = groupAtPoint(model, x, y);
+  if (groupId !== undefined) { return { kind: 'group', id: groupId }; }
+  return { kind: 'background' };
 }
 
 function groupDepth(model: DiagramModel, id: string): number {

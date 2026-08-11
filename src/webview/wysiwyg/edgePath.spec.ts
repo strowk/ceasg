@@ -53,6 +53,54 @@ describe('edgePathD', () => {
   });
 });
 
+/**
+ * A subgraph edge whose other end is a node *inside* that subgraph. Aiming the
+ * member's border point at the group's centre picks the side facing away from
+ * where the line actually arrives, so the path crosses the member's box and the
+ * arrowhead lands on the occluded far edge — the node layer paints over the
+ * edge layer, so it is invisible.
+ */
+describe('edgePathD with one endpoint inside the other', () => {
+  // Box spans y -100..100; the member sits in the lower half at y=60,
+  // so the group border nearest it is the bottom edge (y=100).
+  const contained = () => {
+    const m = modelWith(node(0, 60, 'inner'));
+    m.groups.push({ id: 'S1', title: 'S1', nodeIds: ['inner'], x: -100, y: -100, w: 200, h: 200 });
+    return m;
+  };
+  // inner's box is y 38..82 (h=44 centred on 60).
+  const ends = (d: string) => {
+    const n = d.match(/-?\d+(?:\.\d+)?/g)!.map(Number);
+    return { start: { x: n[0]!, y: n[1]! }, end: { x: n[6]!, y: n[7]! } };
+  };
+
+  it('ends on the member border facing the group border it came from', () => {
+    const { start, end } = ends(edgePathD(contained(), 'S1', 'inner', 'TB')!);
+    expect(start.y).toBeCloseTo(100, 0); // group's bottom edge, nearest the member
+    expect(end.y).toBeCloseTo(82, 0);    // member's BOTTOM edge, not its top (38)
+  });
+
+  it('does not cross the member box on the way in', () => {
+    const { start, end } = ends(edgePathD(contained(), 'S1', 'inner', 'TB')!);
+    // Travelling from the group border to the member border must not pass
+    // through the member's interior, which would hide the arrowhead under it.
+    expect(Math.min(start.y, end.y)).toBeGreaterThanOrEqual(82 - 0.5);
+  });
+
+  it('is symmetric: member to group leaves the near side too', () => {
+    const { start, end } = ends(edgePathD(contained(), 'inner', 'S1', 'TB')!);
+    expect(start.y).toBeCloseTo(82, 0);  // leaves the member's bottom edge
+    expect(end.y).toBeCloseTo(100, 0);   // arrives at the group's bottom edge
+  });
+
+  it('leaves an ordinary edge between two separate nodes untouched', () => {
+    const m = modelWith(node(0, 0, 'a'), node(0, 200, 'b'));
+    const { start, end } = ends(edgePathD(m, 'a', 'b', 'TB')!);
+    expect(start.y).toBeCloseTo(22, 0);  // a's bottom edge
+    expect(end.y).toBeCloseTo(178, 0);   // b's top edge
+  });
+});
+
 import { SHAPES } from '../../core';
 
 describe('nodeBorderPoint with an outline', () => {
