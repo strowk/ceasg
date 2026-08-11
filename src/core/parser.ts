@@ -69,11 +69,16 @@ interface ParsedString {
 function stripQuotesEx(s: string): ParsedString {
 	const t = s.trim();
 	let inner = t;
+	let quoted = false;
 	if (inner.length >= 2 && inner.startsWith('"') && inner.endsWith('"')) {
 		inner = inner.slice(1, -1);
+		quoted = true;
 	}
 	let markdown = false;
-	if (inner.length >= 2 && inner.startsWith("`") && inner.endsWith("`")) {
+	// Only a quoted string can be a markdown string. In an unquoted label
+	// Mermaid renders backticks as literal text, so unwrapping them there would
+	// silently promote `A[`code`]` to a real markdown string on save.
+	if (quoted && inner.length >= 2 && inner.startsWith("`") && inner.endsWith("`")) {
 		inner = inner.slice(1, -1);
 		markdown = true;
 	}
@@ -501,7 +506,11 @@ export function mermaidToModel(text: string): ParseResult {
 			titleMarkdown = !!parsed.markdown;
 		} else if ((m = rest.match(/^"(.+)"$/))) {
 			id = newGroupId(model);
-			title = m[1] as string;
+			// Feed the *quoted* form back in: stripQuotesEx only treats backticks
+			// as a markdown string when the double quotes were actually there.
+			const parsed = stripQuotesEx(m[0]);
+			title = parsed.text;
+			titleMarkdown = !!parsed.markdown;
 		} else if ((m = rest.match(/^([A-Za-z0-9_]+)$/))) {
 			id = m[1] as string;
 			title = id;

@@ -246,3 +246,41 @@ describe('markdown string labels', () => {
     expect(model.nodes[0]?.label).toBe('x <b>y</b>');
   });
 });
+
+describe('semicolon statement separator', () => {
+  it('splits two statements written on one line', () => {
+    const { model } = mermaidToModel('flowchart LR\nA-->B;C-->D\n');
+    expect(model.edges.map((e) => [e.from, e.to])).toEqual([
+      ['A', 'B'],
+      ['C', 'D'],
+    ]);
+    expect(model.extras).toEqual([]);
+  });
+  it('ignores a trailing semicolon', () => {
+    const { model } = mermaidToModel('flowchart LR\nA-->B;\n');
+    expect(model.edges).toHaveLength(1);
+    expect(model.extras).toEqual([]);
+  });
+  it('does not split on a semicolon inside a quoted label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["x;y"]\n');
+    expect(model.nodes[0]?.label).toBe('x;y');
+    expect(model.extras).toEqual([]);
+  });
+  it('preserves a line with an unbalanced quote instead of throwing', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["x;y\n');
+    expect(model.extras).toEqual(['A["x;y']);
+  });
+});
+
+describe('backticks outside a quoted string', () => {
+  it('keeps them as literal label text and does not flag markdown', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[`code`]\n');
+    expect(model.nodes[0]?.label).toBe('`code`');
+    expect(model.nodes[0]?.labelFormat).toBeUndefined();
+  });
+  it('flags a markdown title on the bare quoted subgraph form', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph "`**Group**`"\nA\nend\n');
+    expect(model.groups[0]?.title).toBe('**Group**');
+    expect(model.groups[0]?.titleFormat).toBe('markdown');
+  });
+});
