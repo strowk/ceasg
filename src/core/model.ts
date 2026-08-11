@@ -674,16 +674,10 @@ export function cloneModel(model: DiagramModel): DiagramModel {
 				? { ...e.style, extra: e.style.extra ? [...e.style.extra] : undefined }
 				: undefined,
 		})),
-		groups: model.groups.map((g) => ({
-			id: g.id,
-			title: g.title,
-			nodeIds: [...g.nodeIds],
-			parentId: g.parentId,
-			x: g.x,
-			y: g.y,
-			w: g.w,
-			h: g.h,
-		})),
+		// Spread rather than list fields: a hand-written list silently drops any
+		// field added to `DiagramGroup` later, and a dropped field is written
+		// back to the user's file on the next undo.
+		groups: model.groups.map((g) => ({ ...g, nodeIds: [...g.nodeIds] })),
 		classDefs: model.classDefs.map((c) => ({
 			name: c.name,
 			style: { ...c.style, extra: c.style.extra ? [...c.style.extra] : undefined },

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, nodeSize } from './model';
+import type { DiagramGroup } from './model';
 import { ALL_SHAPES } from './shapes';
 import {
   groupChildren, groupBounds, assignGroupToParent,
@@ -36,9 +37,34 @@ describe('model', () => {
   it('cloneModel is a deep copy', () => {
     const m = emptyModel();
     m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 1, y: 2 });
+    m.groups.push({ id: 'g1', title: 'g1', nodeIds: ['A'] });
     const c = cloneModel(m);
     c.nodes[0].x = 99;
     expect(m.nodes[0].x).toBe(1);
+    c.groups[0].nodeIds.push('B');
+    expect(m.groups[0].nodeIds).toEqual(['A']);
+  });
+  it('cloneModel keeps a group titleFormat and its box', () => {
+    const m = emptyModel();
+    m.groups.push({
+      id: 'g1', title: '**Bold**', titleFormat: 'markdown', nodeIds: [],
+      parentId: 'g0', x: 5, y: 6, w: 7, h: 8,
+    });
+    const g = cloneModel(m).groups[0];
+    expect(g.titleFormat).toBe('markdown');
+    expect(g.parentId).toBe('g0');
+    expect({ x: g.x, y: g.y, w: g.w, h: g.h }).toEqual({ x: 5, y: 6, w: 7, h: 8 });
+  });
+  it('cloneModel round-trips every DiagramGroup field', () => {
+    // Guard against a future field being added to `DiagramGroup` without
+    // cloneModel copying it: undo would then write the loss to the user's file.
+    const full: Required<DiagramGroup> = {
+      id: 'g1', title: 'T', titleFormat: 'markdown', nodeIds: ['A', 'B'],
+      parentId: 'g0', x: 1, y: 2, w: 3, h: 4,
+    };
+    const m = emptyModel();
+    m.groups.push({ ...full, nodeIds: [...full.nodeIds] });
+    expect(cloneModel(m).groups[0]).toEqual(full);
   });
 });
 

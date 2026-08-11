@@ -33,8 +33,8 @@ export const EDGE_LABEL_FONT_SIZE = 12;
  * The renderer and `estimateNodeSize` both call this, so the box a node
  * reserves and the glyphs painted inside it can never disagree.
  *
- * A manually resized node wraps to its own width rather than Mermaid's default,
- * so dragging a resize handle reflows the text instead of overflowing it.
+ * A node whose width is stored in the diagram wraps to that width rather than
+ * Mermaid's default, so the text reflows inside the box instead of overflowing it.
  */
 export function nodeLabelLayout(node: DiagramNode, style?: NodeStyle): LabelLayout {
 	return layoutLabel(node.label || node.id, {

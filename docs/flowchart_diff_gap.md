@@ -135,7 +135,7 @@ with bold/italic/line-wrap, and HTML entities / `<b>`, `<i>` markup in labels.
 
 **Our editor supports:** both. A markdown string renders bold and italic runs and
 word-wraps at Mermaid's default `flowchart.wrappingWidth` of 200 (or at the
-node's own width once it has been resized by hand); HTML markup — `<b>`,
+node's stored width, when the diagram specifies one); HTML markup — `<b>`,
 `<strong>`, `<i>`, `<em>`, `<br>` and named, numeric and hex entities — renders
 in **any** label, plain or markdown, matching Mermaid's `htmlLabels: true`
 default. This covers node labels, edge labels and subgraph titles, on the
@@ -158,6 +158,20 @@ from the visual editor rather than only read from hand-written Mermaid.
 - In markdown mode, underscore emphasis has **no CommonMark intraword
   exclusion**, so `_snake_case_words_` italicizes its inner segments instead of
   staying literal.
+- **Markdown mode normalizes whitespace.** Every line of a markdown string goes
+  through the wrapper even when it does not wrap, which strips leading and
+  trailing spaces and merges adjacent same-styled runs: `` `  hi  ` `` lays out
+  as `hi`, where the same text in a plain label keeps its spaces. A
+  whitespace-only markdown label therefore measures zero width and falls back to
+  the minimum node width.
+- **A plain label wrapped in backticks becomes a markdown label on reload.**
+  Typing `` `code` `` into the **Label** field with format **Plain** serializes
+  to ``A["`code`"]`` — which on the next parse *is* Mermaid's markdown-string
+  form, so the backticks are consumed and the label starts rendering as
+  markdown. This follows from Mermaid's own grammar rather than from anything
+  ceasg can detect, so it is a limitation to know about rather than a bug. In
+  the degenerate case a label of exactly two backticks reparses to an empty
+  string.
 - Nodes whose labels contain markup are now sized to the text actually
   **painted** rather than to the markup source, so such nodes are narrower than
   before — `A["A &amp; B"]` sizes for `A & B`. Labels containing no markup are
@@ -468,7 +482,7 @@ Rows follow the same priority order as the sections above.
 | 3 | Subgraph as edge endpoint | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
 | 3 | Subgraph styling | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
 | 4 | Per-subgraph direction | ⚠️ | ❌ | ❌ | ✅ extras |
-| 5 | Markdown / HTML labels | ✅ | ✅ | ✅ | ✅ |
+| 5 | Markdown / HTML labels | ✅ | ⚠️ | ✅ | ✅ |
 | 6 | Edge color / width / font | ✅ | ❌ | ⚠️ color only | ✅ |
 | 7 | Node font / stroke-width / dash | ⚠️ | ❌ | ❌ | ✅ (extra) |
 | 8 | v11 `@{ shape }` library (~30) | ⚠️ degrade→rect | ❌ | ❌ | ❌ (lost) |
