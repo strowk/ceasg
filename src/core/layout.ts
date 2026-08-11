@@ -24,6 +24,7 @@ import {
 	materializeGroupBounds,
 	nodeSize,
 } from "./model";
+import { edgeLabelSize } from "./nodeGeometry";
 import { warn } from "./diagnostics";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
@@ -104,7 +105,20 @@ function dagreLayout(model: DiagramModel): void {
 		// Unresolvable (dangling, or a group holding no nodes), or both endpoints
 		// proxied to the same node — neither tells dagre anything.
 		if (from === undefined || to === undefined || from === to) continue;
-		g.setEdge(from, to);
+		// Give dagre the label's box so it reserves room for the text: it lays the
+		// label out as a node on an intermediate rank, which pushes the endpoints
+		// apart exactly as Mermaid's own render does. Several model edges can
+		// collapse onto one dagre edge (parallel edges, group proxies), so the
+		// space reserved is the largest label among them.
+		const label = edgeLabelSize(e);
+		const prev = g.edge(from, to);
+		g.setEdge(from, to, {
+			width: Math.max(label.w, prev?.width ?? 0),
+			height: Math.max(label.h, prev?.height ?? 0),
+			// Centred on the line, matching where the renderer draws it. dagre's
+			// default ("r") would instead pad the cross-axis by labeloffset.
+			labelpos: "c",
+		});
 	}
 
 	dagre.layout(g);

@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, measureTextWidth, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, edgeLabelSize, groupBounds, groupChildren, BASE_FONT_SIZE } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -101,11 +101,10 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
   if (edge.label) {
     const mid = bezierMidpoint(d);
     // Background rect so the label reads clearly over the edge line. Sized from
-    // measured text width (getBBox isn't available on a detached SVG at build time).
-    const fontSize = style?.fontSize ?? 12;
-    const labelFont = `${fontSize}px "trebuchet ms", verdana, arial, sans-serif`;
-    const boxW = measureTextWidth(edge.label, labelFont) + 8;
-    const boxH = fontSize + 6;
+    // measured text width (getBBox isn't available on a detached SVG at build time)
+    // via the same helper the auto layout reserves rank space with, so the box
+    // always fits the gap the layout opened for it.
+    const { w: boxW, h: boxH } = edgeLabelSize(edge);
     const bg = el('rect');
     bg.setAttribute('class', 'ceasg-edge-label-bg');
     bg.setAttribute('x', String(mid.x - boxW / 2));

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { autoLayout, layoutMissing } from './layout';
-import { emptyModel, groupBounds } from './model';
+import { emptyModel, groupBounds, nodeSize } from './model';
+import { edgeLabelSize } from './nodeGeometry';
 import { mermaidToModel } from './parser';
 import { clearDiagnostics, setDiagnosticSink, type Diagnostic } from './diagnostics';
 
@@ -14,6 +15,29 @@ describe('autoLayout', () => {
     for (const n of m.nodes) { expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true); }
     const ys = m.nodes.map((n) => n.y);
     expect(new Set(ys).size).toBeGreaterThan(1); // TB layout ranks vertically
+  });
+  it('separates ranks enough for the edge label to fit between them', () => {
+    // Mermaid hands dagre the edge label's box, so a labelled edge pushes its
+    // endpoints apart. Without that the text is drawn over the nodes.
+    const gap = (label: string) => {
+      const m = emptyModel('LR');
+      m.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0 });
+      m.nodes.push({ id: 'B', label: 'B', shape: 'rect', x: 0, y: 0 });
+      m.edges.push({ id: 'e1', from: 'A', to: 'B', label, kind: 'arrow' });
+      autoLayout(m);
+      const [a, b] = ['A', 'B'].map((id) => m.nodes.find((n) => n.id === id)!);
+      const half = (n: typeof a) => nodeSize(m, n).w / 2;
+      return b.x - half(b) - (a.x + half(a));
+    };
+    const bare = gap('');
+    const short = gap('text');
+    const long = gap('Long long long text');
+    expect(short).toBeGreaterThan(bare);
+    expect(long).toBeGreaterThan(short);
+    // The label box itself has to fit in the gap it opened.
+    expect(long - bare).toBeGreaterThanOrEqual(
+      edgeLabelSize({ id: 'e1', from: 'A', to: 'B', label: 'Long long long text', kind: 'arrow' }).w,
+    );
   });
   it('layoutMissing only places unplaced nodes', () => {
     const m = emptyModel();
