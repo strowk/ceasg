@@ -162,6 +162,45 @@ describe('estimateNodeSize — markup', () => {
   });
 });
 
+describe('estimateNodeSize — plain labels with inline HTML/entities', () => {
+  // Mermaid's htmlLabels default renders <b>/<i> tags and HTML entities even
+  // for an unmarked (non-markdown) label, and `nodeLabelLayout` now honours
+  // that for every label regardless of `labelFormat`. So a plain label's box
+  // is sized to fit the text that is actually painted — decoded entities,
+  // tag-stripped and bold-weighted — not to its literal source characters.
+  // That deliberately changed some numbers from a prior literal-source
+  // measurement; these tests pin the new, correct behaviour so it can't
+  // regress back to measuring raw markup as text.
+
+  it('sizes an HTML entity to its decoded character, not the literal escape', () => {
+    expect(estimateNodeSize(node({ label: 'A &amp; B' })))
+      .toEqual(estimateNodeSize(node({ label: 'A & B' })));
+  });
+
+  it('sizes a <b>-tagged label to the bold-weighted tag-stripped text, not the literal source', () => {
+    // A single bolded letter's fallback width delta can round away to nothing
+    // once ceil()'d into a whole-pixel box, so use a bolded word — big enough
+    // that "wider than plain" survives the rounding, not just in theory.
+    const tagged = estimateNodeSize(node({ label: '<b>bold</b> plain' })).w;
+    const plain = estimateNodeSize(node({ label: 'bold plain' })).w;
+    // What the pre-task-4 formula would have measured: the 17 literal source
+    // characters, unstyled.
+    const literalSourceW = Math.max(
+      MIN_W,
+      Math.ceil(measureTextWidth('<b>bold</b> plain', `16px ${BASE_FONT_FAMILY}`)) + 32,
+    );
+    expect(tagged).toBeLessThan(literalSourceW);
+    expect(tagged).toBeGreaterThan(plain);
+  });
+
+  it('splits a literal <br/> into two lines', () => {
+    // The model normally stores '\n' directly; a literal <br/> reaching here
+    // is what happens when a user types it into the label field by hand
+    // before the parser has a chance to normalize it.
+    expect(estimateNodeSize(node({ label: 'line one<br/>line two' })).h).toBe(NODE_H + 16);
+  });
+});
+
 describe('edgeLabelLayout', () => {
   it('styles a markdown edge label', () => {
     const layout = edgeLabelLayout({ id: 'e', from: 'A', to: 'B', label: '**y**', kind: 'arrow', labelFormat: 'markdown' });
