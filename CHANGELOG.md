@@ -4,6 +4,11 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.9.0] - 2026-08-12
+
+### Added
+- **Subgraph styling.** `style Svc fill:#f9f,stroke:#333` and `class Svc hot` now paint the subgraph *container* — fill, border colour, border width, dash pattern and title colour all render on the canvas and in the Markdown preview, instead of quietly creating a stray node named `Svc`. The subgraph properties panel gained Fill, Border, Title colour, Border width and Border dash controls, so a container can be styled from the visual editor and saved back as a Mermaid `style` line.
+
 ## [0.8.0] - 2026-08-11
 
 ### Added

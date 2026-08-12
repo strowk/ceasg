@@ -14,7 +14,10 @@ flowchart authoring**, most useful first — so you can work down the list in
 priority order. Subgraph capabilities lead (grouping / nested concepts are used
 constantly), followed by label and styling gaps that affect ordinary diagrams,
 then edge semantics and the extended shape library, and finally the niche or
-decorative features (animation, callbacks, icons, accessibility).
+decorative features (animation, callbacks, icons, accessibility). §3 (edges
+to/from a subgraph, and subgraph styling) is now supported with only minor
+caveats and stays at its numbered position rather than being renumbered or
+removed, so cross-references elsewhere keep working.
 
 > Scope note: "round-tripped" below means the original Mermaid text survives a
 > save (it is stashed in `model.extras`, `style.extra`, or the raw node/edge)
@@ -75,21 +78,35 @@ flowchart LR
 
 ---
 
-## 3. Edges to/from a subgraph, and subgraph styling
+## 3. Edges to/from a subgraph, and subgraph styling — supported, with limits
 
 **Mermaid supports:** using a subgraph's id as a link endpoint
 (`SubgraphA --> B`) and styling subgraphs (`style SubgraphA fill:#…`,
 `class SubgraphA …`).
 
-**Our editor supports:** links and styles keyed to **nodes** only.
+**Our editor supports:** both. A subgraph id used as a link endpoint connects
+to the container itself rather than fabricating a stray node, in either
+direction and whether the edge is written before or after the `subgraph`
+block. `style <subgraphId> …` and `class <subgraphId> …` — whether the line
+appears before or after the `subgraph` block — paint the container: fill,
+border colour, border width, dash pattern and title colour all render on the
+canvas and in the Markdown preview (they share one renderer), and the
+subgraph properties panel exposes **Fill**, **Border**, **Title colour**,
+**Border width** and **Border dash** to edit them and save the result back as
+a `style` line. `class` assignments shared by a node id and a subgraph id
+round-trip as a single grouped `class` line rather than splitting apart, and
+any style property the panel does not model (e.g. `rx:12`) still round-trips
+untouched.
 
-**Gap / consequence:**
-- A subgraph id used as an edge endpoint is treated as an ordinary node id,
-  which **fabricates a phantom node** with that id instead of connecting to the
-  container — so the diagram renders incorrectly.
-- Likewise `style <subgraphId> …` / `class <subgraphId> …` create/attach to a
-  phantom node rather than styling the container. Subgraph fill/stroke is not
-  rendered or editable.
+**Remaining gap / consequence:**
+- `classDef default` is **not** inherited by subgraph containers, matching
+  Mermaid itself — a default classDef applies to nodes, not to the subgraph
+  box, so relying on it to style every container in a diagram will not work
+  in either renderer.
+- `font-size` and `font-family` set on a subgraph style its **title text
+  only** — the box itself is sized from its members, not from the title font
+  — and neither property has a control in the properties panel, though both
+  round-trip through a save.
 
 **Example:**
 
@@ -479,8 +496,8 @@ Rows follow the same priority order as the sections above.
 | — | 14 classic node shapes (baseline, supported) | ✅ | ✅ | ✅ | ✅ |
 | 1 | Nested subgraphs | ⚠️ flattened | ❌ | ❌ | ❌ (lost) |
 | 2 | Subgraph create/edit UI | — | — | ❌ | ✅ |
-| 3 | Subgraph as edge endpoint | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
-| 3 | Subgraph styling | ⚠️ phantom node | ❌ | ❌ | ⚠️ |
+| 3 | Subgraph as edge endpoint | ✅ | ✅ | ✅ | ✅ |
+| 3 | Subgraph styling | ✅ | ✅ | ⚠️ no font control | ✅ |
 | 4 | Per-subgraph direction | ⚠️ | ❌ | ❌ | ✅ extras |
 | 5 | Markdown / HTML labels | ✅ | ⚠️ | ✅ | ✅ |
 | 6 | Edge color / width / font | ✅ | ❌ | ⚠️ color only | ✅ |
