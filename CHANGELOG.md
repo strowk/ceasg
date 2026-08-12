@@ -4,14 +4,10 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.9.0] - 2026-08-12
+## [Unreleased]
 
 ### Added
 - **Subgraph styling.** `style Svc fill:#f9f,stroke:#333` and `class Svc hot` now paint the subgraph *container* — fill, border colour, border width, dash pattern and title colour all render on the canvas and in the Markdown preview, instead of quietly creating a stray node named `Svc`. The subgraph properties panel gained Fill, Border, Title colour, Border width and Border dash controls, so a container can be styled from the visual editor and saved back as a Mermaid `style` line.
-
-## [0.8.0] - 2026-08-11
-
-### Added
 - **Formatted labels.** Mermaid markdown-string labels — ``A["`**Bold** and _italic_`"]`` — now render as bold and italic text on the canvas and in the Markdown preview, and wrap onto several lines instead of stretching a node across the diagram. Basic HTML markup renders too: `<b>`, `<i>`, `<br/>` and HTML entities such as `&amp;`, `&lt;` and `&#169;`, in any label. Node labels, edge labels and subgraph titles are all covered.
 - A **Label format** control (Plain / Markdown) in the node and edge property panels — **Title format** for a subgraph — so formatted labels can be created from the visual editor rather than only read from hand-written Mermaid.
 
