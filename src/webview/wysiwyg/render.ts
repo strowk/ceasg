@@ -192,7 +192,11 @@ function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
   title.setAttribute('x', String(b.x + 10));
   title.setAttribute('y', String(b.y + 16));
   const titleSize = style?.fontSize ?? GROUP_TITLE_FONT_SIZE;
-  if (style?.textColor) { title.style.fill = style.textColor; }
+  // An authored colour must render at full strength, not the stylesheet's muted 0.8.
+  if (style?.textColor) {
+    title.style.fill = style.textColor;
+    title.style.opacity = '1';
+  }
   if (style?.fontSize) { title.style.fontSize = `${style.fontSize}px`; }
   if (style?.fontFamily) { title.style.fontFamily = style.fontFamily; }
   // The box is sized from its members, not the title, so there is no reserved

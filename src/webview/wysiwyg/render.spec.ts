@@ -346,6 +346,30 @@ describe('subgraph styling', () => {
     expect(title.style.fill).toBe('rgb(255, 0, 0)');
   });
 
+  it('renders a subgraph title with an authored colour at full opacity', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S[Svc]\nA\nend\nstyle S color:#ff0000\n',
+    );
+    place(model);
+    const title = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-title') as SVGElement;
+    // Inline opacity overrides the stylesheet's muted 0.8, so the authored
+    // colour renders exactly as written.
+    expect(title.style.opacity).toBe('1');
+  });
+
+  it('leaves a default subgraph title opacity to the stylesheet', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S[Svc]\nA\nend\n',
+    );
+    place(model);
+    const title = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-title') as SVGElement;
+    // No authored colour means no inline opacity, so the stylesheet's 0.8 rule
+    // still governs the muted default title.
+    expect(title.style.opacity).toBe('');
+  });
+
   // The box carries its inline fill/stroke, which beats any stylesheet rule, so
   // the selection outline has to live on a rect of its own to stay visible.
   it('gives every subgraph a separate selection rect matching the box', () => {
