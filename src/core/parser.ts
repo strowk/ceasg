@@ -27,6 +27,7 @@ import {
 	NodeShape,
 	NodeStyle,
 	emptyModel,
+	hasStyle,
 	newEdgeId,
 	newGroupId,
 } from "./model";
@@ -714,14 +715,28 @@ export function mermaidToModel(text: string): ParseResult {
 	}
 
 	// Drop groups with no members AND no child groups — unless an edge names the
-	// group. `subgraph S1 \n end` plus `S1 --> D` would otherwise drop the group
-	// and leave the placeholder node the reconciliation below exists to remove.
+	// group, or a `style`/`class` line targets it. `subgraph S1 \n end` plus
+	// `S1 --> D` would otherwise drop the group and leave the placeholder node
+	// the reconciliation below exists to remove; the same is true of a `style`
+	// or `class` line, whose parsed styling lives on the placeholder node at
+	// this point (the reconciliation hasn't run yet) — dropping the group here
+	// would strand that styling on a node that stands in for a container that
+	// no longer exists.
 	const parents = new Set(
 		model.groups.map((g) => g.parentId).filter((p): p is string => !!p),
 	);
 	const edgeEndpoints = new Set(model.edges.flatMap((e) => [e.from, e.to]));
+	const styledIds = new Set(
+		model.nodes
+			.filter((n) => hasStyle(n.style) || (n.classes && n.classes.length > 0))
+			.map((n) => n.id),
+	);
 	model.groups = model.groups.filter(
-		(g) => g.nodeIds.length > 0 || parents.has(g.id) || edgeEndpoints.has(g.id),
+		(g) =>
+			g.nodeIds.length > 0 ||
+			parents.has(g.id) ||
+			edgeEndpoints.has(g.id) ||
+			styledIds.has(g.id),
 	);
 
 	// Mermaid lets a subgraph id stand wherever an edge expects a node

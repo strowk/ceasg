@@ -150,6 +150,15 @@ describe('subgraph-edge round-trip', () => {
     expect(roundtrip(out)).toBe(out);
   });
 
+  it('round-trips an empty subgraph that a style line targets', () => {
+    const src = 'flowchart TB\n    subgraph S [Pipeline]\n    end\n    style S fill:#f00\n';
+    const out = roundtrip(src);
+    expect(out).toContain('subgraph S ["Pipeline"]');
+    expect(out).toContain('end');
+    expect(out).toContain('style S fill:#f00');
+    expect(roundtrip(out)).toBe(out);
+  });
+
   it('round-trips a forward reference into its canonical order', () => {
     const forward =
       'flowchart TB\n    S1 --> D[Report]\n    subgraph S1 [Pipeline]\n        A[Ingest] --> B[Transform]\n    end\n';

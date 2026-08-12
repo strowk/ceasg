@@ -164,6 +164,33 @@ describe('edges naming a subgraph id', () => {
     expect(model.extras.filter((e) => e.startsWith('class '))).toEqual([]);
   });
 
+  it('keeps an empty subgraph that a style line targets', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S [Pipeline]\nend\nstyle S fill:#f00\n',
+    );
+    const group = model.groups.find((g) => g.id === 'S');
+    expect(group).toBeTruthy();
+    expect(group!.title).toBe('Pipeline');
+    expect(group!.style).toEqual({ fillColor: '#f00' });
+    expect(model.nodes.find((n) => n.id === 'S')).toBeUndefined();
+  });
+
+  it('keeps an empty subgraph that a class line targets', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S [Pipeline]\nend\nclassDef hot fill:#f00\nclass S hot\n',
+    );
+    const group = model.groups.find((g) => g.id === 'S');
+    expect(group).toBeTruthy();
+    expect(group!.title).toBe('Pipeline');
+    expect(group!.classes).toEqual(['hot']);
+    expect(model.nodes.find((n) => n.id === 'S')).toBeUndefined();
+  });
+
+  it('still drops a genuinely empty, unstyled subgraph', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph S [Pipeline]\nend\n');
+    expect(model.groups.find((g) => g.id === 'S')).toBeUndefined();
+  });
+
   it('keeps unrecognised style props on a subgraph for round-trip', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph S1\nA\nend\nstyle S1 fill:#f00,rx:8\n',
