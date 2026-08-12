@@ -16,6 +16,7 @@ const FONT_PRESETS: Record<string, string> = {
  * which .ceasg-label is kept in lockstep with.
  */
 const DEFAULT_NODE_STROKE_W = 1.5;  // .ceasg-shape stroke-width
+const DEFAULT_GROUP_STROKE_W = 1;   // .ceasg-group-box stroke-width
 const DEFAULT_EDGE_STROKE_W = 1.5;  // .ceasg-edge-line stroke-width
 const DEFAULT_EDGE_LABEL_SIZE = 12; // .ceasg-edge-label font-size
 
@@ -252,6 +253,23 @@ export class PropertiesPanel {
 
     this.host.appendChild(this.row('Title format', this.formatSelect(group().titleFormat, (v) =>
       this.editor.mutate((m) => { m.groups.find((g) => g.id === id)!.titleFormat = v; }, { commit: true }))));
+
+    const setStyle = (patch: Partial<NodeStyle>) => this.editor.mutate((m) => {
+      const g = m.groups.find((g) => g.id === id)!; g.style = { ...g.style, ...patch };
+    }, { commit: true });
+
+    const mkColor = (current: string | undefined, apply: (v: string) => Partial<NodeStyle>) => {
+      const c = document.createElement('input'); c.type = 'color'; c.value = current ?? '#888888';
+      c.addEventListener('input', () => setStyle(apply(c.value)));
+      return c;
+    };
+    this.host.appendChild(this.row('Fill', mkColor(group().style?.fillColor, (v) => ({ fillColor: v }))));
+    this.host.appendChild(this.row('Border', mkColor(group().style?.strokeColor, (v) => ({ strokeColor: v }))));
+    this.host.appendChild(this.row('Title color', mkColor(group().style?.textColor, (v) => ({ textColor: v }))));
+    this.host.appendChild(this.row('Border width',
+      this.numberInput(group().style?.strokeWidth, DEFAULT_GROUP_STROKE_W, '0', '0.5', (v) => setStyle({ strokeWidth: v }))));
+    this.host.appendChild(this.row('Border dash',
+      this.presetSelect(DASH_PRESETS, group().style?.strokeDasharray ?? '', (v) => setStyle({ strokeDasharray: v || undefined }))));
 
     this.host.appendChild(this.hint(`${group().nodeIds.length} member nodes`));
 

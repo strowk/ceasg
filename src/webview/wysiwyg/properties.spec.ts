@@ -32,6 +32,14 @@ function pick(select: HTMLSelectElement, value: string): void {
   select.dispatchEvent(new Event('change'));
 }
 
+/** Locates a colour/number input by its row's label text. */
+function rowInput(host: HTMLElement, label: string): HTMLInputElement {
+  const rows = Array.from(host.querySelectorAll('.ceasg-panel-row'));
+  const row = rows.find((r) => r.querySelector('span')?.textContent === label);
+  if (!row) { throw new Error(`no row labelled "${label}"`); }
+  return row.querySelector('input') as HTMLInputElement;
+}
+
 describe('PropertiesPanel label format controls', () => {
   it('node panel: shows Label format defaulting to Plain, and Markdown sets node.labelFormat', () => {
     const model = emptyModel();
@@ -114,5 +122,42 @@ describe('PropertiesPanel label format controls', () => {
 
     pick(control, '');
     expect(model.groups[0]!.titleFormat).toBeUndefined();
+  });
+});
+
+describe('PropertiesPanel subgraph style controls', () => {
+  function groupModel() {
+    const model = emptyModel();
+    model.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0 });
+    model.groups.push({ id: 'S', title: 'Svc', nodeIds: ['A'] });
+    return model;
+  }
+
+  it('writes the picked fill onto the group style', () => {
+    const model = groupModel();
+    const { host, panel } = make(model);
+    const sel = new SelectionState(); sel.select('S');
+    panel.refresh(sel);
+
+    const fill = rowInput(host, 'Fill');
+    fill.value = '#ff0000';
+    fill.dispatchEvent(new Event('input'));
+    expect(model.groups[0]!.style?.fillColor).toBe('#ff0000');
+  });
+
+  it('writes border width and dash onto the group style', () => {
+    const model = groupModel();
+    const { host, panel } = make(model);
+    const sel = new SelectionState(); sel.select('S');
+    panel.refresh(sel);
+
+    const width = rowInput(host, 'Border width');
+    width.value = '4';
+    width.dispatchEvent(new Event('input'));
+    expect(model.groups[0]!.style?.strokeWidth).toBe(4);
+
+    const dash = rowControl(host, 'Border dash');
+    pick(dash, 'Dashed');
+    expect(model.groups[0]!.style?.strokeDasharray).toBe('6 4');
   });
 });
