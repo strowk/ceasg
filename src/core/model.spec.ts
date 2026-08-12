@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, nodeSize } from './model';
+import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, resolveGroupStyle, nodeSize } from './model';
 import type { DiagramGroup } from './model';
 import { ALL_SHAPES } from './shapes';
 import {
@@ -61,10 +61,22 @@ describe('model', () => {
     const full: Required<DiagramGroup> = {
       id: 'g1', title: 'T', titleFormat: 'markdown', nodeIds: ['A', 'B'],
       parentId: 'g0', x: 1, y: 2, w: 3, h: 4,
+      style: { fillColor: '#f00', extra: ['rx:4'] }, classes: ['hot'],
     };
     const m = emptyModel();
-    m.groups.push({ ...full, nodeIds: [...full.nodeIds] });
-    expect(cloneModel(m).groups[0]).toEqual(full);
+    m.groups.push({
+      ...full,
+      nodeIds: [...full.nodeIds],
+      classes: [...full.classes],
+      style: { ...full.style, extra: [...full.style.extra!] },
+    });
+    const clone = cloneModel(m).groups[0]!;
+    expect(clone).toEqual(full);
+    // Deep, not shared: mutating the clone must not reach the original.
+    clone.classes!.push('cold');
+    clone.style!.extra!.push('ry:4');
+    expect(m.groups[0]!.classes).toEqual(['hot']);
+    expect(m.groups[0]!.style!.extra).toEqual(['rx:4']);
   });
 });
 
@@ -302,6 +314,23 @@ describe('resolveNodeStyle with font and stroke props', () => {
     expect(s.fontSize).toBe(9);
     expect(s.strokeDasharray).toBe('1 1');
     expect(s.strokeWidth).toBe(4);          // untouched by the node style
+  });
+});
+
+describe('resolveGroupStyle', () => {
+  it('layers a group class under its own style, ignoring classDef default', () => {
+    const m = emptyModel();
+    m.classDefs.push({ name: 'default', style: { fillColor: '#eee' } });
+    m.classDefs.push({ name: 'hot', style: { fillColor: '#f00', strokeColor: '#900' } });
+    m.groups.push({ id: 'S', title: 'S', nodeIds: [], classes: ['hot'], style: { strokeColor: '#00f' } });
+    expect(resolveGroupStyle(m, m.groups[0]!)).toEqual({ fillColor: '#f00', strokeColor: '#00f' });
+  });
+
+  it('returns undefined for a group with no class and no style', () => {
+    const m = emptyModel();
+    m.classDefs.push({ name: 'default', style: { fillColor: '#eee' } });
+    m.groups.push({ id: 'S', title: 'S', nodeIds: [] });
+    expect(resolveGroupStyle(m, m.groups[0]!)).toBeUndefined();
   });
 });
 

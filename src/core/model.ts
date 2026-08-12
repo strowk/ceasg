@@ -143,6 +143,10 @@ export interface DiagramGroup {
 	y?: number;
 	w?: number;
 	h?: number;
+	/** Container styling from `style <id> …`, the same property set as a node's. */
+	style?: NodeStyle;
+	/** classDef names assigned via `class <id> name` — order matters. */
+	classes?: string[];
 }
 
 export const GROUP_PAD = 20;
@@ -237,6 +241,26 @@ export function emptyModel(direction: Direction = "TB"): DiagramModel {
 	};
 }
 
+/** Per-property merge, lowest-precedence layer first. `extra` props are
+ *  round-trip-only and never merged. */
+function mergeStyleLayers(
+	layers: Array<NodeStyle | undefined>,
+): NodeStyle | undefined {
+	const merged: NodeStyle = {};
+	for (const layer of layers) {
+		if (!layer) continue;
+		if (layer.fillColor !== undefined) merged.fillColor = layer.fillColor;
+		if (layer.strokeColor !== undefined) merged.strokeColor = layer.strokeColor;
+		if (layer.textColor !== undefined) merged.textColor = layer.textColor;
+		if (layer.fontSize !== undefined) merged.fontSize = layer.fontSize;
+		if (layer.fontFamily !== undefined) merged.fontFamily = layer.fontFamily;
+		if (layer.strokeWidth !== undefined) merged.strokeWidth = layer.strokeWidth;
+		if (layer.strokeDasharray !== undefined)
+			merged.strokeDasharray = layer.strokeDasharray;
+	}
+	return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 /**
  * Effective render style for a node. Per-property merge, lowest to highest
  * precedence: theme CSS defaults (returned undefined keeps them) <
@@ -252,20 +276,25 @@ export function resolveNodeStyle(
 	const layers: Array<NodeStyle | undefined> = [byName.get("default")];
 	for (const name of node.classes ?? []) layers.push(byName.get(name));
 	layers.push(node.style);
+	return mergeStyleLayers(layers);
+}
 
-	const merged: NodeStyle = {};
-	for (const layer of layers) {
-		if (!layer) continue;
-		if (layer.fillColor !== undefined) merged.fillColor = layer.fillColor;
-		if (layer.strokeColor !== undefined) merged.strokeColor = layer.strokeColor;
-		if (layer.textColor !== undefined) merged.textColor = layer.textColor;
-		if (layer.fontSize !== undefined) merged.fontSize = layer.fontSize;
-		if (layer.fontFamily !== undefined) merged.fontFamily = layer.fontFamily;
-		if (layer.strokeWidth !== undefined) merged.strokeWidth = layer.strokeWidth;
-		if (layer.strokeDasharray !== undefined)
-			merged.strokeDasharray = layer.strokeDasharray;
-	}
-	return Object.keys(merged).length > 0 ? merged : undefined;
+/**
+ * Effective render style for a subgraph container. Same layering as
+ * `resolveNodeStyle` — classes in assignment order, then the group's own
+ * `style` — minus `classDef default`, which Mermaid applies to nodes only;
+ * inheriting it here would repaint every subgraph box in a diagram that
+ * declares one.
+ */
+export function resolveGroupStyle(
+	model: DiagramModel,
+	group: DiagramGroup,
+): NodeStyle | undefined {
+	const byName = new Map(model.classDefs.map((c) => [c.name, c.style]));
+	const layers: Array<NodeStyle | undefined> = [];
+	for (const name of group.classes ?? []) layers.push(byName.get(name));
+	layers.push(group.style);
+	return mergeStyleLayers(layers);
 }
 
 /**
@@ -676,8 +705,16 @@ export function cloneModel(model: DiagramModel): DiagramModel {
 		})),
 		// Spread rather than list fields: a hand-written list silently drops any
 		// field added to `DiagramGroup` later, and a dropped field is written
-		// back to the user's file on the next undo.
-		groups: model.groups.map((g) => ({ ...g, nodeIds: [...g.nodeIds] })),
+		// back to the user's file on the next undo. The nested containers still
+		// need explicit copies so an edit to the clone cannot reach the original.
+		groups: model.groups.map((g) => ({
+			...g,
+			nodeIds: [...g.nodeIds],
+			style: g.style
+				? { ...g.style, extra: g.style.extra ? [...g.style.extra] : undefined }
+				: undefined,
+			classes: g.classes ? [...g.classes] : undefined,
+		})),
 		classDefs: model.classDefs.map((c) => ({
 			name: c.name,
 			style: { ...c.style, extra: c.style.extra ? [...c.style.extra] : undefined },
