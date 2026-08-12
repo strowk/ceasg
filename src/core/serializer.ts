@@ -125,12 +125,12 @@ function stylePropsToString(s: NodeStyle): string | null {
 	return props.join(",");
 }
 
-function styleLine(node: DiagramNode): string | null {
-	const s = node.style;
-	if (!hasStyle(s) || !s) return null;
-	const props = stylePropsToString(s);
+/** A `style <id> …` line for any styled target — a node or a subgraph. */
+function styleLine(id: string, style: NodeStyle | undefined): string | null {
+	if (!hasStyle(style) || !style) return null;
+	const props = stylePropsToString(style);
 	if (!props) return null;
-	return `style ${sanitizeId(node.id)} ${props}`;
+	return `style ${sanitizeId(id)} ${props}`;
 }
 
 /**
@@ -150,6 +150,15 @@ function classLines(model: DiagramModel): string[] {
 		for (const name of node.classes ?? []) {
 			const list = members.get(name) ?? [];
 			list.push(sanitizeId(node.id));
+			members.set(name, list);
+		}
+	}
+
+	// A subgraph id stands wherever a node id does in a `class` assignment.
+	for (const group of model.groups) {
+		for (const name of group.classes ?? []) {
+			const list = members.get(name) ?? [];
+			list.push(sanitizeId(group.id));
 			members.set(name, list);
 		}
 	}
@@ -293,7 +302,12 @@ export function modelToMermaid(
 	}
 
 	for (const node of model.nodes) {
-		const sl = styleLine(node);
+		const sl = styleLine(node.id, node.style);
+		if (sl) lines.push(INDENT + sl);
+	}
+
+	for (const group of model.groups) {
+		const sl = styleLine(group.id, group.style);
 		if (sl) lines.push(INDENT + sl);
 	}
 

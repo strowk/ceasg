@@ -132,14 +132,21 @@ describe('subgraph-edge round-trip', () => {
     expect(roundtrip(canonical)).toBe(canonical);
   });
 
-  it('keeps style and class lines that target the subgraph id', () => {
+  it('applies style and class lines that target the subgraph id to the group', () => {
     const src =
       'flowchart TB\n    subgraph S1 [Pipeline]\n        A[Ingest]\n    end\n    S1 --> D[Report]\n    classDef hot fill:#f00\n    class A,S1 hot\n    style S1 stroke:#00f\n';
     const out = roundtrip(src);
     expect(out).toContain('style S1 stroke:#00f');
-    expect(out).toContain('class S1 hot');
-    expect(out).toContain('class A hot');
-    expect(out.match(/class A hot/g)!.length).toBe(1);
+    // Node and group ids share one grouped assignment, emitted exactly once.
+    expect(out).toContain('class A,S1 hot');
+    expect(out.match(/^\s*class /gm)!.length).toBe(1);
+    expect(roundtrip(out)).toBe(out);
+  });
+
+  it('round-trips a subgraph style whose props ceasg does not model', () => {
+    const src = 'flowchart TB\n    subgraph S1 [Pipeline]\n        A[Ingest]\n    end\n    style S1 fill:#f9f,rx:8\n';
+    const out = roundtrip(src);
+    expect(out).toContain('style S1 fill:#f9f,rx:8');
     expect(roundtrip(out)).toBe(out);
   });
 
