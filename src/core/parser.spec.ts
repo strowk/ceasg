@@ -135,27 +135,42 @@ describe('edges naming a subgraph id', () => {
     expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
   });
 
-  // `style S1 ...` / `class S1 hot` is how Mermaid styles a subgraph. ceasg does
-  // not model subgraph styling, so the lines must survive as extras rather than
-  // disappearing with the placeholder node they were folded into.
-  it('preserves a style line targeting a subgraph id', () => {
+  // `style S1 ...` / `class S1 hot` is how Mermaid styles a subgraph. Both route
+  // through `ensureNode` into a placeholder node; reconciliation must move what
+  // they parsed onto the group rather than losing it with the placeholder.
+  it('applies a style line targeting a subgraph id to the group', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph S1\nA-->B\nend\nS1 --> D\nstyle S1 fill:#f00\n',
     );
     expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
-    expect(model.extras).toContain('style S1 fill:#f00');
+    expect(model.groups.find((g) => g.id === 'S1')!.style).toEqual({ fillColor: '#f00' });
+    expect(model.extras.join('\n')).not.toContain('style S1');
   });
 
-  it('preserves a class assignment targeting a subgraph id without duplicating it', () => {
+  it('applies a style line written before its subgraph block', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nstyle S1 fill:#f00\nsubgraph S1\nA-->B\nend\n',
+    );
+    expect(model.groups.find((g) => g.id === 'S1')!.style).toEqual({ fillColor: '#f00' });
+  });
+
+  it('applies a class assignment targeting a subgraph id to the group', () => {
     const { model } = mermaidToModel(
       'flowchart TB\nsubgraph S1\nA-->B\nend\nS1 --> D\nclassDef hot fill:#f00\nclass A,S1 hot\n',
     );
     expect(model.nodes.find((n) => n.id === 'S1')).toBeUndefined();
-    expect(model.extras).toContain('class S1 hot');
-    // A still carries the class in the model, so the serializer emits its
-    // assignment; the extras line must not repeat it.
+    expect(model.groups.find((g) => g.id === 'S1')!.classes).toEqual(['hot']);
     expect(model.nodes.find((n) => n.id === 'A')!.classes).toEqual(['hot']);
-    expect(model.extras.filter((e) => e.startsWith('class '))).toEqual(['class S1 hot']);
+    expect(model.extras.filter((e) => e.startsWith('class '))).toEqual([]);
+  });
+
+  it('keeps unrecognised style props on a subgraph for round-trip', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\nsubgraph S1\nA\nend\nstyle S1 fill:#f00,rx:8\n',
+    );
+    expect(model.groups.find((g) => g.id === 'S1')!.style).toEqual({
+      fillColor: '#f00', extra: ['rx:8'],
+    });
   });
 
   it('does not apply a stale pos hint left over from a removed phantom', () => {

@@ -438,10 +438,6 @@ export function mermaidToModel(text: string): ParseResult {
 	const groupedNodes = new Set<string>();
 	const linkStyleDirectives: Array<{ index: number; props: string }> = [];
 	const clickBindings: Array<{ id: string; target: string; raw: string }> = [];
-	// Raw `style <id> <props>` text per id. `style S1 fill:#f00` is how Mermaid
-	// styles a *subgraph*, and we only learn that `S1` names a group after the
-	// whole document is read — see the reconciliation pass at the end.
-	const rawStyleProps = new Map<string, string[]>();
 
 	const ensureNode = (token: ParsedToken): DiagramNode => {
 		let node = nodeMap.get(token.id);
@@ -615,9 +611,6 @@ export function mermaidToModel(text: string): ParseResult {
 		if (styleMatch && styleMatch[1] && styleMatch[2]) {
 			const node = ensureNode({ id: styleMatch[1] });
 			applyStyleProps(node, styleMatch[2]);
-			const prev = rawStyleProps.get(styleMatch[1]);
-			if (prev) prev.push(styleMatch[2]);
-			else rawStyleProps.set(styleMatch[1], [styleMatch[2]]);
 			continue;
 		}
 
@@ -741,20 +734,16 @@ export function mermaidToModel(text: string): ParseResult {
 	// and it clears `nodeMap` so a `click <group id>` binding falls through to
 	// extras and round-trips verbatim.
 	const groupIds = new Set(model.groups.map((g) => g.id));
+	const groupById = new Map(model.groups.map((g) => [g.id, g]));
 	for (const phantom of model.nodes.filter((n) => groupIds.has(n.id))) {
 		// `style S1 ...` and `class S1 hot` are how Mermaid styles a subgraph, and
-		// both routed through `ensureNode` into this phantom. Subgraph styling is
-		// not modelled, so preserve the lines verbatim in extras rather than
-		// losing them with the node. Class assignments are re-emitted one id per
-		// line: any node co-listed on the original `class A,S1 hot` still gets its
-		// assignment from the serializer's own grouping, so repeating the combined
-		// line here would assign it twice.
-		for (const props of rawStyleProps.get(phantom.id) ?? []) {
-			model.extras.push(`style ${phantom.id} ${props}`);
-		}
-		for (const cls of phantom.classes ?? []) {
-			model.extras.push(`class ${phantom.id} ${cls}`);
-		}
+		// both routed through `ensureNode` into this placeholder. Move what they
+		// parsed onto the group, so the container is styled instead of the styling
+		// being lost with the placeholder this pass removes.
+		const group = groupById.get(phantom.id);
+		if (!group) continue;
+		if (phantom.style) group.style = phantom.style;
+		if (phantom.classes) group.classes = phantom.classes;
 	}
 	model.nodes = model.nodes.filter((n) => !groupIds.has(n.id));
 	for (const id of groupIds) {
