@@ -14,10 +14,11 @@ flowchart authoring**, most useful first — so you can work down the list in
 priority order. Subgraph capabilities lead (grouping / nested concepts are used
 constantly), followed by label and styling gaps that affect ordinary diagrams,
 then edge semantics and the extended shape library, and finally the niche or
-decorative features (animation, callbacks, icons, accessibility). §3 (edges
-to/from a subgraph, and subgraph styling) is now supported with only minor
-caveats and stays at its numbered position rather than being renumbered or
-removed, so cross-references elsewhere keep working.
+decorative features (animation, callbacks, icons, accessibility). §1, §2, and
+§3 (nesting, the subgraph creation/editing UI, and edges to/from a subgraph
+plus subgraph styling) are now supported and stay at their numbered positions
+rather than being renumbered or removed, so cross-references elsewhere keep
+working.
 
 > Scope note: "round-tripped" below means the original Mermaid text survives a
 > save (it is stashed in `model.extras`, `style.extra`, or the raw node/edge)
@@ -27,19 +28,25 @@ removed, so cross-references elsewhere keep working.
 
 ---
 
-## 1. Nested subgraphs
+## 1. Nested subgraphs — supported
 
 **Mermaid supports:** subgraphs nested inside subgraphs, to arbitrary depth.
 
-**Our editor supports:** a **flat** list of groups (`DiagramGroup` has
-`nodeIds` but no parent/child relationship).
+**Our editor supports:** the same. Nesting parses to arbitrary depth and
+renders as nested containers on the canvas, with each inner box drawn on top
+of its parent's. It is fully editable: grouping a selection of nodes that
+already share one parent subgraph nests the new subgraph under it, and
+dragging an existing subgraph's box onto another subgraph's box reparents it
+there — dropping it on empty canvas promotes it back to the top level, and a
+subgraph cannot be dropped onto one of its own descendants. Saving writes
+properly nested `subgraph`/`end` blocks, and an outer subgraph whose only
+content is other subgraphs (no direct nodes) round-trips rather than being
+dropped as empty.
 
-**Gap / consequence:**
-- On parse, a node is assigned to whichever subgraph *first mentions* it
-  (innermost wins), and an outer subgraph that contains only nested subgraphs
-  (no direct nodes) ends up empty and is **dropped**. Nesting hierarchy is
-  **flattened / lost** — it neither renders as nested containers nor
-  round-trips.
+**Remaining gap / consequence:**
+- None. Nesting parses, renders, is editable, and round-trips at arbitrary
+  depth, including an outer subgraph that contains only nested subgraphs and
+  no nodes of its own.
 
 **Example:**
 
@@ -54,19 +61,37 @@ flowchart TB
 
 ---
 
-## 2. No subgraph creation / editing UI
+## 2. Subgraph creation / editing UI — supported, with limits
 
 **Mermaid supports:** subgraphs as a first-class grouping construct.
 
-**Our editor supports:** parsing, membership, and re-serialization of existing
-subgraphs — but (per README "Known Limitations") **no UI** to create a subgraph,
-rename it, add/remove members, or delete it.
+**Our editor supports:** creating, restructuring, and removing subgraphs
+directly on the canvas, not just parsing and round-tripping ones already in
+the source. Select one or more nodes and use **Group selection into
+subgraph** to wrap them in a new subgraph; drag nodes into or out of a box to
+change membership; drag a subgraph's own box onto another subgraph to nest
+it, or off any subgraph to un-nest it; resize a box by dragging a handle;
+rename a subgraph by double-clicking its box on the canvas or editing the
+**Title** field in the properties panel; and **Ungroup selected subgraph**
+(from the toolbar, the properties panel, or the Delete key) removes the
+container while keeping its members. The properties panel also sets a
+subgraph's fill, border, and title colour (see §3).
 
-**Gap / consequence:**
-- Subgraphs present in the source are round-tripped, but a user starting from
-  the visual editor cannot introduce or restructure grouping at all.
+**Remaining gap / consequence:**
+- There is no single action that deletes a subgraph together with its
+  members — every removal path (toolbar Ungroup, the panel's Ungroup button,
+  Delete) keeps the member nodes; removing them too means selecting and
+  deleting them separately.
+- Grouping only wraps an existing selection of one or more nodes — there is
+  no way to place a new, empty subgraph on the canvas and add members to it
+  afterward.
+- Grouping nodes that belong to different parent subgraphs (or a mix of
+  grouped and ungrouped nodes) always creates the new subgraph at the top
+  level rather than nested under either parent; drag the new box onto the
+  desired parent afterward to nest it.
 
-**Example:** (nothing in the toolbar/palette produces this grouping)
+**Example:** (equivalent to selecting A and B, then clicking **Group
+selection into subgraph**)
 
 ```mermaid
 flowchart LR
@@ -494,8 +519,8 @@ Rows follow the same priority order as the sections above.
 | # | Feature | Parsed | Rendered on canvas | Editable in UI | Round-trips |
 |---|---|---|---|---|---|
 | — | 14 classic node shapes (baseline, supported) | ✅ | ✅ | ✅ | ✅ |
-| 1 | Nested subgraphs | ⚠️ flattened | ❌ | ❌ | ❌ (lost) |
-| 2 | Subgraph create/edit UI | — | — | ❌ | ✅ |
+| 1 | Nested subgraphs | ✅ | ✅ | ✅ | ✅ |
+| 2 | Subgraph create/edit UI | — | — | ✅ | ✅ |
 | 3 | Subgraph as edge endpoint | ✅ | ✅ | ✅ | ✅ |
 | 3 | Subgraph styling | ✅ | ✅ | ⚠️ no font control | ✅ |
 | 4 | Per-subgraph direction | ⚠️ | ❌ | ❌ | ✅ extras |
