@@ -1,4 +1,4 @@
-import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, edgeLabelSize, groupBounds, groupChildren, BASE_FONT_SIZE, nodeLabelLayout, edgeLabelLayout, layoutLabel, EDGE_LABEL_FONT_SIZE, type LabelLine } from '../../core';
+import { DiagramModel, DiagramNode, DiagramEdge, DiagramGroup, createShapeElements, lookupShape, nodeSize, resolveNodeStyle, resolveGroupStyle, edgeLabelSize, groupBounds, groupChildren, BASE_FONT_SIZE, nodeLabelLayout, edgeLabelLayout, layoutLabel, EDGE_LABEL_FONT_SIZE, type LabelLine } from '../../core';
 import { edgePathD, selfLoopPathD, bezierMidpoint } from './edgePath';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -156,23 +156,45 @@ function renderEdge(model: DiagramModel, edge: DiagramEdge, offset: number): SVG
   return g;
 }
 
-function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
-  const g = el('g');
-  g.setAttribute('class', 'ceasg-group');
-  g.setAttribute('data-group-id', group.id);
-  const b = groupBounds(model, group);
+/** Box geometry is shared by the painted box and the selection outline drawn
+ *  over it, so they can never drift apart. */
+function groupRect(cls: string, b: { x: number; y: number; w: number; h: number }): SVGRectElement {
   const rect = el('rect');
-  rect.setAttribute('class', 'ceasg-group-box');
+  rect.setAttribute('class', cls);
   rect.setAttribute('x', String(b.x));
   rect.setAttribute('y', String(b.y));
   rect.setAttribute('width', String(b.w));
   rect.setAttribute('height', String(b.h));
   rect.setAttribute('rx', '6');
+  return rect;
+}
+
+function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
+  const g = el('g');
+  g.setAttribute('class', 'ceasg-group');
+  g.setAttribute('data-group-id', group.id);
+  const b = groupBounds(model, group);
+  const style = resolveGroupStyle(model, group);
+  const rect = groupRect('ceasg-group-box', b);
+  // Inline style beats the `.ceasg-group-box` stylesheet rule; a presentation
+  // attribute would be overridden by it, so per-group styling must use style.
+  if (style?.fillColor) { rect.style.fill = style.fillColor; }
+  if (style?.strokeColor) { rect.style.stroke = style.strokeColor; }
+  if (style?.strokeWidth) { rect.style.strokeWidth = String(style.strokeWidth); }
+  if (style?.strokeDasharray) { rect.style.strokeDasharray = style.strokeDasharray; }
   g.appendChild(rect);
+  // Selection draws on its own rect above the box: the inline stroke set just
+  // above would otherwise win over the `.ceasg-group-selected` rule and leave a
+  // styled subgraph with no visible selection.
+  g.appendChild(groupRect('ceasg-group-selbox', b));
   const title = el('text');
   title.setAttribute('class', 'ceasg-group-title');
   title.setAttribute('x', String(b.x + 10));
   title.setAttribute('y', String(b.y + 16));
+  const titleSize = style?.fontSize ?? GROUP_TITLE_FONT_SIZE;
+  if (style?.textColor) { title.style.fill = style.textColor; }
+  if (style?.fontSize) { title.style.fontSize = `${style.fontSize}px`; }
+  if (style?.fontFamily) { title.style.fontFamily = style.fontFamily; }
   // The box is sized from its members, not the title, so there is no reserved
   // space for a wrapped second line — an overlong title must overflow
   // sideways rather than wrap down into the member nodes below it. Passing no
@@ -181,9 +203,9 @@ function renderGroup(model: DiagramModel, group: DiagramGroup): SVGGElement {
   // longer than ~200px would wrap. Infinity opts out of wrapping entirely,
   // matching the plain (non-markdown) title, which never wrapped either.
   const lines = layoutLabel(group.title, {
-    markdown: group.titleFormat === 'markdown', fontSize: GROUP_TITLE_FONT_SIZE, wrapWidth: Infinity,
+    markdown: group.titleFormat === 'markdown', fontSize: titleSize, wrapWidth: Infinity,
   }).lines;
-  paintLabelLines(title, lines, b.x + 10, GROUP_TITLE_FONT_SIZE);
+  paintLabelLines(title, lines, b.x + 10, titleSize);
   g.appendChild(title);
   return g;
 }

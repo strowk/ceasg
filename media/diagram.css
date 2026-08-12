@@ -37,7 +37,11 @@
   pointer-events: none;
   dominant-baseline: middle;
 }
-.ceasg-group-selected .ceasg-group-box {
+/* The selection outline lives on its own rect: render.ts writes a subgraph's
+   fill/stroke inline on .ceasg-group-box, and an inline style beats any
+   stylesheet rule, so a styled subgraph would show no selection otherwise. */
+.ceasg-group-selbox { fill: none; stroke: none; pointer-events: none; }
+.ceasg-group-selected .ceasg-group-selbox {
   stroke: var(--vscode-focusBorder, #007fd4);
   stroke-width: 2px;
 }

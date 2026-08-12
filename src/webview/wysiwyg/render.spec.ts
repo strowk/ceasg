@@ -307,3 +307,56 @@ describe('formatted labels', () => {
     expect(tspans[2]!.textContent).toBe(' and plain');
   });
 });
+
+describe('subgraph styling', () => {
+  const place = (model: ReturnType<typeof mermaidToModel>['model']) => {
+    model.nodes.forEach((n, i) => { n.x = i * 300; n.y = 0; });
+  };
+
+  it('paints a subgraph fill and stroke from a style line', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S[Svc]\nA\nend\nstyle S fill:#ff0000,stroke:#0000ff,stroke-width:3px,stroke-dasharray:6 4\n',
+    );
+    place(model);
+    const box = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-box') as SVGElement;
+    expect(box.style.fill).toBe('rgb(255, 0, 0)');
+    expect(box.style.stroke).toBe('rgb(0, 0, 255)');
+    expect(box.style.strokeWidth).toBe('3');
+    expect(box.style.strokeDasharray).toBe('6 4');
+  });
+
+  it('paints a subgraph style that comes from a classDef', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S[Svc]\nA\nend\nclassDef hot fill:#00ff00\nclass S hot\n',
+    );
+    place(model);
+    const box = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-box') as SVGElement;
+    expect(box.style.fill).toBe('rgb(0, 255, 0)');
+  });
+
+  it('colours the subgraph title from the style color prop', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S[Svc]\nA\nend\nstyle S color:#ff0000\n',
+    );
+    place(model);
+    const title = renderDiagram(model).refs.groupEls.get('S')!
+      .querySelector('.ceasg-group-title') as SVGElement;
+    expect(title.style.fill).toBe('rgb(255, 0, 0)');
+  });
+
+  // The box carries its inline fill/stroke, which beats any stylesheet rule, so
+  // the selection outline has to live on a rect of its own to stay visible.
+  it('gives every subgraph a separate selection rect matching the box', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph S[Svc]\nA\nend\n');
+    place(model);
+    const gEl = renderDiagram(model).refs.groupEls.get('S')!;
+    const box = gEl.querySelector('.ceasg-group-box')!;
+    const sel = gEl.querySelector('.ceasg-group-selbox')!;
+    expect(sel).toBeTruthy();
+    for (const attr of ['x', 'y', 'width', 'height']) {
+      expect(sel.getAttribute(attr)).toBe(box.getAttribute(attr));
+    }
+  });
+});
