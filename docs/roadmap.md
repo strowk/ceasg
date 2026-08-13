@@ -156,7 +156,7 @@ Read section 11 of `flowchart_diff_gap.md` ("Link length / rank hints"). Brainst
 
 ---
 
-## 11. Mermaid v11 shape library (`@{ shape: … }`)  (FG#8)
+## 11. Mermaid v11 shape library (`@{ shape: … }`)  (FG#8) ✅ DONE
 
 The ~30 new shapes silently degrade to rect and are lost on save. Big scope —
 brainstorm which shapes to prioritize.
