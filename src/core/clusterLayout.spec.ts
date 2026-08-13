@@ -1,13 +1,79 @@
 import { describe, it, expect } from 'vitest';
+import * as dagre from '@dagrejs/dagre';
+import type { EdgeLabel, GraphLabel, NodeLabel } from '@dagrejs/dagre';
 import { planClusters, layoutClusters, layoutSubtree } from './clusterLayout';
 import { mermaidToModel } from './parser';
-import { autoLayout } from './layout';
-import { emptyModel, nodeSize, type DiagramModel } from './model';
+import { emptyModel, groupDescendantNodeIds, nodeSize, type DiagramModel } from './model';
+import { edgeLabelSize } from './nodeGeometry';
 
 const at = (m: DiagramModel, id: string) => m.nodes.find((n) => n.id === id)!;
 /** True when the two nodes are laid out along x rather than y. */
 const horizontal = (m: DiagramModel, a: string, b: string) =>
   Math.abs(at(m, a).x - at(m, b).x) > Math.abs(at(m, a).y - at(m, b).y);
+
+/**
+ * An independent oracle for "what does a single compound dagre graph produce",
+ * built directly against dagre rather than through clusterLayout or autoLayout.
+ * Used only to pin the all-flat invariant below without relying on either of
+ * those sharing the code that made the comparison meaningful before Task 5.
+ */
+function singleGraphDagreLayout(model: DiagramModel): Map<string, { x: number; y: number }> {
+  const g = new dagre.graphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>({ compound: true });
+  g.setGraph({
+    rankdir: model.direction,
+    nodesep: model.config.nodeSpacing ?? 50,
+    ranksep: model.config.rankSpacing ?? 50,
+    marginx: 60,
+    marginy: 60,
+  });
+  g.setDefaultEdgeLabel(() => ({}));
+
+  const nodeIds = new Set(model.nodes.map((n) => n.id));
+  for (const node of model.nodes) {
+    const s = nodeSize(model, node);
+    g.setNode(node.id, { width: s.w, height: s.h });
+  }
+  const groupIds = new Set(model.groups.map((gr) => gr.id));
+  for (const grp of model.groups) {
+    if (nodeIds.has(grp.id)) continue;
+    g.setNode(grp.id, { width: 0, height: 0 });
+  }
+  for (const grp of model.groups) {
+    if (nodeIds.has(grp.id)) continue;
+    if (grp.parentId && groupIds.has(grp.parentId)) g.setParent(grp.id, grp.parentId);
+    for (const id of grp.nodeIds) if (nodeIds.has(id)) g.setParent(id, grp.id);
+  }
+  const rankProxy = (id: string): string | undefined => {
+    if (nodeIds.has(id)) return id;
+    if (!groupIds.has(id)) return undefined;
+    return groupDescendantNodeIds(model, id).find((n) => nodeIds.has(n));
+  };
+  for (const e of model.edges) {
+    if (e.from === e.to) continue;
+    const from = rankProxy(e.from);
+    const to = rankProxy(e.to);
+    if (from === undefined || to === undefined || from === to) continue;
+    const label = edgeLabelSize(e);
+    const prev = g.edge(from, to);
+    g.setEdge(from, to, {
+      width: Math.max(label.w, prev?.width ?? 0),
+      height: Math.max(label.h, prev?.height ?? 0),
+      labelpos: 'c',
+    });
+  }
+  dagre.layout(g);
+  const out = new Map<string, { x: number; y: number }>();
+  for (const node of model.nodes) {
+    const p = g.node(node.id);
+    // Round exactly as layoutClusters/layoutContainer do, so the two are
+    // comparable to the pixel rather than off by dagre's float remainder.
+    out.set(node.id, {
+      x: Math.max(40, Math.round(p!.x)),
+      y: Math.max(30, Math.round(p!.y)),
+    });
+  }
+  return out;
+}
 
 describe('planClusters', () => {
   it('collapses a subgraph with an explicit direction even when an edge crosses out', () => {
@@ -102,58 +168,56 @@ describe('layoutClusters', () => {
     }
   });
 
-  it('matches the flat engine when no subgraph collapses', () => {
+  it('matches a single-graph dagre layout when no subgraph collapses', () => {
     // Every group here has a crossing edge, so all are flat: layoutClusters
-    // builds one dagre graph holding every node — the same graph autoLayout's
-    // pre-recursive engine builds. The arrangement must therefore be identical,
-    // up to one uniform translation: layoutClusters places the origin so the
-    // outermost subgraph *box* clears the margin, where the flat engine only
-    // cleared the nodes.
+    // builds one dagre graph holding every node, exactly like a plain
+    // compound-cluster dagre layout would.
     //
-    // NOTE: Task 5 reroutes autoLayout onto layoutClusters and deletes
-    // dagreLayout, at which point this comparison becomes a tautology. If this
-    // test has to change then, tell the reviewer of Task 5 why: the invariant it
-    // pins is that an all-flat diagram is untouched by the recursive engine.
+    // Originally (Task 4) this compared layoutClusters against autoLayout's
+    // separate pre-recursive engine. Task 5 deleted that engine and routed
+    // autoLayout through layoutClusters itself, which would make that
+    // comparison a tautology (same function, called twice). This now compares
+    // against `singleGraphDagreLayout` above — an oracle built directly on
+    // dagre, independent of both layoutClusters and autoLayout — so the
+    // invariant it pins (an all-flat diagram is laid out exactly as one
+    // compound dagre graph would place it) stays meaningful.
     const src =
       'flowchart LR\n subgraph S\n  subgraph T\n   A-->B\n  end\n  X-->A\n end\n B-->C\n S-->D\n';
-    const mine = mermaidToModel(src).model;
-    const flat = mermaidToModel(src).model;
-    for (const g of planClusters(mine).values()) {
+    const { model } = mermaidToModel(src);
+    for (const g of planClusters(model).values()) {
       expect(g.branch).toBe('flat'); // precondition: nothing collapses here
     }
-    layoutClusters(mine);
-    autoLayout(flat);
+    const oracle = singleGraphDagreLayout(model);
+    layoutClusters(model);
 
-    expect(mine.nodes.length).toBeGreaterThan(3);
-    const first = at(mine, 'A');
-    const dx = first.x - at(flat, 'A').x;
-    const dy = first.y - at(flat, 'A').y;
-    for (const n of mine.nodes) {
-      const o = at(flat, n.id);
+    expect(model.nodes.length).toBeGreaterThan(3);
+    // Up to one uniform translation: layoutClusters places the origin so the
+    // outermost subgraph *box* clears the margin, where the raw dagre graph
+    // only clears the nodes.
+    const first = at(model, 'A');
+    const dx = first.x - oracle.get('A')!.x;
+    const dy = first.y - oracle.get('A')!.y;
+    for (const n of model.nodes) {
+      const o = oracle.get(n.id)!;
       expect(n.x - o.x).toBe(dx);
       expect(n.y - o.y).toBe(dy);
     }
     // A translation, not a collapse to a point: the layout is still spread out.
-    expect(new Set(mine.nodes.map((n) => n.x)).size).toBeGreaterThan(1);
+    expect(new Set(model.nodes.map((n) => n.x)).size).toBeGreaterThan(1);
   });
 
-  it('lays out a chain with no groups exactly as the flat engine does', () => {
-    const build = () => {
-      const m = emptyModel('TB');
-      for (const id of ['A', 'B', 'C']) { m.nodes.push({ id, label: id, shape: 'rect', x: 0, y: 0 }); }
-      m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
-      m.edges.push({ id: 'e2', from: 'B', to: 'C', label: '', kind: 'arrow' });
-      return m;
-    };
-    const mine = build();
-    const flat = build();
-    layoutClusters(mine);
-    autoLayout(flat);
-    expect(new Set(mine.nodes.map((n) => n.y)).size).toBeGreaterThan(1);
-    expect(horizontal(mine, 'A', 'B')).toBe(false);
+  it('lays out a chain with no groups exactly as a plain dagre layout does', () => {
+    const m = emptyModel('TB');
+    for (const id of ['A', 'B', 'C']) { m.nodes.push({ id, label: id, shape: 'rect', x: 0, y: 0 }); }
+    m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
+    m.edges.push({ id: 'e2', from: 'B', to: 'C', label: '', kind: 'arrow' });
+    const oracle = singleGraphDagreLayout(m);
+    layoutClusters(m);
+    expect(new Set(m.nodes.map((n) => n.y)).size).toBeGreaterThan(1);
+    expect(horizontal(m, 'A', 'B')).toBe(false);
     // With no group boxes to clear, even the origin matches.
-    for (const n of mine.nodes) {
-      expect([n.x, n.y]).toEqual([at(flat, n.id).x, at(flat, n.id).y]);
+    for (const n of m.nodes) {
+      expect([n.x, n.y]).toEqual([oracle.get(n.id)!.x, oracle.get(n.id)!.y]);
     }
   });
 });

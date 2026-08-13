@@ -121,3 +121,30 @@ describe('auto layout with subgraph edge endpoints', () => {
     expect(diagnostics).toHaveLength(0);
   });
 });
+
+describe('autoLayout honours per-subgraph direction', () => {
+  it('orients an explicit-LR subgraph against its TB parent', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph S\n  direction LR\n  A-->B\n end\n B-->C\n',
+    );
+    autoLayout(model);
+    const [a, b] = ['A', 'B'].map((id) => model.nodes.find((n) => n.id === id)!);
+    expect(Math.abs(a.x - b.x)).toBeGreaterThan(Math.abs(a.y - b.y));
+  });
+
+  it('re-fits the subgraph box around the re-oriented members', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph S\n  direction LR\n  A-->B\n end\n B-->C\n',
+    );
+    autoLayout(model);
+    const box = groupBounds(model, model.groups.find((g) => g.id === 'S')!);
+    for (const id of ['A', 'B']) {
+      const n = model.nodes.find((nn) => nn.id === id)!;
+      const s = nodeSize(model, n);
+      expect(n.x - s.w / 2).toBeGreaterThanOrEqual(box.x);
+      expect(n.x + s.w / 2).toBeLessThanOrEqual(box.x + box.w);
+      expect(n.y - s.h / 2).toBeGreaterThanOrEqual(box.y);
+      expect(n.y + s.h / 2).toBeLessThanOrEqual(box.y + box.h);
+    }
+  });
+});

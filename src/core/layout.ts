@@ -10,21 +10,17 @@
  * Auto layout. Used when a parsed diagram has no saved positions, or when the
  * user clicks "Auto layout".
  *
- * The engine is dagre (the same Sugiyama-style layered algorithm Mermaid itself
- * uses): proper rank assignment, crossing minimisation, and compound clusters
- * keeping subgraph members together. If dagre ever throws, a trivial grid
- * fallback still places the nodes so the editor has something to show.
+ * The engine is the recursive cluster layout in ./clusterLayout: dagre (the
+ * same Sugiyama-style layered algorithm Mermaid itself uses) applied per
+ * cluster, so each subgraph can pick its own rankdir — an explicit `direction`
+ * line, or Mermaid's own perpendicular-flip rule for a self-contained subgraph
+ * — while a subgraph that isn't self-contained still folds flat into its
+ * parent's dagre graph as a compound cluster. If that ever throws, a trivial
+ * grid fallback still places the nodes so the editor has something to show.
  */
 
-import * as dagre from "@dagrejs/dagre";
-import type { EdgeLabel, GraphLabel, NodeLabel } from "@dagrejs/dagre";
-import {
-	DiagramModel,
-	groupDescendantNodeIds,
-	materializeGroupBounds,
-	nodeSize,
-} from "./model";
-import { edgeLabelSize } from "./nodeGeometry";
+import { DiagramModel, materializeGroupBounds, nodeSize } from "./model";
+import { layoutClusters } from "./clusterLayout";
 import { warn } from "./diagnostics";
 
 const DEFAULT_RANK_GAP = 200; // distance between successive ranks (grid fallback)
@@ -34,7 +30,7 @@ const ORIGIN = 60;
 export function autoLayout(model: DiagramModel): void {
 	if (model.nodes.length === 0) return;
 	try {
-		dagreLayout(model);
+		layoutClusters(model);
 	} catch (e) {
 		warn(
 			"layout-failed",
@@ -47,99 +43,6 @@ export function autoLayout(model: DiagramModel): void {
 	// Re-fit every group box to the freshly laid-out members and store it
 	// explicitly, so boxes stay put during subsequent member drags.
 	materializeGroupBounds(model, true);
-}
-
-function dagreLayout(model: DiagramModel): void {
-	const g = new dagre.graphlib.Graph<GraphLabel, NodeLabel, EdgeLabel>({
-		compound: true,
-	});
-	g.setGraph({
-		rankdir: model.direction,
-		// Defaults match Mermaid's flowchart defaults (nodeSpacing/rankSpacing 50)
-		// so the auto-laid-out canvas tracks the render when spacing is unset.
-		nodesep: model.config.nodeSpacing ?? 50,
-		ranksep: model.config.rankSpacing ?? 50,
-		marginx: ORIGIN,
-		marginy: ORIGIN,
-	});
-	g.setDefaultEdgeLabel(() => ({}));
-
-	const nodeIds = new Set(model.nodes.map((n) => n.id));
-	for (const node of model.nodes) {
-		const s = nodeSize(model, node);
-		g.setNode(node.id, { width: s.w, height: s.h });
-	}
-
-	// Groups become compound clusters; nested groups parent to their parent group.
-	const groupIds = new Set(model.groups.map((g) => g.id));
-	for (const grp of model.groups) {
-		if (nodeIds.has(grp.id)) continue; // id collision with a node — skip
-		g.setNode(grp.id, { width: 0, height: 0 });
-	}
-	for (const grp of model.groups) {
-		if (nodeIds.has(grp.id)) continue;
-		if (grp.parentId && groupIds.has(grp.parentId)) {
-			g.setParent(grp.id, grp.parentId);
-		}
-		for (const id of grp.nodeIds) {
-			if (nodeIds.has(id)) g.setParent(id, grp.id);
-		}
-	}
-
-	// An edge endpoint may name a group. dagre refuses an edge incident to a
-	// cluster node, so a group is proxied by one of its descendant nodes: enough
-	// for the cluster to rank near its neighbours instead of as an unconnected
-	// component. It is an approximation, not exact cluster routing — the drawn
-	// edge still terminates on the subgraph box.
-	const rankProxy = (id: string): string | undefined => {
-		if (nodeIds.has(id)) return id;
-		if (!groupIds.has(id)) return undefined;
-		return groupDescendantNodeIds(model, id).find((n) => nodeIds.has(n));
-	};
-
-	for (const e of model.edges) {
-		// Self-loops don't affect ranking; dangling edges have no geometry.
-		if (e.from === e.to) continue;
-		const from = rankProxy(e.from);
-		const to = rankProxy(e.to);
-		// Unresolvable (dangling, or a group holding no nodes), or both endpoints
-		// proxied to the same node — neither tells dagre anything.
-		if (from === undefined || to === undefined || from === to) continue;
-		// Give dagre the label's box so it reserves room for the text: it lays the
-		// label out as a node on an intermediate rank, which pushes the endpoints
-		// apart exactly as Mermaid's own render does. Several model edges can
-		// collapse onto one dagre edge (parallel edges, group proxies), so the
-		// space reserved is the largest label among them.
-		const label = edgeLabelSize(e);
-		const prev = g.edge(from, to);
-		g.setEdge(from, to, {
-			width: Math.max(label.w, prev?.width ?? 0),
-			height: Math.max(label.h, prev?.height ?? 0),
-			// Centred on the line, matching where the renderer draws it. dagre's
-			// default ("r") would instead pad the cross-axis by labeloffset.
-			labelpos: "c",
-		});
-	}
-
-	dagre.layout(g);
-
-	// dagre x/y are node centres — the same convention as DiagramNode.x/y.
-	for (const node of model.nodes) {
-		const p = g.node(node.id);
-		const px = p?.x;
-		const py = p?.y;
-		if (
-			px === undefined ||
-			py === undefined ||
-			!Number.isFinite(px) ||
-			!Number.isFinite(py)
-		) {
-			throw new Error(`dagre produced no position for "${node.id}"`);
-		}
-		node.x = Math.max(40, Math.round(px));
-		node.y = Math.max(30, Math.round(py));
-	}
-	// Group boxes are re-fitted by autoLayout() via materializeGroupBounds(force).
 }
 
 /**
