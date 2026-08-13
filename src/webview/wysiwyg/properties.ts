@@ -1,9 +1,13 @@
-import { BASE_FONT_SIZE, SHAPE_GROUPS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge, LabelFormat } from '../../core';
+import { BASE_FONT_SIZE, SHAPE_GROUPS, NodeShape, NodeStyle, EdgeStyle, duplicateNode, setNodeShape, EDGE_KINDS, EDGE_LABELS, EdgeKind, removeEdge, LabelFormat, Direction, planClusters, layoutSubtree } from '../../core';
 import type { WysiwygEditor } from './editor';
 import type { SelectionState } from './pointer';
 
 /** Border/line dash presets, shared by the node and edge panels. */
 const DASH_PRESETS: Record<string, string> = { Solid: '', Dashed: '6 4', Dotted: '2 4' };
+/** Subgraph layout directions. '' means no `direction` line — Mermaid's branch rules decide. */
+const DIRECTION_OPTIONS: ReadonlyArray<readonly [string, string]> = [
+  ['', 'Not set'], ['TB', 'TB'], ['BT', 'BT'], ['LR', 'LR'], ['RL', 'RL'],
+];
 /** Generic CSS font stacks — enough to be useful without a font enumeration API. */
 const FONT_PRESETS: Record<string, string> = {
   Default: '', 'Sans-serif': 'sans-serif', Serif: 'serif', Monospace: 'monospace', Cursive: 'cursive',
@@ -253,6 +257,33 @@ export class PropertiesPanel {
 
     this.host.appendChild(this.row('Title format', this.formatSelect(group().titleFormat, (v) =>
       this.editor.mutate((m) => { m.groups.find((g) => g.id === id)!.titleFormat = v; }, { commit: true }))));
+
+    const dir = document.createElement('select');
+    for (const [value, text] of DIRECTION_OPTIONS) {
+      const o = document.createElement('option'); o.value = value; o.textContent = text; dir.appendChild(o);
+    }
+    dir.value = group().direction ?? '';
+    dir.addEventListener('change', () => this.editor.mutate((m) => {
+      const g = m.groups.find((gg) => gg.id === id);
+      if (!g) { return; }
+      g.direction = dir.value === '' ? undefined : (dir.value as Direction);
+      // Re-lay only this subgraph, anchored at its current box, so the change
+      // is visible immediately without disturbing the rest of the diagram.
+      layoutSubtree(m, id);
+    }, { commit: true }));
+    this.host.appendChild(this.row('Direction', dir));
+
+    // Unset does not mean "same as the diagram": Mermaid lays a subgraph with
+    // no crossing edges out perpendicular to its parent. Naming the resolved
+    // direction here keeps that from looking like a bug.
+    if (group().direction === undefined) {
+      const model = this.editor.getModel();
+      const plan = planClusters(model).get(id);
+      if (plan) {
+        const why = plan.branch === 'collapse' ? 'perpendicular to parent' : 'shared with parent';
+        this.host.appendChild(this.hint(`Not set → ${plan.rankdir} (${why})`));
+      }
+    }
 
     const setStyle = (patch: Partial<NodeStyle>) => this.editor.mutate((m) => {
       const g = m.groups.find((g) => g.id === id)!; g.style = { ...g.style, ...patch };

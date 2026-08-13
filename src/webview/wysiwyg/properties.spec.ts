@@ -161,3 +161,57 @@ describe('PropertiesPanel subgraph style controls', () => {
     expect(model.groups[0]!.style?.strokeDasharray).toBe('6 4');
   });
 });
+
+describe('subgraph direction control', () => {
+  function grouped(direction?: 'TB' | 'BT' | 'LR' | 'RL') {
+    const model = emptyModel('TB');
+    model.nodes.push({ id: 'A', label: 'A', shape: 'rect', x: 0, y: 0 });
+    model.nodes.push({ id: 'B', label: 'B', shape: 'rect', x: 0, y: 100 });
+    model.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
+    model.groups.push({ id: 'S', title: 'S', nodeIds: ['A', 'B'], direction });
+    return make(model);
+  }
+
+  it('shows Not set for a subgraph with no direction line', () => {
+    const { host, panel } = grouped();
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    expect(rowControl(host, 'Direction').value).toBe('');
+  });
+
+  it('reflects an explicit direction', () => {
+    const { host, panel } = grouped('LR');
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    expect(rowControl(host, 'Direction').value).toBe('LR');
+  });
+
+  it('sets the direction on the group when picked', () => {
+    const { host, panel, model } = grouped();
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    pick(rowControl(host, 'Direction'), 'RL');
+    expect(model.groups[0]!.direction).toBe('RL');
+  });
+
+  it('clears the direction when set back to Not set', () => {
+    const { host, panel, model } = grouped('LR');
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    pick(rowControl(host, 'Direction'), '');
+    expect(model.groups[0]!.direction).toBeUndefined();
+  });
+
+  it('re-lays the members out when the direction changes', () => {
+    const { host, panel, model } = grouped();
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    pick(rowControl(host, 'Direction'), 'LR');
+    const [a, b] = ['A', 'B'].map((id) => model.nodes.find((n) => n.id === id)!);
+    expect(Math.abs(a.x - b.x)).toBeGreaterThan(Math.abs(a.y - b.y));
+  });
+
+  it('names the resolved direction when the field is unset', () => {
+    const { host, panel } = grouped();
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    const hints = Array.from(host.querySelectorAll('.ceasg-panel-hint'))
+      .map((h) => h.textContent ?? '').join(' ');
+    // Self-contained subgraph in a TB diagram: Mermaid flips it to LR.
+    expect(hints).toContain('LR');
+  });
+});
