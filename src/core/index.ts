@@ -7,6 +7,7 @@ export * from './shapes';
 export * from './parser';
 export * from './serializer';
 export * from './layout';
+export * from './clusterLayout';
 export * from './placement';
 export * from './alignTools';
 export * from './themePalette';
