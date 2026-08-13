@@ -62,7 +62,7 @@ Not very clear how to give right url there..
 
 ---
 
-## 3. Markdown / HTML formatted labels  (FG#5)
+## 3. Markdown / HTML formatted labels  (FG#5) ✅ DONE
 
 Everyday authoring pain — bold/italic/line-wrap show as literal backticks and
 asterisks today.
@@ -105,7 +105,7 @@ Read section 1 of `flowchart_diff_gap.md` ("Nested subgraphs"). This needs the g
 
 ---
 
-## 6. Edges to/from a subgraph + subgraph styling  (FG#3)
+## 6. Edges to/from a subgraph + subgraph styling  (FG#3) ✅ DONE
 
 Using a subgraph id as an edge endpoint or style target currently fabricates a
 phantom node. Depends on the subgraph work above.
