@@ -4,11 +4,11 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.9.0] - 2026-08-14
 
 ### Added
 - **Per-subgraph direction.** A `direction LR` line inside a `subgraph` now lays that subgraph's members out along it, while the rest of the diagram keeps the header direction — previously the line was preserved as text but had no effect on the canvas. Nesting works to any depth, each level resolving against its nearest enclosing directed subgraph.
-- A **Direction** control (Not set / TB / BT / LR / RL) in the subgraph properties panel. Changing it re-lays that subgraph in place, anchored at its box, so the rest of your arrangement is left alone, and a hint names what **Not set** resolves to. Picking a direction writes the `direction` line into the block on save; picking **Not set** removes it.
+- A **Direction** control (Not set / TB / BT / LR / RL) in the subgraph properties panel. Changing it re-lays that subgraph in place, anchored at its box, so no node outside it moves and the rest of your arrangement is left alone, and a hint names what **Not set** resolves to. Picking a direction writes the `direction` line into the block on save; picking **Not set** removes it. Enclosing subgraph boxes re-fit around the resized one, so a nested subgraph can never end up drawn outside its own parent.
 - `flowchart.inheritDir` is read from the `%%{init}%%` directive and honoured by the layout.
 
 ### Fixed
