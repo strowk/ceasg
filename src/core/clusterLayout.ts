@@ -31,7 +31,6 @@ import {
 	GROUP_PAD,
 	GROUP_TITLE_H,
 	groupChildren,
-	groupDescendantNodeIds,
 	materializeGroupBounds,
 	groupBounds,
 	nodeSize,
@@ -57,10 +56,23 @@ function flip(d: Direction): Direction {
 	return d === "TB" ? "LR" : "TB";
 }
 
-/** Member node ids plus every nested group id, transitively. */
+/**
+ * Member node ids plus every nested group id, transitively.
+ *
+ * Walks the group tree itself rather than calling `groupDescendantNodeIds`,
+ * which has no cycle guard: a malformed `parentId` cycle would overflow the
+ * stack inside `hasCrossingEdge`, before any guard further up could see it.
+ */
 function descendantIds(model: DiagramModel, group: DiagramGroup): Set<string> {
-	const out = new Set<string>(groupDescendantNodeIds(model, group.id));
+	const out = new Set<string>();
+	const seen = new Set<string>();
 	const walk = (id: string) => {
+		if (seen.has(id)) return; // cyclic parentId
+		seen.add(id);
+		const gr = model.groups.find((g) => g.id === id);
+		if (gr) {
+			for (const n of gr.nodeIds) out.add(n);
+		}
 		for (const child of groupChildren(model, id)) {
 			out.add(child.id);
 			walk(child.id);
@@ -68,6 +80,30 @@ function descendantIds(model: DiagramModel, group: DiagramGroup): Set<string> {
 	};
 	walk(group.id);
 	return out;
+}
+
+/** Member node ids only, transitively, cycle-guarded. */
+function descendantNodeIds(model: DiagramModel, id: string): string[] {
+	const group = model.groups.find((g) => g.id === id);
+	if (!group) return [];
+	const all = descendantIds(model, group);
+	const nodes = new Set(model.nodes.map((n) => n.id));
+	return [...all].filter((x) => nodes.has(x));
+}
+
+/**
+ * True when a group has anything to lay out. Mermaid gates both of its collapse
+ * branches on `graph.children(node).length > 0` (mermaid-graphlib.js:367, :410),
+ * so an empty subgraph is never extracted into its own graph — it falls through
+ * to flat. The parser keeps an otherwise-empty subgraph that carries an authored
+ * `direction` line, so this case reaches us in practice.
+ */
+function hasContent(model: DiagramModel, group: DiagramGroup): boolean {
+	const nodes = new Set(model.nodes.map((n) => n.id));
+	return (
+		group.nodeIds.some((id) => nodes.has(id)) ||
+		groupChildren(model, group.id).length > 0
+	);
 }
 
 /**
@@ -89,9 +125,13 @@ export function planClusters(model: DiagramModel): Map<string, ClusterPlan> {
 	const visit = (group: DiagramGroup, parentRankdir: Direction): void => {
 		if (plans.has(group.id)) return; // defensive: a parentId cycle
 		let plan: ClusterPlan;
-		if (group.direction) {
+		// An empty subgraph is never extracted: with nothing to lay out it would
+		// only reserve a dead box in the parent. Mermaid gates both collapse
+		// branches the same way, on the cluster actually having children.
+		const content = hasContent(model, group);
+		if (group.direction && content) {
 			plan = { branch: "collapse", rankdir: group.direction };
-		} else if (!hasCrossingEdge(model, group)) {
+		} else if (content && !hasCrossingEdge(model, group)) {
 			plan = {
 				branch: "collapse",
 				rankdir: model.config.inheritDir ? model.direction : flip(parentRankdir),
@@ -298,7 +338,7 @@ function layoutContainer(
 			// proxied by one of its member nodes: enough for the cluster to rank
 			// near its neighbours instead of as an unconnected component. The drawn
 			// edge still terminates on the subgraph box.
-			for (const n of groupDescendantNodeIds(model, id)) {
+			for (const n of descendantNodeIds(model, id)) {
 				const rep = repOfNode(n);
 				if (rep !== undefined) return rep;
 			}
@@ -391,7 +431,12 @@ function layoutContainer(
 	};
 	/** Drawn box of a flat group inside this container: its contents plus the
 	 *  same padding groupBounds() applies, so a nested box never spills out. */
-	const flatBox = (gr: DiagramGroup): Box | undefined => {
+	const flatBox = (
+		gr: DiagramGroup,
+		seen: Set<string> = new Set(),
+	): Box | undefined => {
+		if (seen.has(gr.id)) return undefined; // cyclic parentId
+		seen.add(gr.id);
 		let box: Box | undefined;
 		for (const id of gr.nodeIds) box = grow(box, nodeBox(id));
 		for (const child of groupChildren(model, gr.id)) {
@@ -399,7 +444,7 @@ function layoutContainer(
 				box,
 				collapsedIds.has(child.id)
 					? collapsedBox.get(child.id)
-					: flatBox(child),
+					: flatBox(child, seen),
 			);
 		}
 		if (!box) return undefined;
@@ -480,6 +525,7 @@ export function layoutSubtree(model: DiagramModel, groupId: string): void {
 	const subtree = new Set<string>([groupId]);
 	const walk = (id: string) => {
 		for (const child of groupChildren(model, id)) {
+			if (subtree.has(child.id)) continue; // cyclic parentId
 			subtree.add(child.id);
 			walk(child.id);
 		}

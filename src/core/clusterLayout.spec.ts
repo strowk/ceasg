@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { planClusters, layoutClusters } from './clusterLayout';
 import { mermaidToModel } from './parser';
+import { autoLayout } from './layout';
 import { emptyModel, nodeSize, type DiagramModel } from './model';
 
 const at = (m: DiagramModel, id: string) => m.nodes.find((n) => n.id === id)!;
@@ -68,14 +69,21 @@ describe('layoutClusters', () => {
     expect(horizontal(model, 'B', 'C')).toBe(false); // outside S: top-down
   });
 
-  it('gives every node a finite position', () => {
+  it('gives every node a real, distinct position', () => {
     const { model } = mermaidToModel(
       'flowchart TB\n subgraph S\n  direction LR\n  A-->B\n end\n subgraph T\n  C-->D\n end\n S-->T\n',
     );
+    // The parser seeds every node at 0,0 — "finite" alone would also hold for a
+    // no-op, so assert the engine actually placed them somewhere distinct.
+    expect(model.nodes.every((n) => n.x === 0 && n.y === 0)).toBe(true);
     layoutClusters(model);
     for (const n of model.nodes) {
       expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
+      expect(n.x).toBeGreaterThan(0);
+      expect(n.y).toBeGreaterThan(0);
     }
+    const seen = new Set(model.nodes.map((n) => `${n.x},${n.y}`));
+    expect(seen.size).toBe(model.nodes.length); // no two nodes stacked
   });
 
   it('does not let a collapsed subgraph overlap a sibling node', () => {
@@ -95,14 +103,96 @@ describe('layoutClusters', () => {
   });
 
   it('matches the flat engine when no subgraph collapses', () => {
-    // Every group here has a crossing edge, so all are flat: one dagre graph,
-    // the same one the pre-recursive engine built.
-    const m = emptyModel('TB');
-    for (const id of ['A', 'B', 'C']) { m.nodes.push({ id, label: id, shape: 'rect', x: 0, y: 0 }); }
-    m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
-    m.edges.push({ id: 'e2', from: 'B', to: 'C', label: '', kind: 'arrow' });
-    layoutClusters(m);
-    expect(new Set(m.nodes.map((n) => n.y)).size).toBeGreaterThan(1);
-    expect(horizontal(m, 'A', 'B')).toBe(false);
+    // Every group here has a crossing edge, so all are flat: layoutClusters
+    // builds one dagre graph holding every node — the same graph autoLayout's
+    // pre-recursive engine builds. The arrangement must therefore be identical,
+    // up to one uniform translation: layoutClusters places the origin so the
+    // outermost subgraph *box* clears the margin, where the flat engine only
+    // cleared the nodes.
+    //
+    // NOTE: Task 5 reroutes autoLayout onto layoutClusters and deletes
+    // dagreLayout, at which point this comparison becomes a tautology. If this
+    // test has to change then, tell the reviewer of Task 5 why: the invariant it
+    // pins is that an all-flat diagram is untouched by the recursive engine.
+    const src =
+      'flowchart LR\n subgraph S\n  subgraph T\n   A-->B\n  end\n  X-->A\n end\n B-->C\n S-->D\n';
+    const mine = mermaidToModel(src).model;
+    const flat = mermaidToModel(src).model;
+    for (const g of planClusters(mine).values()) {
+      expect(g.branch).toBe('flat'); // precondition: nothing collapses here
+    }
+    layoutClusters(mine);
+    autoLayout(flat);
+
+    expect(mine.nodes.length).toBeGreaterThan(3);
+    const first = at(mine, 'A');
+    const dx = first.x - at(flat, 'A').x;
+    const dy = first.y - at(flat, 'A').y;
+    for (const n of mine.nodes) {
+      const o = at(flat, n.id);
+      expect(n.x - o.x).toBe(dx);
+      expect(n.y - o.y).toBe(dy);
+    }
+    // A translation, not a collapse to a point: the layout is still spread out.
+    expect(new Set(mine.nodes.map((n) => n.x)).size).toBeGreaterThan(1);
+  });
+
+  it('lays out a chain with no groups exactly as the flat engine does', () => {
+    const build = () => {
+      const m = emptyModel('TB');
+      for (const id of ['A', 'B', 'C']) { m.nodes.push({ id, label: id, shape: 'rect', x: 0, y: 0 }); }
+      m.edges.push({ id: 'e1', from: 'A', to: 'B', label: '', kind: 'arrow' });
+      m.edges.push({ id: 'e2', from: 'B', to: 'C', label: '', kind: 'arrow' });
+      return m;
+    };
+    const mine = build();
+    const flat = build();
+    layoutClusters(mine);
+    autoLayout(flat);
+    expect(new Set(mine.nodes.map((n) => n.y)).size).toBeGreaterThan(1);
+    expect(horizontal(mine, 'A', 'B')).toBe(false);
+    // With no group boxes to clear, even the origin matches.
+    for (const n of mine.nodes) {
+      expect([n.x, n.y]).toEqual([at(flat, n.id).x, at(flat, n.id).y]);
+    }
+  });
+});
+
+describe('malformed input', () => {
+  it('survives a parentId cycle', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph G1\n  A-->B\n end\n subgraph G2\n  C-->D\n end\n',
+    );
+    // Not reachable through the parser, but assignGroupToParent is not the only
+    // way a model is built (undo state, hand-edited JSON), and an unguarded
+    // recursion overflows the stack rather than degrading.
+    model.groups.find((g) => g.id === 'G1')!.parentId = 'G2';
+    model.groups.find((g) => g.id === 'G2')!.parentId = 'G1';
+
+    const plans = planClusters(model);
+    expect(plans.has('G1')).toBe(true);
+    expect(plans.has('G2')).toBe(true);
+    expect(() => { layoutClusters(model); }).not.toThrow();
+    for (const n of model.nodes) {
+      expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
+    }
+  });
+
+  it('leaves an empty subgraph flat even with an explicit direction', () => {
+    // Mermaid gates both collapse branches on the cluster having children
+    // (mermaid-graphlib.js:367, :410), so an empty subgraph is never extracted.
+    // The parser keeps one that carries a direction line, so it reaches layout.
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph S\n  direction LR\n end\n A-->B\n',
+    );
+    expect(model.groups.map((g) => g.id)).toContain('S');
+    expect(planClusters(model).get('S')!.branch).toBe('flat');
+    layoutClusters(model);
+    // No dead box reserved: the two nodes lay out as if S were not there.
+    const bare = mermaidToModel('flowchart TB\n A-->B\n').model;
+    layoutClusters(bare);
+    for (const n of model.nodes) {
+      expect([n.x, n.y]).toEqual([at(bare, n.id).x, at(bare, n.id).y]);
+    }
   });
 });
