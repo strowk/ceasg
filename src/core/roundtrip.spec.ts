@@ -309,3 +309,47 @@ describe('round-trip — formatted labels', () => {
     expect(out).not.toContain('`');
   });
 });
+
+describe('per-subgraph direction round-trip', () => {
+  const src = [
+    'flowchart TB',
+    '    subgraph S',
+    '        direction LR',
+    '        A --> B',
+    '    end',
+    '    S --> C',
+  ].join('\n');
+
+  it('keeps the direction line inside the subgraph block', () => {
+    const { model } = mermaidToModel(src);
+    const out = modelToMermaid(model, { includePositions: false });
+    const lines = out.split('\n').map((l) => l.trim());
+    const open = lines.indexOf('subgraph S');
+    const dir = lines.indexOf('direction LR');
+    const end = lines.indexOf('end');
+    expect(open).toBeGreaterThanOrEqual(0);
+    expect(dir).toBeGreaterThan(open);
+    expect(dir).toBeLessThan(end);
+  });
+
+  it('re-parses to the same direction', () => {
+    const { model } = mermaidToModel(src);
+    const { model: again } = mermaidToModel(modelToMermaid(model, { includePositions: false }));
+    expect(again.groups.find((g) => g.id === 'S')?.direction).toBe('LR');
+    expect(again.direction).toBe('TB');
+  });
+
+  it('emits no direction line for a subgraph that never had one', () => {
+    const { model } = mermaidToModel('flowchart TB\n subgraph S\n  A-->B\n end\n');
+    expect(modelToMermaid(model, { includePositions: false })).not.toContain('direction');
+  });
+
+  it('emits inheritDir in the init directive', () => {
+    const { model } = mermaidToModel('flowchart TB\nA-->B\n');
+    model.config.inheritDir = true;
+    const out = modelToMermaid(model, { includePositions: false });
+    expect(out).toContain('"inheritDir":true');
+    const { model: again } = mermaidToModel(out);
+    expect(again.config.inheritDir).toBe(true);
+  });
+});

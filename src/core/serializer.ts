@@ -201,9 +201,10 @@ function configDirective(cfg: DiagramConfig): string | null {
 	const themeVars: Record<string, string> = { ...(cfg.themeVariables ?? {}) };
 	if (cfg.background) themeVars.background = cfg.background;
 	if (Object.keys(themeVars).length > 0) init.themeVariables = themeVars;
-	const fc: Record<string, number> = {};
+	const fc: Record<string, number | boolean> = {};
 	if (cfg.nodeSpacing !== undefined) fc.nodeSpacing = cfg.nodeSpacing;
 	if (cfg.rankSpacing !== undefined) fc.rankSpacing = cfg.rankSpacing;
+	if (cfg.inheritDir !== undefined) fc.inheritDir = cfg.inheritDir;
 	if (Object.keys(fc).length > 0) init.flowchart = fc;
 	if (Object.keys(init).length === 0) return null;
 	return `%%{init: ${JSON.stringify(init)}}%%`;
@@ -228,6 +229,12 @@ function emitGroup(
 			? ` [${quoteLabel(group.title, group.titleFormat)}]`
 			: "";
 	lines.push(`${pad}subgraph ${sanitizeId(group.id)}${title}`);
+	// Only an authored direction (or one chosen in the properties panel) is
+	// written back. A direction computed by layout is never stored on the
+	// group, so it can never leak into the user's file here.
+	if (group.direction) {
+		lines.push(INDENT.repeat(depth + 2) + `direction ${group.direction}`);
+	}
 	// Nested child groups first.
 	for (const child of groupChildren(model, group.id)) {
 		emitGroup(model, child, nodeById, grouped, depth + 1, lines, seen);
