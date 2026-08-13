@@ -4,6 +4,19 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Added
+- **Per-subgraph direction.** A `direction LR` line inside a `subgraph` now lays that subgraph's members out along it, while the rest of the diagram keeps the header direction — previously the line was preserved as text but had no effect on the canvas. Nesting works to any depth, each level resolving against its nearest enclosing directed subgraph.
+- A **Direction** control (Not set / TB / BT / LR / RL) in the subgraph properties panel. Changing it re-lays that subgraph in place, anchored at its box, so the rest of your arrangement is left alone, and a hint names what **Not set** resolves to. Picking a direction writes the `direction` line into the block on save; picking **Not set** removes it.
+- `flowchart.inheritDir` is read from the `%%{init}%%` directive and honoured by the layout.
+
+### Fixed
+- **A `direction` line inside a subgraph no longer escapes to the top level on save.** It used to be re-emitted after the whole diagram, where Mermaid reads it as the *diagram* direction — so saving a chart with a left-to-right subgraph silently flipped the entire chart. The line now stays inside its `subgraph … end` block.
+
+### Changed
+- **Auto layout now matches Mermaid Live for subgraphs.** Mermaid lays a subgraph with no `direction` line and no edges crossing its boundary out *perpendicular* to its parent — a self-contained subgraph in a `flowchart TB` runs left-to-right. ceasg used to lay it out top-down like everything else. Clicking **Auto layout** on an existing diagram may therefore reorient such subgraphs; saved positions are untouched until you do.
+
 ## [0.8.1] - 2026-08-13
 
 ### Fixed

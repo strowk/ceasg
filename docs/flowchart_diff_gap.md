@@ -14,11 +14,11 @@ flowchart authoring**, most useful first — so you can work down the list in
 priority order. Subgraph capabilities lead (grouping / nested concepts are used
 constantly), followed by label and styling gaps that affect ordinary diagrams,
 then edge semantics and the extended shape library, and finally the niche or
-decorative features (animation, callbacks, icons, accessibility). §1, §2, and
-§3 (nesting, the subgraph creation/editing UI, and edges to/from a subgraph
-plus subgraph styling) are now supported and stay at their numbered positions
-rather than being renumbered or removed, so cross-references elsewhere keep
-working.
+decorative features (animation, callbacks, icons, accessibility). §1, §2, §3
+and §4 (nesting, the subgraph creation/editing UI, edges to/from a subgraph
+plus subgraph styling, and per-subgraph direction) are now supported and stay
+at their numbered positions rather than being renumbered or removed, so
+cross-references elsewhere keep working.
 
 > Scope note: "round-tripped" below means the original Mermaid text survives a
 > save (it is stashed in `model.extras`, `style.extra`, or the raw node/edge)
@@ -146,16 +146,32 @@ flowchart TB
 
 ---
 
-## 4. Per-subgraph direction (`direction LR` inside a `subgraph`)
+## 4. Per-subgraph direction (`direction LR` inside a `subgraph`) — supported
 
 **Mermaid supports:** overriding flow direction within a single subgraph.
 
-**Our editor supports:** one global diagram `direction` only.
+**Our editor supports:** the same, following Mermaid's own three-branch cluster
+layout. A `direction` line inside a subgraph lays that subgraph's members out
+along it — even when an edge crosses the boundary — while the rest of the
+diagram keeps the header direction. A subgraph with no direction line and no
+crossing edge is laid out perpendicular to its parent, exactly as Mermaid does,
+and `flowchart.inheritDir` suppresses that flip. Nesting works to any depth,
+each level resolving against its nearest enclosing directed subgraph. The
+subgraph properties panel exposes **Direction** (Not set / TB / BT / LR / RL);
+changing it re-lays that subgraph in place, anchored at its box, leaving the
+rest of the diagram untouched, and a hint names what **Not set** resolves to.
+Saving writes the `direction` line back **inside** its `subgraph … end` block.
 
-**Gap / consequence:**
-- A `direction …` line inside a subgraph is classified as structural and pushed
-  to `extras`. It is preserved in text but **has no effect on the canvas
-  layout** and cannot be set per-subgraph in the UI.
+**Remaining gap / consequence:**
+- A direction chosen by Mermaid's rules rather than written by the author is
+  never serialized: a subgraph you never gave a direction keeps none. This is
+  deliberate — writing the computed value back would bake an author-looking
+  `direction` line into every self-contained subgraph and freeze it there.
+- `flowchart.inheritDir` is read and honoured but has no control in the UI;
+  it round-trips through the `%%{init}%%` directive.
+- A bare `direction` line at the **top level** of a diagram folds into the
+  `flowchart` header, so it comes back as `flowchart LR` rather than as a
+  separate line. Semantically identical to what Mermaid does with it.
 
 **Example:** (outer flow is top-down, but `S` lays its members out left-to-right)
 
@@ -538,7 +554,7 @@ Rows follow the same priority order as the sections above.
 | 2 | Subgraph create/edit UI | — | — | ✅ | ✅ |
 | 3 | Subgraph as edge endpoint | ✅ | ✅ | ✅ | ✅ |
 | 3 | Subgraph styling | ✅ | ✅ | ⚠️ no font control | ✅ |
-| 4 | Per-subgraph direction | ⚠️ | ❌ | ❌ | ✅ extras |
+| 4 | Per-subgraph direction | ✅ | ✅ | ✅ | ✅ |
 | 5 | Markdown / HTML labels | ✅ | ⚠️ | ✅ | ✅ |
 | 6 | Edge color / width / font | ✅ | ❌ | ⚠️ color only | ✅ |
 | 7 | Node font / stroke-width / dash | ⚠️ | ❌ | ❌ | ✅ (extra) |
