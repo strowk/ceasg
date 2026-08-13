@@ -436,4 +436,11 @@ describe('per-subgraph direction', () => {
     );
     expect(model.config.inheritDir).toBe(true);
   });
+
+  it('keeps an otherwise-empty subgraph whose only content is a direction line', () => {
+    const { model } = mermaidToModel('flowchart TB\nsubgraph S\n direction LR\nend\n');
+    const group = model.groups.find((g) => g.id === 'S');
+    expect(group).toBeDefined();
+    expect(group?.direction).toBe('LR');
+  });
 });

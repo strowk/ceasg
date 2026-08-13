@@ -803,13 +803,16 @@ export function mermaidToModel(text: string): ParseResult {
 	}
 
 	// Drop groups with no members AND no child groups — unless an edge names the
-	// group, or a `style`/`class` line targets it. `subgraph S1 \n end` plus
-	// `S1 --> D` would otherwise drop the group and leave the placeholder node
-	// the reconciliation below exists to remove; the same is true of a `style`
-	// or `class` line, whose parsed styling lives on the placeholder node at
-	// this point (the reconciliation hasn't run yet) — dropping the group here
-	// would strand that styling on a node that stands in for a container that
-	// no longer exists.
+	// group, a `style`/`class` line targets it, or it carries an authored
+	// `direction`. `subgraph S1 \n end` plus `S1 --> D` would otherwise drop the
+	// group and leave the placeholder node the reconciliation below exists to
+	// remove; the same is true of a `style` or `class` line, whose parsed
+	// styling lives on the placeholder node at this point (the reconciliation
+	// hasn't run yet) — dropping the group here would strand that styling on a
+	// node that stands in for a container that no longer exists. A `direction`
+	// line is likewise state the user explicitly authored: the line loop
+	// already consumed it with `continue` rather than passing it through to
+	// `extras`, so dropping the group here would lose it silently.
 	const parents = new Set(
 		model.groups.map((g) => g.parentId).filter((p): p is string => !!p),
 	);
@@ -824,7 +827,8 @@ export function mermaidToModel(text: string): ParseResult {
 			g.nodeIds.length > 0 ||
 			parents.has(g.id) ||
 			edgeEndpoints.has(g.id) ||
-			styledIds.has(g.id),
+			styledIds.has(g.id) ||
+			g.direction !== undefined,
 	);
 
 	// Mermaid lets a subgraph id stand wherever an edge expects a node
