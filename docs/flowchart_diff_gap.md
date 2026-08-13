@@ -172,6 +172,10 @@ Saving writes the `direction` line back **inside** its `subgraph … end` block.
 - A bare `direction` line at the **top level** of a diagram folds into the
   `flowchart` header, so it comes back as `flowchart LR` rather than as a
   separate line. Semantically identical to what Mermaid does with it.
+- An **empty** subgraph (no member nodes, no child groups) always shares its
+  parent's direction, even with an explicit `direction` line — there is
+  nothing inside it to lay out along that direction, so it falls to the
+  fallback branch, matching Mermaid.
 
 **Example:** (outer flow is top-down, but `S` lays its members out left-to-right)
 
