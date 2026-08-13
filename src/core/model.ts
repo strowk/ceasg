@@ -147,6 +147,12 @@ export interface DiagramGroup {
 	style?: NodeStyle;
 	/** classDef names assigned via `class <id> name` — order matters. */
 	classes?: string[];
+	/** `direction X` written inside this subgraph. Undefined means the author
+	 *  wrote no direction line — layout then picks one per Mermaid's branch
+	 *  rules (see clusterLayout.ts), and nothing is serialized back. Mirrors
+	 *  Mermaid's own `hasExplicitDir`: only an authored line or an explicit UI
+	 *  choice sets this, never a computed layout direction. */
+	direction?: Direction;
 }
 
 export const GROUP_PAD = 20;
@@ -160,6 +166,9 @@ export interface DiagramConfig {
 	themeVariables?: Record<string, string>;
 	nodeSpacing?: number;
 	rankSpacing?: number;
+	/** Mermaid `flowchart.inheritDir`: a subgraph with no direction line takes
+	 *  the diagram's direction instead of flipping perpendicular to its parent. */
+	inheritDir?: boolean;
 }
 
 export function hasConfig(cfg: DiagramConfig | undefined): boolean {
@@ -169,6 +178,7 @@ export function hasConfig(cfg: DiagramConfig | undefined): boolean {
 		cfg.background !== undefined ||
 		cfg.nodeSpacing !== undefined ||
 		cfg.rankSpacing !== undefined ||
+		cfg.inheritDir !== undefined ||
 		(cfg.themeVariables !== undefined &&
 			Object.keys(cfg.themeVariables).length > 0)
 	);

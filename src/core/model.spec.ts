@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { emptyModel, nextNodeId, cloneModel, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, resolveGroupStyle, nodeSize } from './model';
+import { emptyModel, nextNodeId, cloneModel, hasConfig, removeNode, NODE_SHAPES, SHAPE_LABELS, resolveNodeStyle, resolveGroupStyle, nodeSize } from './model';
 import type { DiagramGroup } from './model';
 import { ALL_SHAPES } from './shapes';
 import {
@@ -365,5 +365,24 @@ describe('shape exports derive from the registry', () => {
     expect(SHAPE_LABELS['rect']).toBe('Rectangle');
     expect(SHAPE_LABELS['cyl']).toBe('Cylinder / database');
     expect(SHAPE_LABELS['diam']).toBe('Decision');
+  });
+});
+
+describe('per-subgraph direction model', () => {
+  it('carries group.direction and config.inheritDir through cloneModel', () => {
+    const m = emptyModel('TB');
+    m.groups.push({ id: 'S', title: 'S', nodeIds: ['A'], direction: 'LR' });
+    m.config.inheritDir = true;
+    const c = cloneModel(m);
+    expect(c.groups[0]!.direction).toBe('LR');
+    expect(c.config.inheritDir).toBe(true);
+    // The clone must be independent, not a shared reference.
+    c.groups[0]!.direction = 'RL';
+    expect(m.groups[0]!.direction).toBe('LR');
+  });
+
+  it('hasConfig reports true when only inheritDir is set', () => {
+    expect(hasConfig({ inheritDir: true })).toBe(true);
+    expect(hasConfig({})).toBe(false);
   });
 });
