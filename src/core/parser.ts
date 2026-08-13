@@ -424,6 +424,7 @@ function applyInitConfig(model: DiagramModel, jsonBody: string): void {
 	if (fc && typeof fc === "object") {
 		if (typeof fc.nodeSpacing === "number") model.config.nodeSpacing = fc.nodeSpacing;
 		if (typeof fc.rankSpacing === "number") model.config.rankSpacing = fc.rankSpacing;
+		if (typeof fc.inheritDir === "boolean") model.config.inheritDir = fc.inheritDir;
 	}
 }
 
@@ -677,6 +678,20 @@ export function mermaidToModel(text: string): ParseResult {
 		}
 		if (/^end$/i.test(trimmed)) {
 			groupStack.pop();
+			continue;
+		}
+
+		// `direction X`. Inside a subgraph it is that subgraph's own layout
+		// direction (Mermaid's `hasExplicitDir`); at top level Mermaid treats it
+		// as the diagram direction, so it folds into the header. A malformed
+		// value falls through to isStructuralLine → extras, untouched.
+		const dirMatch = trimmed.match(/^direction\s+(TB|TD|BT|LR|RL)$/i);
+		if (dirMatch && dirMatch[1]) {
+			const raw = dirMatch[1].toUpperCase();
+			const dir = (raw === "TD" ? "TB" : raw) as Direction;
+			const open = groupStack[groupStack.length - 1];
+			if (open) open.direction = dir;
+			else model.direction = dir;
 			continue;
 		}
 

@@ -388,3 +388,52 @@ describe('a quoted label spanning several source lines', () => {
     expect(model.nodes.map((n) => n.id)).toEqual(['A', 'B']);
   });
 });
+
+describe('per-subgraph direction', () => {
+  it('attaches a direction line to the enclosing subgraph', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n  subgraph S\n    direction LR\n    A --> B\n  end\n  S --> C\n',
+    );
+    expect(model.groups.find((g) => g.id === 'S')?.direction).toBe('LR');
+    expect(model.direction).toBe('TB');
+    // It must not leak into the pass-through block, or it gets re-emitted
+    // at top level on save and flips the whole diagram.
+    expect(model.extras.join('\n')).not.toContain('direction');
+  });
+
+  it('normalizes TD to TB', () => {
+    const { model } = mermaidToModel('flowchart LR\n subgraph S\n  direction TD\n  A-->B\n end\n');
+    expect(model.groups.find((g) => g.id === 'S')?.direction).toBe('TB');
+  });
+
+  it('gives each nested subgraph its own direction', () => {
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph Outer\n  direction LR\n  subgraph Inner\n   direction BT\n   A-->B\n  end\n end\n',
+    );
+    expect(model.groups.find((g) => g.id === 'Outer')?.direction).toBe('LR');
+    expect(model.groups.find((g) => g.id === 'Inner')?.direction).toBe('BT');
+  });
+
+  it('leaves a subgraph without a direction line unset', () => {
+    const { model } = mermaidToModel('flowchart TB\n subgraph S\n  A-->B\n end\n');
+    expect(model.groups.find((g) => g.id === 'S')?.direction).toBeUndefined();
+  });
+
+  it('treats a top-level direction line as the diagram direction', () => {
+    const { model } = mermaidToModel('flowchart TB\n direction LR\n A-->B\n');
+    expect(model.direction).toBe('LR');
+  });
+
+  it('round-trips a malformed direction value through extras', () => {
+    const { model } = mermaidToModel('flowchart TB\n subgraph S\n  direction sideways\n  A-->B\n end\n');
+    expect(model.groups.find((g) => g.id === 'S')?.direction).toBeUndefined();
+    expect(model.extras.join('\n')).toContain('direction sideways');
+  });
+
+  it('reads flowchart.inheritDir from an init directive', () => {
+    const { model } = mermaidToModel(
+      '%%{init: {"flowchart": {"inheritDir": true}}}%%\nflowchart TB\nA-->B\n',
+    );
+    expect(model.config.inheritDir).toBe(true);
+  });
+});
