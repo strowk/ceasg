@@ -83,9 +83,25 @@ function stripQuotesEx(s: string): ParsedString {
 		inner = inner.slice(1, -1);
 		markdown = true;
 	}
-	// Decode <br/> back to \n for multi-line labels
-	const text = inner.replace(/<br\s*\/?>/gi, "\n");
-	return markdown ? { text, markdown } : { text };
+	return markdown ? { text: inner, markdown } : { text: inner };
+}
+
+/**
+ * Fold Mermaid's line-break spellings into the model's canonical `\n`, so a
+ * label carries real newlines however the author wrote them and the serializer
+ * has one form to re-encode.
+ *
+ * Plain labels take both the `<br>` tag family and the two-character escape
+ * `\n`, matching Mermaid's `nonMarkdownToLines`. A markdown string takes only
+ * the tag: its text goes to a markdown lexer, which has no `\n` escape and
+ * leaves the backslash visible — so we leave it alone too.
+ *
+ * Applied at the label sites rather than inside `stripQuotesEx`, because the
+ * v11 `@{…}` properties we merely pass through must survive byte for byte.
+ */
+function decodeLineBreaks(s: ParsedString): string {
+	const text = s.text.replace(/<br\s*\/?>/gi, "\n");
+	return s.markdown ? text : text.replace(/\\n/g, "\n");
 }
 
 interface ParsedToken {
@@ -107,7 +123,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	// `:::class` shorthand. Handled first (recursively) so it composes with
 	// every node form, including chains: `A[Label]:::a:::b`. The greedy prefix
 	// is safe — a class name can't end with a label's closing bracket.
-	const cls = token.match(/^(.*):::([A-Za-z0-9_-]+)$/);
+	const cls = token.match(/^(.*):::([A-Za-z0-9_-]+)$/s);
 	if (cls && cls[1] !== undefined && cls[2] !== undefined) {
 		const inner = parseNodeToken(cls[1]);
 		if (inner) {
@@ -119,29 +135,32 @@ function parseNodeToken(raw: string): ParsedToken | null {
 
 	// Ordered so multi-character shape brackets are matched before their
 	// single-bracket counterparts (e.g. `((( )))` before `(( ))` before `( )`).
+	// `s` (dotAll) throughout: a quoted label may span source lines, and `.`
+	// would otherwise stop dead at the newline the author put inside it.
 	const id = "([A-Za-z0-9_]+)";
 	const patterns: Array<{ re: RegExp; shape: NodeShape }> = [
-		{ re: new RegExp(`^${id}\\(\\(\\((.*)\\)\\)\\)$`), shape: "dbl-circ" },
-		{ re: new RegExp(`^${id}\\(\\((.*)\\)\\)$`), shape: "circle" },
-		{ re: new RegExp(`^${id}\\(\\[(.*)\\]\\)$`), shape: "stadium" },
-		{ re: new RegExp(`^${id}\\[\\[(.*)\\]\\]$`), shape: "fr-rect" },
-		{ re: new RegExp(`^${id}\\[\\((.*)\\)\\]$`), shape: "cyl" },
-		{ re: new RegExp(`^${id}\\{\\{(.*)\\}\\}$`), shape: "hex" },
-		{ re: new RegExp(`^${id}\\[/(.*)\\\\\\]$`), shape: "trap-b" },
-		{ re: new RegExp(`^${id}\\[\\\\(.*)/\\]$`), shape: "trap-t" },
-		{ re: new RegExp(`^${id}\\[/(.*)/\\]$`), shape: "lean-r" },
-		{ re: new RegExp(`^${id}\\[\\\\(.*)\\\\\\]$`), shape: "lean-l" },
-		{ re: new RegExp(`^${id}\\{(.*)\\}$`), shape: "diam" },
-		{ re: new RegExp(`^${id}>(.*)\\]$`), shape: "odd" },
-		{ re: new RegExp(`^${id}\\[(.*)\\]$`), shape: "rect" },
-		{ re: new RegExp(`^${id}\\((.*)\\)$`), shape: "rounded" },
+		{ re: new RegExp(`^${id}\\(\\(\\((.*)\\)\\)\\)$`, "s"), shape: "dbl-circ" },
+		{ re: new RegExp(`^${id}\\(\\((.*)\\)\\)$`, "s"), shape: "circle" },
+		{ re: new RegExp(`^${id}\\(\\[(.*)\\]\\)$`, "s"), shape: "stadium" },
+		{ re: new RegExp(`^${id}\\[\\[(.*)\\]\\]$`, "s"), shape: "fr-rect" },
+		{ re: new RegExp(`^${id}\\[\\((.*)\\)\\]$`, "s"), shape: "cyl" },
+		{ re: new RegExp(`^${id}\\{\\{(.*)\\}\\}$`, "s"), shape: "hex" },
+		{ re: new RegExp(`^${id}\\[/(.*)\\\\\\]$`, "s"), shape: "trap-b" },
+		{ re: new RegExp(`^${id}\\[\\\\(.*)/\\]$`, "s"), shape: "trap-t" },
+		{ re: new RegExp(`^${id}\\[/(.*)/\\]$`, "s"), shape: "lean-r" },
+		{ re: new RegExp(`^${id}\\[\\\\(.*)\\\\\\]$`, "s"), shape: "lean-l" },
+		{ re: new RegExp(`^${id}\\{(.*)\\}$`, "s"), shape: "diam" },
+		{ re: new RegExp(`^${id}>(.*)\\]$`, "s"), shape: "odd" },
+		{ re: new RegExp(`^${id}\\[(.*)\\]$`, "s"), shape: "rect" },
+		{ re: new RegExp(`^${id}\\((.*)\\)$`, "s"), shape: "rounded" },
 	];
 
 	for (const { re, shape } of patterns) {
 		const m = token.match(re);
 		if (m && m[1] !== undefined && m[2] !== undefined) {
 			const parsed = stripQuotesEx(m[2]);
-			const result: ParsedToken = { id: m[1], shape, label: parsed.text, syntax: "bracket" };
+			const label = decodeLineBreaks(parsed);
+			const result: ParsedToken = { id: m[1], shape, label, syntax: "bracket" };
 			if (parsed.markdown) {
 				result.labelFormat = "markdown";
 			}
@@ -150,7 +169,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 	}
 
 	// Mermaid v11 attribute syntax: `A@{shape: diamond, label: "Hi"}`.
-	const v11 = token.match(/^([A-Za-z0-9_]+)@\{(.*)\}$/);
+	const v11 = token.match(/^([A-Za-z0-9_]+)@\{(.*)\}$/s);
 	if (v11 && v11[1] !== undefined && v11[2] !== undefined) {
 		const props = parseV11Props(v11[2]);
 		const shapeName = props.get("shape")?.text;
@@ -173,7 +192,7 @@ function parseNodeToken(raw: string): ParsedToken | null {
 			}
 		}
 		if (label !== undefined) {
-			result.label = label.text;
+			result.label = decodeLineBreaks(label);
 			if (label.markdown) {
 				result.labelFormat = "markdown";
 			}
@@ -213,7 +232,7 @@ function parseV11Props(body: string): Map<string, ParsedString> {
 	}
 	parts.push(cur);
 	for (const part of parts) {
-		const m = part.match(/^\s*([\w-]+)\s*:\s*(.*?)\s*$/);
+		const m = part.match(/^\s*([\w-]+)\s*:\s*(.*?)\s*$/s);
 		if (m && m[1] !== undefined && m[2] !== undefined) {
 			props.set(m[1].toLowerCase(), stripQuotesEx(m[2]));
 		}
@@ -408,6 +427,60 @@ function applyInitConfig(model: DiagramModel, jsonBody: string): void {
 	}
 }
 
+/** Odd number of `"` — i.e. the line leaves a Mermaid string open. */
+function hasOpenQuote(s: string): boolean {
+	let open = false;
+	for (const ch of s) {
+		if (ch === '"') open = !open;
+	}
+	return open;
+}
+
+/**
+ * Split the source into *logical* lines: a newline inside a double-quoted
+ * string belongs to the label, not to the statement. Mermaid's lexer keeps a
+ * string open across newlines, so
+ *
+ *     A["Line 1
+ *     Line 2"]
+ *
+ * is one statement whose label contains a break — something a plain
+ * `split("\n")` can never see.
+ *
+ * Two lines are only joined when the quote actually closes further down. An
+ * unbalanced quote is far more likely to be a typo than a label running to the
+ * end of the file, and swallowing the rest of the diagram would lose every
+ * statement after it; leaving the lines apart costs only the one broken
+ * statement, which lands in `extras` as before.
+ *
+ * A `%%` comment never opens a string: Mermaid strips comments before lexing,
+ * so a lone quote inside one cannot bleed into the lines that follow.
+ */
+function splitLogicalLines(text: string): string[] {
+	const physical = text.replace(/\r\n/g, "\n").split("\n");
+	const out: string[] = [];
+	for (let i = 0; i < physical.length; i++) {
+		const first = physical[i] as string;
+		if (first.trim().startsWith("%%") || !hasOpenQuote(first)) {
+			out.push(first);
+			continue;
+		}
+		let joined = first;
+		let j = i;
+		while (hasOpenQuote(joined) && j + 1 < physical.length) {
+			j += 1;
+			joined += "\n" + physical[j];
+		}
+		if (hasOpenQuote(joined)) {
+			out.push(first); // never closed: leave the following lines to speak for themselves
+		} else {
+			out.push(joined);
+			i = j;
+		}
+	}
+	return out;
+}
+
 function isStructuralLine(line: string): boolean {
 	const t = line.trim().toLowerCase();
 	return (
@@ -496,17 +569,17 @@ export function mermaidToModel(text: string): ParseResult {
 		if (rest === "") {
 			id = newGroupId(model);
 			title = id;
-		} else if ((m = rest.match(/^([A-Za-z0-9_]+)\s*\[(.+)\]$/))) {
+		} else if ((m = rest.match(/^([A-Za-z0-9_]+)\s*\[(.+)\]$/s))) {
 			id = m[1] as string;
 			const parsed = stripQuotesEx(m[2] as string);
-			title = parsed.text;
+			title = decodeLineBreaks(parsed);
 			titleMarkdown = !!parsed.markdown;
-		} else if ((m = rest.match(/^"(.+)"$/))) {
+		} else if ((m = rest.match(/^"(.+)"$/s))) {
 			id = newGroupId(model);
 			// Feed the *quoted* form back in: stripQuotesEx only treats backticks
 			// as a markdown string when the double quotes were actually there.
 			const parsed = stripQuotesEx(m[0]);
-			title = parsed.text;
+			title = decodeLineBreaks(parsed);
 			titleMarkdown = !!parsed.markdown;
 		} else if ((m = rest.match(/^([A-Za-z0-9_]+)$/))) {
 			id = m[1] as string;
@@ -525,7 +598,7 @@ export function mermaidToModel(text: string): ParseResult {
 		groupStack.push(group);
 	};
 
-	const rawLines = text.replace(/\r\n/g, "\n").split("\n");
+	const rawLines = splitLogicalLines(text);
 	let headerSeen = false;
 
 	for (const rawLine of rawLines) {
@@ -597,7 +670,7 @@ export function mermaidToModel(text: string): ParseResult {
 		}
 
 		// Subgraph open / close.
-		const subMatch = trimmed.match(/^subgraph\b\s*(.*)$/i);
+		const subMatch = trimmed.match(/^subgraph\b\s*(.*)$/is);
 		if (subMatch) {
 			openGroup((subMatch[1] ?? "").trim());
 			continue;
@@ -849,10 +922,10 @@ function parseStatement(
 		let label = "";
 		let labelFormat: LabelFormat | undefined;
 		let nodePart = piece;
-		const labelMatch = piece.match(/^\|([^|]*)\|\s*(.*)$/);
+		const labelMatch = piece.match(/^\|([^|]*)\|\s*(.*)$/s);
 		if (labelMatch && labelMatch[1] !== undefined && labelMatch[2] !== undefined) {
 			const parsed = stripQuotesEx(labelMatch[1]);
-			label = parsed.text;
+			label = decodeLineBreaks(parsed);
 			if (parsed.markdown) {
 				labelFormat = "markdown";
 			}

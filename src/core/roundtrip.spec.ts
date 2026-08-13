@@ -79,6 +79,18 @@ describe('round-trip parse↔serialize', () => {
     expect(out).toContain('<br/>');
     expect(roundtrip(out)).toBe(out);
   });
+  it('normalizes the other two line-break spellings onto <br/>', () => {
+    const fromEscape = roundtrip('flowchart LR\nA["line1\\nline2"]\n');
+    const fromNewline = roundtrip('flowchart LR\nA["line1\nline2"]\n');
+    expect(fromEscape).toContain('A["line1<br/>line2"]');
+    expect(fromNewline).toBe(fromEscape);
+    expect(roundtrip(fromEscape)).toBe(fromEscape);
+  });
+  it('leaves the \\n escape alone in a markdown label', () => {
+    const out = roundtrip('flowchart LR\nA["`line1\\nline2`"]\n');
+    expect(out).toContain('A["`line1\\nline2`"]');
+    expect(roundtrip(out)).toBe(out);
+  });
 });
 
 describe('nested subgraph round-trip', () => {

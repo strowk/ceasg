@@ -265,18 +265,25 @@ the Markdown. Per-node and per-edge appearance *is* editable on the canvas — s
 
 ## Labels with markup and punctuation
 
-Labels are quoted on save, so commas, brackets and ampersands are safe. `<br/>`
-round-trips as a real line break in the editor's label field.
+Labels are quoted on save, so commas, brackets and ampersands are safe. A line
+break can be written any of the three ways Mermaid accepts — the `<br/>` tag,
+the escape `\n`, or a real newline inside the quotes — and each arrives as a
+real line break in the editor's label field.
 
 ```mermaid
 flowchart TD
     A["Line one<br/>Line two"] --> B["Punctuation, brackets (ok) & ampersands"]
     B --> C[Unquoted labels work too]
+    C --> D["Escaped\nbreak"]
+    D --> E["A break written
+             across two source lines"]
 ```
 
-Editing a label to contain a newline writes `<br/>`, and reading it back gives
-you the newline again. An `&` inside a quoted or bracketed label is never
-mistaken for the multi-node separator, and neither are brackets.
+Saving normalizes all three onto `<br/>`, and reading it back gives you the
+newline again. (In a backtick-wrapped markdown label, `\n` stays a literal
+backslash-n — markdown has no such escape, and Mermaid shows it too.) An `&`
+inside a quoted or bracketed label is never mistaken for the multi-node
+separator, and neither are brackets.
 
 **Avoid semicolons in labels.** The parser splits statements on `;` without
 regard for quotes, so `A["a; b"]` is torn in half and reloads as garbage. This

@@ -69,6 +69,9 @@ const DELIMS: Array<{ mark: string; bold: boolean; italic: boolean }> = [
 	{ mark: "_", bold: false, italic: true },
 ];
 
+/** CommonMark's escapable set: ASCII punctuation, and nothing else. */
+const ESCAPABLE_RE = /[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/;
+
 interface Style {
 	bold: boolean;
 	italic: boolean;
@@ -95,9 +98,11 @@ function parseLine(line: string, markdown: boolean): LabelLine {
 	while (i < line.length) {
 		const rest = line.slice(i);
 
-		if (markdown && rest[0] === "\\" && rest.length > 1) {
+		if (markdown && rest[0] === "\\" && ESCAPABLE_RE.test(rest[1] ?? "")) {
 			// A backslash escape makes the next character literal, so `\*` can
-			// appear in a markdown label without opening emphasis.
+			// appear in a markdown label without opening emphasis. Only ASCII
+			// punctuation escapes, per CommonMark — before anything else the
+			// backslash is just a backslash, which is why `\n` stays on screen.
 			buf += rest[1];
 			i += 2;
 			continue;
@@ -165,6 +170,13 @@ function parseLine(line: string, markdown: boolean): LabelLine {
 	return runs;
 }
 
+/** Where a line breaks. Mermaid spells it three ways — the `<br>` tag family, a
+ *  real newline, and the two-character escape `\n` — but the escape only counts
+ *  in a plain label: a markdown string goes through a markdown lexer, which has
+ *  no `\n` escape and leaves the backslash on screen. */
+const MD_BREAK_RE = /<br\s*\/?>|\r?\n/i;
+const PLAIN_BREAK_RE = /<br\s*\/?>|\\n|\r?\n/i;
+
 /**
  * Split `text` into lines of styled runs.
  *
@@ -173,10 +185,11 @@ function parseLine(line: string, markdown: boolean): LabelLine {
  * modes, matching Mermaid's `htmlLabels: true` default.
  */
 export function parseLabelMarkup(text: string, markdown = false): LabelLine[] {
-	// The model stores newlines, but a hand-written label may still carry the
-	// <br/> the author typed; normalize before splitting so both behave alike.
-	const normalized = text.replace(/<br\s*\/?>/gi, "\n");
-	return normalized.split("\n").map((line) => parseLine(line, markdown));
+	// Each line is trimmed: Mermaid drops the whitespace around a break in both
+	// of its label paths, and a stray leading space would shift a centred line.
+	return text
+		.split(markdown ? MD_BREAK_RE : PLAIN_BREAK_RE)
+		.map((line) => parseLine(line.trim(), markdown));
 }
 
 /** Mermaid's `flowchart.wrappingWidth` default: markdown labels wrap here. */
@@ -196,7 +209,7 @@ export interface LabelLayoutOpts {
 	fontSize?: number;
 	fontFamily?: string;
 	/** Wrap markdown labels at this width. Ignored when `markdown` is unset —
-	 *  a plain Mermaid string breaks only where the author wrote `<br/>`. */
+	 *  a plain Mermaid string breaks only where the author asked it to. */
 	wrapWidth?: number;
 }
 

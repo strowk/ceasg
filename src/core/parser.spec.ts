@@ -326,3 +326,65 @@ describe('backticks outside a quoted string', () => {
     expect(model.groups[0]?.titleFormat).toBe('markdown');
   });
 });
+
+describe('the \\n escape as a line break', () => {
+  it('decodes it in a quoted node label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["Line 1\\nLine 2"]\n');
+    expect(model.nodes[0]?.label).toBe('Line 1\nLine 2');
+  });
+  it('decodes it in an unquoted node label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA[Line 1\\nLine 2]\n');
+    expect(model.nodes[0]?.label).toBe('Line 1\nLine 2');
+  });
+  it('decodes it in an edge label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA -->|"one\\ntwo"| B\n');
+    expect(model.edges[0]?.label).toBe('one\ntwo');
+  });
+  it('decodes it in a subgraph title', () => {
+    const { model } = mermaidToModel('flowchart LR\nsubgraph S["Top\\nBottom"]\nA\nend\n');
+    expect(model.groups[0]?.title).toBe('Top\nBottom');
+  });
+  it('decodes it in a v11 attribute label', () => {
+    const { model } = mermaidToModel('flowchart LR\nA@{shape: rect, label: "Top\\nBottom"}\n');
+    expect(model.nodes[0]?.label).toBe('Top\nBottom');
+  });
+  it('leaves it literal in a markdown string, as mermaid does', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["`Line 1\\nLine 2`"]\n');
+    expect(model.nodes[0]?.label).toBe('Line 1\\nLine 2');
+    expect(model.nodes[0]?.labelFormat).toBe('markdown');
+  });
+  it('passes a preserved v11 attribute value through untouched', () => {
+    const { model } = mermaidToModel('flowchart LR\nA@{shape: rect, label: "x", note: "a\\nb"}\n');
+    expect(model.nodes[0]?.attrs).toEqual({ note: 'a\\nb' });
+  });
+});
+
+describe('a quoted label spanning several source lines', () => {
+  it('keeps the newline as a line break in a node label', () => {
+    const { model } = mermaidToModel('flowchart LR\n    A["Line 1\n    Line 2"] --> B\n');
+    expect(model.nodes[0]?.label).toBe('Line 1\n    Line 2');
+    expect(model.edges).toHaveLength(1);
+    expect(model.extras).toEqual([]);
+  });
+  it('works for an edge label and a subgraph title too', () => {
+    const { model } = mermaidToModel(
+      'flowchart LR\nsubgraph S["Top\nBottom"]\nA -->|"one\ntwo"| B\nend\n',
+    );
+    expect(model.groups[0]?.title).toBe('Top\nBottom');
+    expect(model.edges[0]?.label).toBe('one\ntwo');
+    expect(model.extras).toEqual([]);
+  });
+  it('spans more than two lines', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["a\nb\nc"]\n');
+    expect(model.nodes[0]?.label).toBe('a\nb\nc');
+  });
+  it('leaves the rest of the diagram alone when the quote never closes', () => {
+    const { model } = mermaidToModel('flowchart LR\nA["oops\nB --> C\n');
+    expect(model.extras).toEqual(['A["oops']);
+    expect(model.nodes.map((n) => n.id)).toEqual(['B', 'C']);
+  });
+  it('does not let a quote inside a comment swallow the following lines', () => {
+    const { model } = mermaidToModel('flowchart LR\n%% he said "hi\nA --> B\n');
+    expect(model.nodes.map((n) => n.id)).toEqual(['A', 'B']);
+  });
+});

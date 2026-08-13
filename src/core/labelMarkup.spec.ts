@@ -21,6 +21,35 @@ describe('parseLabelMarkup — plain text', () => {
   });
 });
 
+describe('parseLabelMarkup — line breaks, mermaid-compatible', () => {
+  it('splits a plain label on the \\n escape', () => {
+    expect(parseLabelMarkup('a\\nb')).toEqual([[{ text: 'a' }], [{ text: 'b' }]]);
+  });
+  it('treats all three spellings alike in one plain label', () => {
+    expect(parseLabelMarkup('a<br/>b\\nc\nd')).toEqual([
+      [{ text: 'a' }], [{ text: 'b' }], [{ text: 'c' }], [{ text: 'd' }],
+    ]);
+  });
+  it('keeps the \\n escape literal in a markdown label, as mermaid does', () => {
+    expect(parseLabelMarkup('a\\nb', true)).toEqual([[{ text: 'a\\nb' }]]);
+  });
+  it('still splits a markdown label on a real newline and on <br/>', () => {
+    expect(parseLabelMarkup('a\nb', true)).toEqual([[{ text: 'a' }], [{ text: 'b' }]]);
+    expect(parseLabelMarkup('a<br/>b', true)).toEqual([[{ text: 'a' }], [{ text: 'b' }]]);
+  });
+  it('trims the whitespace around each break', () => {
+    expect(parseLabelMarkup('a <br/> b')).toEqual([[{ text: 'a' }], [{ text: 'b' }]]);
+    expect(parseLabelMarkup('Line 1\n    Line 2')).toEqual([
+      [{ text: 'Line 1' }], [{ text: 'Line 2' }],
+    ]);
+  });
+  it('styles each broken line on its own, as it already does for <br/>', () => {
+    expect(parseLabelMarkup('<b>a</b>\\n<b>b</b>')).toEqual([
+      [{ text: 'a', bold: true }], [{ text: 'b', bold: true }],
+    ]);
+  });
+});
+
 describe('parseLabelMarkup — HTML tags (both modes)', () => {
   it('renders <b> and <strong> as bold', () => {
     expect(parseLabelMarkup('a<b>B</b>c')).toEqual([

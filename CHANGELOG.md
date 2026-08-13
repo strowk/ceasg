@@ -4,6 +4,13 @@ All notable changes to the "ceasg" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.8.1] - 2026-08-13
+
+### Fixed
+- **Line breaks in labels now work the way they do in Mermaid.** Only the `<br/>` tag used to split a label; the other two spellings Mermaid accepts did not. The escape `\n` — `A["Line 1\nLine 2"]` — drew a literal backslash-n on one line, and a label written across two source lines was not recognised as a label at all, so the statement was dropped into the pass-through block. Both now break the line, in node labels, edge labels and subgraph titles, quoted or unquoted. In a backtick-wrapped markdown label `\n` stays a literal backslash-n, as it does in Mermaid, while a real newline and `<br/>` break the line there too. Saving normalizes every form onto `<br/>`.
+- Whitespace around a line break is dropped, matching Mermaid: `A["a <br/> b"]` and a break written across indented source lines both draw their second line centred rather than pushed to the right.
+- A backslash in a markdown label only escapes ASCII punctuation, per CommonMark, instead of swallowing itself before any character.
+
 ## [0.8.0] - 2026-08-12
 
 ### Added

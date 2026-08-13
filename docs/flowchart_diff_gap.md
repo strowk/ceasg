@@ -173,7 +173,8 @@ flowchart TB
 ## 5. Markdown-formatted and HTML labels — supported, with limits
 
 **Mermaid supports:** markdown string labels (`` A["`**bold** and _italic_`"] ``)
-with bold/italic/line-wrap, and HTML entities / `<b>`, `<i>` markup in labels.
+with bold/italic/line-wrap, HTML entities / `<b>`, `<i>` markup in labels, and
+three interchangeable spellings of a line break.
 
 **Our editor supports:** both. A markdown string renders bold and italic runs and
 word-wraps at Mermaid's default `flowchart.wrappingWidth` of 200 (or at the
@@ -184,7 +185,18 @@ default. This covers node labels, edge labels and subgraph titles, on the
 WYSIWYG canvas and in the Markdown preview alike (they share one renderer), and
 a **Label format** (Plain / Markdown) control in the node and edge property
 panels — **Title format** for subgraphs — lets the markdown form be authored
-from the visual editor rather than only read from hand-written Mermaid.
+from the visual editor rather than only read from hand-written Mermaid. A line
+break may be written any of Mermaid's three ways in a plain label — `<br>`, the
+escape `\n`, or a real newline inside the quotes:
+
+```mermaid
+flowchart LR
+    A["Line 1<br/>Line 2"] --> B["Line 1\nLine 2"] --> C["Line 1
+                                                          Line 2"]
+```
+
+A markdown string takes `<br>` and a real newline; `\n` shows as a literal
+backslash-n there, matching Mermaid, because markdown has no such escape.
 
 **Remaining gap / consequence:**
 - The wrapping width is a **constant 200**. It is not read from a
@@ -200,12 +212,15 @@ from the visual editor rather than only read from hand-written Mermaid.
 - In markdown mode, underscore emphasis has **no CommonMark intraword
   exclusion**, so `_snake_case_words_` italicizes its inner segments instead of
   staying literal.
-- **Markdown mode normalizes whitespace.** Every line of a markdown string goes
-  through the wrapper even when it does not wrap, which strips leading and
-  trailing spaces and merges adjacent same-styled runs: `` `  hi  ` `` lays out
-  as `hi`, where the same text in a plain label keeps its spaces. A
-  whitespace-only markdown label therefore measures zero width and falls back to
-  the minimum node width.
+- **Leading and trailing spaces on a label line are dropped**, in both modes and
+  as Mermaid drops them: `` A["  hi  "] `` lays out as `hi`, and a line written
+  after a break is not indented by the spaces in front of it. A whitespace-only
+  label therefore measures zero width and falls back to the minimum node width.
+  Markdown mode goes further and merges adjacent same-styled runs, since every
+  line of a markdown string goes through the wrapper even when it does not wrap.
+- **Saving rewrites a label's line breaks as `<br/>`.** A label written with
+  `\n` or spread across source lines comes back on one line using the tag form.
+  It renders identically; only the source text changes.
 - **A plain label wrapped in backticks becomes a markdown label on reload.**
   Typing `` `code` `` into the **Label** field with format **Plain** serializes
   to ``A["`code`"]`` — which on the next parse *is* Mermaid's markdown-string
