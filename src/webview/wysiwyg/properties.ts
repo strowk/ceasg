@@ -263,27 +263,45 @@ export class PropertiesPanel {
       const o = document.createElement('option'); o.value = value; o.textContent = text; dir.appendChild(o);
     }
     dir.value = group().direction ?? '';
-    dir.addEventListener('change', () => this.editor.mutate((m) => {
-      const g = m.groups.find((gg) => gg.id === id);
-      if (!g) { return; }
-      g.direction = dir.value === '' ? undefined : (dir.value as Direction);
-      // Re-lay only this subgraph, anchored at its current box, so the change
-      // is visible immediately without disturbing the rest of the diagram.
-      layoutSubtree(m, id);
-    }, { commit: true }));
     this.host.appendChild(this.row('Direction', dir));
 
     // Unset does not mean "same as the diagram": Mermaid lays a subgraph with
     // no crossing edges out perpendicular to its parent. Naming the resolved
-    // direction here keeps that from looking like a bug.
-    if (group().direction === undefined) {
-      const model = this.editor.getModel();
-      const plan = planClusters(model).get(id);
-      if (plan) {
-        const why = plan.branch === 'collapse' ? 'perpendicular to parent' : 'shared with parent';
-        this.host.appendChild(this.hint(`Not set → ${plan.rankdir} (${why})`));
+    // direction here keeps that from looking like a bug. WysiwygEditor.mutate()
+    // skips panel.refresh() while the select keeps focus (its inField guard),
+    // so this hint must refresh itself from the handler rather than rely on a
+    // panel rebuild — see renderDirectionHint below.
+    const dirHint = this.hint('');
+    this.host.appendChild(dirHint);
+    const renderDirectionHint = () => {
+      if (group().direction !== undefined) {
+        dirHint.textContent = '';
+        dirHint.style.display = 'none';
+        return;
       }
-    }
+      const plan = planClusters(this.editor.getModel()).get(id);
+      if (!plan) {
+        dirHint.textContent = '';
+        dirHint.style.display = 'none';
+        return;
+      }
+      const why = plan.branch === 'collapse' ? 'perpendicular to parent' : 'shared with parent';
+      dirHint.textContent = `Not set → ${plan.rankdir} (${why})`;
+      dirHint.style.display = '';
+    };
+    renderDirectionHint();
+
+    dir.addEventListener('change', () => {
+      this.editor.mutate((m) => {
+        const g = m.groups.find((gg) => gg.id === id);
+        if (!g) { return; }
+        g.direction = dir.value === '' ? undefined : (dir.value as Direction);
+        // Re-lay only this subgraph, anchored at its current box, so the change
+        // is visible immediately without disturbing the rest of the diagram.
+        layoutSubtree(m, id);
+      }, { commit: true });
+      renderDirectionHint();
+    });
 
     const setStyle = (patch: Partial<NodeStyle>) => this.editor.mutate((m) => {
       const g = m.groups.find((g) => g.id === id)!; g.style = { ...g.style, ...patch };

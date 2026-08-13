@@ -214,4 +214,26 @@ describe('subgraph direction control', () => {
     // Self-contained subgraph in a TB diagram: Mermaid flips it to LR.
     expect(hints).toContain('LR');
   });
+
+  // Real usage: WysiwygEditor.mutate() skips panel.refresh() while a select
+  // keeps focus (the inField guard), so the handler itself — not a rebuild —
+  // must keep the hint honest. These deliberately do NOT call panel.refresh()
+  // after pick(), to reproduce that refresh-skipped condition.
+  it('keeps the hint in sync after setting a direction, without a panel refresh', () => {
+    const { host, panel } = grouped();
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    pick(rowControl(host, 'Direction'), 'LR');
+    const hints = Array.from(host.querySelectorAll('.ceasg-panel-hint'))
+      .map((h) => h.textContent ?? '').join(' ');
+    expect(hints).not.toContain('Not set');
+  });
+
+  it('restores the hint after clearing back to Not set, without a panel refresh', () => {
+    const { host, panel } = grouped('LR');
+    panel.refresh({ single: 'S', multi: new Set() } as SelectionState);
+    pick(rowControl(host, 'Direction'), '');
+    const hints = Array.from(host.querySelectorAll('.ceasg-panel-hint'))
+      .map((h) => h.textContent ?? '').join(' ');
+    expect(hints).toContain('Not set');
+  });
 });
