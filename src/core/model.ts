@@ -410,7 +410,13 @@ export function groupChildren(
 export function groupBounds(
 	model: DiagramModel,
 	group: DiagramGroup,
+	/** Groups already folded into this box. A malformed `parentId` cycle would
+	 *  otherwise recurse forever; a repeated group contributes nothing further,
+	 *  so it is skipped. Sibling subtrees are disjoint in an acyclic model
+	 *  (`parentId` is single-valued), so this never skips a real child. */
+	seen: Set<string> = new Set(),
 ): { x: number; y: number; w: number; h: number } {
+	seen.add(group.id);
 	if (
 		group.x !== undefined &&
 		group.y !== undefined &&
@@ -436,7 +442,8 @@ export function groupBounds(
 		add(n.x - s.w / 2, n.y - s.h / 2, s.w, s.h);
 	}
 	for (const child of groupChildren(model, group.id)) {
-		const b = groupBounds(model, child);
+		if (seen.has(child.id)) continue; // cyclic parentId
+		const b = groupBounds(model, child, seen);
 		add(b.x, b.y, b.w, b.h);
 	}
 	if (!Number.isFinite(minX)) {
@@ -559,9 +566,13 @@ export function translateGroup(
 /** Depth of a group in the tree (0 = top-level). */
 function groupTreeDepth(model: DiagramModel, id: string): number {
 	let d = 0;
+	// Stop on a group already climbed past: a malformed `parentId` cycle would
+	// otherwise loop forever. An acyclic chain never revisits a group.
+	const seen = new Set<string>([id]);
 	let cur = model.groups.find((g) => g.id === id)?.parentId;
-	while (cur) {
+	while (cur && !seen.has(cur)) {
 		d++;
+		seen.add(cur);
 		cur = model.groups.find((g) => g.id === cur)?.parentId;
 	}
 	return d;

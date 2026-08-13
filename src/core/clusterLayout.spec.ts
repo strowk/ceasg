@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planClusters, layoutClusters } from './clusterLayout';
+import { planClusters, layoutClusters, layoutSubtree } from './clusterLayout';
 import { mermaidToModel } from './parser';
 import { autoLayout } from './layout';
 import { emptyModel, nodeSize, type DiagramModel } from './model';
@@ -177,6 +177,23 @@ describe('malformed input', () => {
       expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
     }
   });
+
+  it('re-lays a subtree without hanging on a parentId cycle', () => {
+    // layoutSubtree reaches groupBounds() and materializeGroupBounds() in
+    // model.ts, which walk the group tree themselves. An unguarded cycle there
+    // overflows the stack (groupBounds) or spins forever (groupTreeDepth), and
+    // ANY cyclic group in the model triggers it, not just the one passed in.
+    // The explicit timeout is the "does not hang" half of the assertion.
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph G1\n  A-->B\n end\n subgraph G2\n  C-->D\n end\n',
+    );
+    model.groups.find((g) => g.id === 'G1')!.parentId = 'G2';
+    model.groups.find((g) => g.id === 'G2')!.parentId = 'G1';
+    expect(() => { layoutSubtree(model, 'G1'); }).not.toThrow();
+    for (const n of model.nodes) {
+      expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
+    }
+  }, 5000);
 
   it('leaves an empty subgraph flat even with an explicit direction', () => {
     // Mermaid gates both collapse branches on the cluster having children
