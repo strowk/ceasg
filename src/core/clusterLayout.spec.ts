@@ -3,7 +3,8 @@ import * as dagre from '@dagrejs/dagre';
 import type { EdgeLabel, GraphLabel, NodeLabel } from '@dagrejs/dagre';
 import { planClusters, layoutClusters, layoutSubtree } from './clusterLayout';
 import { mermaidToModel } from './parser';
-import { emptyModel, groupDescendantNodeIds, nodeSize, type DiagramModel } from './model';
+import { emptyModel, groupBounds, groupDescendantNodeIds, nodeSize, type DiagramModel } from './model';
+import { autoLayout } from './layout';
 import { edgeLabelSize } from './nodeGeometry';
 
 const at = (m: DiagramModel, id: string) => m.nodes.find((n) => n.id === id)!;
@@ -222,6 +223,68 @@ describe('layoutClusters', () => {
   });
 });
 
+describe('layoutSubtree', () => {
+  /**
+   * O ⊃ { S ⊃ {A,B,G,H}, C, D, E } with F outside — the nested case. S is flat
+   * (B-->E crosses out) and so lays out TB, tall and narrow; giving it LR turns
+   * it wide and short, and its ancestor O has to grow to keep enclosing it.
+   * autoLayout() first, so every box is frozen exactly as it is after a load.
+   */
+  function nested(): DiagramModel {
+    const { model } = mermaidToModel(
+      'flowchart TB\n subgraph O\n  subgraph S\n   A-->B-->G-->H\n  end\n  B-->E\n  C-->D\n end\n F-->C\n',
+    );
+    autoLayout(model);
+    return model;
+  }
+  const box = (m: DiagramModel, id: string) =>
+    groupBounds(m, m.groups.find((g) => g.id === id)!);
+
+  it('re-fits every ancestor box around a nested subgraph that changed direction', () => {
+    const model = nested();
+    model.groups.find((g) => g.id === 'S')!.direction = 'LR';
+    layoutSubtree(model, 'S');
+
+    // Collected rather than asserted one by one, so a failure names the box.
+    const escaped: string[] = [];
+    for (const g of model.groups) {
+      const b = box(model, g.id);
+      const holds = (what: string, x: number, y: number, w: number, h: number) => {
+        if (x < b.x || y < b.y || x + w > b.x + b.w || y + h > b.y + b.h) {
+          escaped.push(`${what} [${x},${y},${w},${h}] escapes ${g.id} [${b.x},${b.y},${b.w},${b.h}]`);
+        }
+      };
+      for (const id of groupDescendantNodeIds(model, g.id)) {
+        const n = at(model, id);
+        const s = nodeSize(model, n);
+        holds(`node ${id}`, n.x - s.w / 2, n.y - s.h / 2, s.w, s.h);
+      }
+      for (const child of model.groups.filter((c) => c.parentId === g.id)) {
+        const cb = box(model, child.id);
+        holds(`group ${child.id}`, cb.x, cb.y, cb.w, cb.h);
+      }
+    }
+    expect(escaped).toEqual([]);
+  });
+
+  it('anchors the changed group and moves nothing outside its subtree', () => {
+    const model = nested();
+    const before = new Map(model.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
+    const sBefore = box(model, 'S');
+    model.groups.find((g) => g.id === 'S')!.direction = 'LR';
+    layoutSubtree(model, 'S');
+
+    // Re-fitting an ancestor resizes a box; it must never move a node.
+    const inside = new Set(groupDescendantNodeIds(model, 'S'));
+    for (const n of model.nodes) {
+      if (inside.has(n.id)) continue;
+      expect([n.id, n.x, n.y]).toEqual([n.id, before.get(n.id)!.x, before.get(n.id)!.y]);
+    }
+    const sAfter = box(model, 'S');
+    expect([sAfter.x, sAfter.y]).toEqual([sBefore.x, sBefore.y]);
+  });
+});
+
 describe('malformed input', () => {
   it('survives a parentId cycle', () => {
     const { model } = mermaidToModel(
@@ -236,10 +299,21 @@ describe('malformed input', () => {
     const plans = planClusters(model);
     expect(plans.has('G1')).toBe(true);
     expect(plans.has('G2')).toBe(true);
-    expect(() => { layoutClusters(model); }).not.toThrow();
+    // The parser seeds every node at 0,0, so "finite" alone would also hold for
+    // a layout that placed nothing at all.
+    expect(model.nodes.every((n) => n.x === 0 && n.y === 0)).toBe(true);
+    // Both groups are containers and neither is reachable from the root, so no
+    // container claims any node. That must surface as a controlled error (not a
+    // stack overflow, and not a silent no-op) so autoLayout's fallback engages.
+    expect(() => { layoutClusters(model); }).toThrow(/no position/);
+    expect(() => { autoLayout(model); }).not.toThrow();
     for (const n of model.nodes) {
       expect(Number.isFinite(n.x) && Number.isFinite(n.y)).toBe(true);
     }
+    // Actually placed by the fallback: spread out, not all stacked at 0,0.
+    expect(model.nodes.some((n) => n.x !== 0 || n.y !== 0)).toBe(true);
+    const seen = new Set(model.nodes.map((n) => `${n.x},${n.y}`));
+    expect(seen.size).toBe(model.nodes.length);
   });
 
   it('re-lays a subtree without hanging on a parentId cycle', () => {

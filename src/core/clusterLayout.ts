@@ -494,9 +494,19 @@ export function layoutClusters(model: DiagramModel): void {
 	if (model.nodes.length === 0) return;
 	const plans = planClusters(model);
 	const root = layoutContainer(model, plans, undefined, model.direction);
+	// Every node belongs to exactly one container, so every node must come back
+	// with a position. A model malformed enough to break that (a parentId cycle
+	// makes both groups containers, and then nothing is claimed at the root)
+	// would otherwise leave every node silently where it was — at 0,0 for a
+	// freshly parsed diagram. Fail loudly instead, before writing anything, so
+	// autoLayout's try/catch falls back to the grid.
+	const unplaced = model.nodes.filter((n) => !root.positions.has(n.id));
+	if (unplaced.length > 0) {
+		const ids = unplaced.map((n) => `"${n.id}"`).join(", ");
+		throw new Error(`cluster layout produced no position for ${ids}`);
+	}
 	for (const node of model.nodes) {
-		const p = root.positions.get(node.id);
-		if (!p) continue;
+		const p = root.positions.get(node.id)!;
 		node.x = Math.max(40, Math.round(p.x));
 		node.y = Math.max(30, Math.round(p.y));
 	}
@@ -521,18 +531,30 @@ export function layoutSubtree(model: DiagramModel, groupId: string): void {
 		node.x = Math.round(before.x + rel.x);
 		node.y = Math.round(before.y + rel.y);
 	}
-	// Re-fit this group and its descendants; everything else keeps its box.
-	const subtree = new Set<string>([groupId]);
+	// Re-fit this group, its descendants, and its ancestors; everything else
+	// keeps its box. The ancestors matter: this group's box has just changed
+	// size, and a frozen ancestor box would no longer enclose it — the subgraph
+	// would draw outside its own parent, and the bad geometry would be saved as
+	// gpos. Re-fitting an ancestor only resizes a box, it moves no node, so
+	// "nothing outside the subtree moves" still holds.
+	const refit = new Set<string>([groupId]);
 	const walk = (id: string) => {
 		for (const child of groupChildren(model, id)) {
-			if (subtree.has(child.id)) continue; // cyclic parentId
-			subtree.add(child.id);
+			if (refit.has(child.id)) continue; // cyclic parentId
+			refit.add(child.id);
 			walk(child.id);
 		}
 	};
 	walk(groupId);
+	// Climb to the root, stopping on any group already seen: a malformed
+	// parentId cycle would otherwise loop forever.
+	let ancestor = group.parentId;
+	while (ancestor !== undefined && !refit.has(ancestor)) {
+		refit.add(ancestor);
+		ancestor = model.groups.find((gr) => gr.id === ancestor)?.parentId;
+	}
 	for (const gr of model.groups) {
-		if (subtree.has(gr.id)) {
+		if (refit.has(gr.id)) {
 			gr.x = gr.y = gr.w = gr.h = undefined;
 		}
 	}

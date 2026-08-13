@@ -192,10 +192,12 @@ try/catch → `gridFallback` still guards a dagre throw, and
 
 ### In-place relayout
 
-`layoutGroupInPlace(model, groupId)` re-runs the engine for one group's subtree
+`layoutSubtree(model, groupId)` re-runs the engine for one group's subtree
 only, then translates the result so the group box's **top-left stays where it
-was**, clears stored bounds for that group and its descendants, and re-fits
-them. Nothing outside the subgraph moves. This is what makes the properties
+was**, clears stored bounds for that group, its descendants and its ancestors,
+and re-fits them. The ancestors are cleared because the group's box changes
+size: a frozen ancestor box would no longer enclose it. Re-fitting a box moves
+no node, so nothing outside the subgraph moves. This is what makes the properties
 panel control show its effect immediately without discarding the user's manual
 arrangement of the rest of the diagram.
 
@@ -204,7 +206,7 @@ arrangement of the rest of the diagram.
 `groupPanel` in `src/webview/wysiwyg/properties.ts` gains a **Direction** row:
 a select with `Not set` / `TB` / `BT` / `LR` / `RL`. On change, within a single
 `mutate({ commit: true })`: set or clear `group.direction`, then call
-`layoutGroupInPlace`.
+`layoutSubtree`.
 
 Below it, a hint line reporting what the current setting resolves to — e.g.
 `Not set → LR (perpendicular to TB)` or `Not set → TB (shared with parent)`.
