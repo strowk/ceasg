@@ -358,6 +358,7 @@ export class WysiwygEditor {
     this.historyIndex = Math.max(0, this.historyIndex - 1);
     this.model = cloneModel(this.history[this.historyIndex]);
     this.repaint();
+    this.refreshPanel();
     this.scheduleSync();
   }
   redo(): void {
@@ -365,7 +366,19 @@ export class WysiwygEditor {
     this.historyIndex += 1;
     this.model = cloneModel(this.history[this.historyIndex]);
     this.repaint();
+    this.refreshPanel();
     this.scheduleSync();
+  }
+
+  /** Rebuild the inspector after undo/redo swapped the whole model out.
+   *  Deliberately NOT guarded by mutate()'s inField check: that guard protects
+   *  a field the user is typing into, and no such edit is in flight here — the
+   *  keyboard handler ignores Ctrl+Z while an INPUT/TEXTAREA has focus, so the
+   *  control this could steal focus from is a <select>, which holds no
+   *  half-typed state and is exactly the control that goes stale (its value
+   *  would still read the undone setting, and re-picking it fires no change). */
+  private refreshPanel(): void {
+    if (this.panel && this.selection) { this.panel.refresh(this.selection); }
   }
 
   groupSelection(): void {

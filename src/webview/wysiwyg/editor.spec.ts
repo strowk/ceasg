@@ -34,6 +34,39 @@ describe('WysiwygEditor state', () => {
     editor.undo();
     expect(editor.getModel().nodes.length).toBe(before);
   });
+  it('undo and redo refresh the properties panel so a select is never stale', () => {
+    const { editor, root } = make();
+    editor.init('flowchart TB\nsubgraph S\nA-->B\nend\n');
+    editor.selection!.select('S');
+    editor.refreshSelection();
+    const panel = root.querySelector('#panel') as HTMLElement;
+    // Locates the live control each time: a refresh replaces the element.
+    const dirSelect = (): HTMLSelectElement => {
+      const rows = Array.from(panel.querySelectorAll('.ceasg-panel-row'));
+      const row = rows.find((r) => r.querySelector('span')?.textContent === 'Direction');
+      if (!row) { throw new Error('no Direction row'); }
+      return row.querySelector('select') as HTMLSelectElement;
+    };
+
+    const sel = dirSelect();
+    // Focused, as it is when the user has just picked a value: mutate()'s
+    // inField guard skips its own refresh, so only undo/redo can fix the value.
+    sel.focus();
+    sel.value = 'LR';
+    sel.dispatchEvent(new Event('change'));
+    expect(editor.getModel().groups[0]!.direction).toBe('LR');
+
+    editor.undo();
+    expect(editor.getModel().groups[0]!.direction).toBeUndefined();
+    // A stale <select> reading "LR" cannot be re-picked: choosing LR again
+    // fires no change event, so the value is unreachable.
+    expect(dirSelect().value).toBe('');
+
+    editor.redo();
+    expect(editor.getModel().groups[0]!.direction).toBe('LR');
+    expect(dirSelect().value).toBe('LR');
+  });
+
   it('serialize preserves the ceasg id comment', () => {
     const { editor } = make();
     editor.init('flowchart TB\n%% ceasg:{"id":"abcd"} %%\nA[A]\n');
